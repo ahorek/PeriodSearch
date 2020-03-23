@@ -3,15 +3,15 @@
    8.11.2006
 */
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "globals_CUDA.h"
-#include "declarations_CUDA.h"
+//#include <math.h>
+//#include <stdlib.h>
+//#include <stdio.h>
+////#include "globals_CUDA.h"
+//#include "declarations_OpenCl.h
 
 //#define __device
 
-__device__ double conv(freq_context* CUDA_LCC, int nc, int tmpl, int tmph, int brtmpl, int brtmph)
+double conv(freq_context* CUDA_LCC, int nc, int tmpl, int tmph, int brtmpl, int brtmph)
 {
 	int i, j, k;
 	__shared__ double res[CUDA_BLOCK_DIM];

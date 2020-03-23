@@ -22,6 +22,11 @@
 
 */
 
+//#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+//#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define __CL_ENABLE_EXCEPTIONS
+
 #include <CL/cl.hpp>
 #include "stdafx.h"
 #include <cstdio>
@@ -524,7 +529,7 @@ int main(int argc, char** argv)
         cudaDevice = 0;
 
     retval = ClPrepare(cudaDevice, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
-    if (!retval)
+    if (retval)
     {
         fflush(stderr);
         exit(2);
@@ -637,7 +642,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
         }
 
-        //ClPrecalc(startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, brightness);
+        ClPrecalc(startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, brightness);
 
         ndata = ndata - 3;
 

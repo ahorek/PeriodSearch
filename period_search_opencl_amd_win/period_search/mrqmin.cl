@@ -4,11 +4,11 @@
    8.11.2006
 */
 
-#include <cuda.h>
-#include "globals_CUDA.h"
-#include "declarations_CUDA.h"
+//#include <cuda.h>
+//#include "globals_CUDA.h"
+//#include "declarations_CUDA.h"
 
-__device__ int mrqmin_1_end(freq_context* CUDA_LCC)
+int mrqmin_1_end(freq_context* CUDA_LCC)
 {
 
     int j, k, l, err_code;
@@ -68,7 +68,7 @@ __device__ int mrqmin_1_end(freq_context* CUDA_LCC)
     return(err_code);
 }
 
-__device__ void mrqmin_2_end(freq_context* CUDA_LCC, int ia[], int ma)
+void mrqmin_2_end(freq_context* CUDA_LCC, int ia[], int ma)
 {
     int j, k, l;
 

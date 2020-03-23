@@ -4,16 +4,16 @@
    8.11.2006
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "globals_CUDA.h"
-#include "declarations_CUDA.h"
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include "globals_CUDA.h"
+//#include "declarations_CUDA.h"
 
 
 /* comment the following line if no YORP */
 /*#define YORP*/
 
-__device__ void mrqcof_start(freq_context* CUDA_LCC, double a[],
+void mrqcof_start(freq_context* CUDA_LCC, double a[],
 	double* alpha, double beta[])
 {
 	int j, k;
@@ -61,7 +61,7 @@ __device__ void mrqcof_start(freq_context* CUDA_LCC, double a[],
 	__syncthreads(); //pro jistotu
 }
 
-__device__ double mrqcof_end(freq_context* CUDA_LCC, double* alpha)
+double mrqcof_end(freq_context* CUDA_LCC, double* alpha)
 {
 	int j, k;
 
@@ -72,12 +72,12 @@ __device__ double mrqcof_end(freq_context* CUDA_LCC, double* alpha)
 	return (*CUDA_LCC).trial_chisq;
 }
 
-__device__ void mrqcof_matrix(freq_context* CUDA_LCC, double a[], int Lpoints)
+void mrqcof_matrix(freq_context* CUDA_LCC, double a[], int Lpoints)
 {
 	matrix_neo(CUDA_LCC, a, (*CUDA_LCC).np, Lpoints);
 }
 
-__device__ void mrqcof_curve1(freq_context* CUDA_LCC, double a[],
+void mrqcof_curve1(freq_context* CUDA_LCC, double a[],
 	double* alpha, double beta[], int Inrel, int Lpoints)
 {
 	int l, k, jp, lnp, Lpoints1 = Lpoints + 1;
@@ -148,7 +148,7 @@ __device__ void mrqcof_curve1(freq_context* CUDA_LCC, double a[],
 	}
 }
 
-__device__ void mrqcof_curve1_last(freq_context* CUDA_LCC, double a[],
+void mrqcof_curve1_last(freq_context* CUDA_LCC, double a[],
 	double* alpha, double beta[], int Inrel, int Lpoints)
 {
 	int l, jp, lnp;

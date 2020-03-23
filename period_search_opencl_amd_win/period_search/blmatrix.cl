@@ -4,7 +4,7 @@
 */
 
 #include <math.h>
-#include "globals_CUDA.h"
+//#include "globals_CUDA.h"
 
 __device__ void blmatrix(freq_context* CUDA_LCC, double bet, double lam)
 {

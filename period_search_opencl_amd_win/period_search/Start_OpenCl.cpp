@@ -1,16 +1,30 @@
-//#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
-#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 //#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+//#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define __CL_ENABLE_EXCEPTIONS
+
+#include <CL/cl.hpp>
+//#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+//#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+//#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+//#define __CL_ENABLE_EXCEPTIONS
 
 //#include <vector>
 #include <iostream>
-//#include <fstream>
-//#include <sstream>
-#include <CL/cl.hpp>
+#include <fstream>
+#include <sstream>
 #include "globals.h"
 #include "declarations.hpp"
+#include "declarations_OpenCl.h"
 #include "Start_OpenCl.h"
+
+#ifdef _WIN32
+//#include "boinc_win.h"
+#include <Shlwapi.h>
+#endif
+
+
+#include "Start.h"
 
 
 using std::cout;
@@ -27,14 +41,16 @@ cl::Context context;
 cl::Program program;
 cl::CommandQueue queue;
 
+
 // TODO: Define "Texture" like Texture<int2> from this:
 //vector<vector<int, int>> texWeight;
 
 int CUDA_grid_dim;
-std::vector<cl_int2, int> texWeight;
+// vector<cl_int2, int>
+cl::Image1D texWeight;  //NOTE: CUDA's 'texture<int2, 1>{}' structure equivalent
 
 // NOTE: global to one thread
-FreqResult* CUDA_FR;
+freq_result* CUDA_FR;
 
 double* pee, * pee0, * pWeight;
 
@@ -45,7 +61,7 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 
 	try {
 		cl::Platform::get(&platforms);
-		std::vector<cl::Platform>::iterator iter;
+		vector<cl::Platform>::iterator iter;
 		for (iter = platforms.begin(); iter != platforms.end(); ++iter)
 		{
 			auto name = (*iter).getInfo<CL_PLATFORM_NAME>();
@@ -137,8 +153,12 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 		res = cudaMemcpyToSymbol(CUDA_ee0, &pee0, sizeof(void*));
 
 		if (res == cudaSuccess) return 1; else return 0;*/
-		cl_int result = *err;
-		return result;
+		if(err)
+		{
+			return (cl_int)*err;
+		}
+
+		return 0;
 	}
 	catch (cl::Error & err)
 	{
@@ -169,8 +189,10 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	int i, n, m, n_max = (int)((freq_start - freq_end) / freq_step) + 1;
 	int n_iter_max;
 	double iter_diff_max;
-	FreqResult* res;
-	void* pcc, * pfr, * pbrightness, * psig;
+	freq_result* res;
+	//freq_context* pcc;
+	void* pcc;
+	void* pfr, * pbrightness, * psig;
 
 	max_test_periods = 10;
 	sum_dark_facet = 0.0;
@@ -275,14 +297,16 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	auto CUDA_Grid_dim_precalc = CUDA_grid_dim;
 	if (max_test_periods < CUDA_Grid_dim_precalc) CUDA_Grid_dim_precalc = max_test_periods;
 
-	auto gdpcSize = CUDA_Grid_dim_precalc * sizeof(FreqContext);
+	auto gdpcSize = CUDA_Grid_dim_precalc * sizeof(freq_context);
+	pcc = (freq_context*)malloc(gdpcSize);
 	auto clPcc = cl::Buffer(context, CL_MEM_READ_ONLY, gdpcSize, &pcc, err);
-	queue.enqueueWriteBuffer(clPcc, CL_BLOCKING, 0, gdpcSize, pcc);
+	queue.enqueueWriteBuffer(clPcc, CL_TRUE, 0, gdpcSize, pcc);
 
 	// err = cudaMalloc(&pcc, CUDA_Grid_dim_precalc * sizeof(freq_context));
 	//	cudaMemcpyToSymbol(CUDA_CC, &pcc, sizeof(pcc));
 
-	auto frSize = CUDA_Grid_dim_precalc * sizeof(FreqResult);
+	auto frSize = CUDA_Grid_dim_precalc * sizeof(freq_result);
+	pfr = (freq_result*)malloc(frSize);
 	auto clFr = cl::Buffer(context, CL_MEM_READ_ONLY, frSize, &pfr, err);
 	queue.enqueueWriteBuffer(clFr, CL_BLOCKING, 0, frSize, pfr);
 
@@ -312,90 +336,149 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 
 	for (m = 0; m < CUDA_Grid_dim_precalc; m++)
 	{
-		FreqContext ps;
+		freq_context ps;
 		ps.Area = &pa[m * (Numfac + 1)];
 		ps.Dg = &pg[m * (Numfac + 1) * (n_coef + 1)];
 		ps.alpha = &pal[m * (lmfit + 1) * (lmfit + 1)];
 		ps.covar = &pco[m * (lmfit + 1) * (lmfit + 1)];
 		ps.dytemp = &pdytemp[m * (max_l_points + 1) * (ma + 1)];
 		ps.ytemp = &pytemp[m * (max_l_points + 1)];
-		auto pt = &static_cast<FreqContext*>(pcc)[m];
+		auto pt = &static_cast<freq_context*>(pcc)[m];
 
 		//err = cudaMemcpy(pt, &ps, sizeof(void*) * 6, cudaMemcpyHostToDevice);
 	}
 
-	res = static_cast<FreqResult*>(malloc(CUDA_Grid_dim_precalc * sizeof(FreqResult)));
+	res = (freq_result*)malloc(CUDA_Grid_dim_precalc * sizeof(freq_result));
+
+	//CHAR filepath[MAX_PATH]; // = getenv("_");
+	//GetModuleFileName(nullptr, filepath, MAX_PATH);
+	//auto filename = PathFindFileName(filepath);
+
+	// Load CL file, build CL program object, create CL kernel object
+	std::ifstream f("period_search/Start.cl");
+	std::stringstream st;
+	st << f.rdbuf();
+	auto KernelStart = st.str();
+
+	cl::Program::Sources sources(1, std::make_pair(KernelStart.c_str(), KernelStart.length()));
+	program = cl::Program(context, sources, err);
+	try
+	{
+		program.build(devices);
+	}
+	catch (cl::Error& e)
+	{
+		if (e.err() == CL_BUILD_PROGRAM_FAILURE)
+		{
+			for (cl::Device dev : devices)
+			{
+				// Check the build status
+				cl_build_status status = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
+				if (status != CL_BUILD_ERROR)
+					continue;
+
+				// Get the build log
+				std::string name = dev.getInfo<CL_DEVICE_NAME>();
+				std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
+				std::cerr << "Build log for " << name << ":" << std::endl
+					<< buildlog << std::endl;
+			}
+		}
+		else
+		{
+			throw e;
+		}
+	}
+
+
+	auto bufPerBest = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof per_best, &per_best, err)
+	
+	cl::Kernel kernelCalculatePrepare = cl::Kernel(program, "CLCalculatePrepare");
+	kernelCalculatePrepare.setArg(0, bufPerBest);
+	
 
 	for (n = 1; n <= max_test_periods; n += CUDA_Grid_dim_precalc)
 	{
-		CUDACalculatePrepare << <CUDA_Grid_dim_precalc, 1 >> > (n, max_test_periods, freq_start, freq_step);
-		err = cudaThreadSynchronize();
+		queue.enqueueNDRangeKernel(kernelCudaCalculatePreparernel, cl::NDRange(), cl::NDRange(Numfac), cl::NDRange(Numfac));
+		//CudaCalculatePrepare(n, max_test_periods, freq_start, freq_step); // << <CUDA_Grid_dim_precalc, 1 >> >
 
-		for (m = 1; m <= N_POLES; m++)
+		// TODO: Sync kernels here - waith for event
+		// cuda sync err = cudaThreadSynchronize();
+
+		/*for (m = 1; m <= N_POLES; m++)
 		{
 			//zero global End signal
 			theEnd = 0;
-			cudaMemcpyToSymbol(CUDA_End, &theEnd, sizeof(theEnd));
-			//
-			CUDACalculatePreparePole << <CUDA_Grid_dim_precalc, 1 >> > (m);
-			//
+			auto clTheEnd = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof theEnd, &theEnd, err);
+			//cudaMemcpyToSymbol(CUDA_End, &theEnd, sizeof(theEnd));
+
+			CudaCalculatePreparePole(m); // << <CUDA_Grid_dim_precalc, 1 >> >
+
 			while (!theEnd)
 			{
-				CUDACalculateIter1_Begin << <CUDA_Grid_dim_precalc, 1 >> > ();
+				CudaCalculateIter1Begin(); // << <CUDA_Grid_dim_precalc, 1 >> >
 				//mrqcof
-				CUDACalculateIter1_mrqcof1_start << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > ();
+				CudaCalculateIter1Mrqcof1Start(); // << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				for (iC = 1; iC < l_curves; iC++)
 				{
-					CUDACalculateIter1_mrqcof1_matrix << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (l_points[iC]);
-					CUDACalculateIter1_mrqcof1_curve1 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[iC], l_points[iC]);
-					CUDACalculateIter1_mrqcof1_curve2 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[iC], l_points[iC]);
+					CudaCalculateIter1Mrqcof1Matrix(l_points[iC]);					//<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					CudaCalculateIter1Mrqcof1Curve1(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					CudaCalculateIter1Mrqcof1Curve2(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				}
-				CUDACalculateIter1_mrqcof1_curve1_last << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[l_curves], l_points[l_curves]);
-				CUDACalculateIter1_mrqcof1_curve2 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[l_curves], l_points[l_curves]);
-				CUDACalculateIter1_mrqcof1_end << <CUDA_Grid_dim_precalc, 1 >> > ();
+				CudaCalculateIter1Mrqcof1Curve1Last(in_rel[l_curves], l_points[l_curves]);	//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+				CudaCalculateIter1Mrqcof1Curve2(in_rel[l_curves], l_points[l_curves]);		//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+				CudaCalculateIter1Mrqcof1End();												//	<< <CUDA_Grid_dim_precalc, 1 >> >
 				//mrqcof
-				CUDACalculateIter1_mrqmin1_end << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > ();
+				CudaCalculateIter1Mrqmin1End();												//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				//mrqcof
-				CUDACalculateIter1_mrqcof2_start << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > ();
+				CudaCalculateIter1Mrqcof2Start();											//	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				for (iC = 1; iC < l_curves; iC++)
 				{
-					CUDACalculateIter1_mrqcof2_matrix << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (l_points[iC]);
-					CUDACalculateIter1_mrqcof2_curve1 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[iC], l_points[iC]);
-					CUDACalculateIter1_mrqcof2_curve2 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[iC], l_points[iC]);
+					CudaCalculateIter1Mrqcof2Matrix(l_points[iC]);							//	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					CudaCalculateIter1Mrqcof2Curve1(in_rel[iC], l_points[iC]);				//	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					CudaCalculateIter1Mrqcof2Curve2(in_rel[iC], l_points[iC]);				//	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				}
-				CUDACalculateIter1_mrqcof2_curve1_last << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[l_curves], l_points[l_curves]);
-				CUDACalculateIter1_mrqcof2_curve2 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > (in_rel[l_curves], l_points[l_curves]);
-				CUDACalculateIter1_mrqcof2_end << <CUDA_Grid_dim_precalc, 1 >> > ();
+				CudaCalculateIter1Mrqcof2Curve1Last(in_rel[l_curves], l_points[l_curves]);	//	 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+				CudaCalculateIter1Mrqcof2Curve2(in_rel[l_curves], l_points[l_curves]);		//	 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+				CudaCalculateIter1Mrqcof2End();												//	 << <CUDA_Grid_dim_precalc, 1 >> >
 				//mrqcof
-				CUDACalculateIter1_mrqmin2_end << <CUDA_Grid_dim_precalc, 1 >> > ();
-				CUDACalculateIter2 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> > ();
+				CudaCalculateIter1Mrqmin2End();												//	 << <CUDA_Grid_dim_precalc, 1 >> >
+				CudaCalculateIter2();														//	 << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				//err=cudaThreadSynchronize(); memcpy is synchro itself
-				cudaMemcpyFromSymbol(&theEnd, CUDA_End, sizeof(theEnd));
+
+				// TODO: Read scalar buffer
+				//cudaMemcpyFromSymbol(&theEnd, CUDA_End, sizeof(theEnd));
 				theEnd = theEnd == CUDA_Grid_dim_precalc;
 
 				//break;//debug
 			}
-			CUDACalculateFinishPole << <CUDA_Grid_dim_precalc, 1 >> > ();
-			err = cudaThreadSynchronize();
+			CudaCalculateFinishPole();														//	 << <CUDA_Grid_dim_precalc, 1 >> >
+
+			// TODO: Sync threads on device -> kernel(s)?
+			//err = cudaThreadSynchronize();
 			//			err=cudaMemcpyFromSymbol(&res,CUDA_FR,sizeof(freq_result)*CUDA_Grid_dim_precalc);
 			//			err=cudaMemcpyFromSymbol(&resc,CUDA_CC,sizeof(freq_context)*CUDA_Grid_dim_precalc);
 						//break; //debug
 		}
 
-		CUDACalculateFinish << <CUDA_Grid_dim_precalc, 1 >> > ();
+		CudaCalculateFinish();																//	 << <CUDA_Grid_dim_precalc, 1 >> >
 		//err=cudaThreadSynchronize(); memcpy is synchro itself
 
 		//read results here
-		err = cudaMemcpy(res, pfr, sizeof(freq_result) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);
+		// TODO: Read result Buffer
+		//err = cudaMemcpy(res, pfr, sizeof(freq_result) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);
 
 		for (m = 1; m <= CUDA_Grid_dim_precalc; m++)
 		{
 			if (res[m - 1].isReported == 1)
 				sum_dark_facet = sum_dark_facet + res[m - 1].dark_best;
 		}
+		*/
 	} /* period loop */
 
-	cudaUnbindTexture(texArea);
+
+	// TODO: Free Buffers
+	/*cudaUnbindTexture(texArea);
 	cudaUnbindTexture(texDg);
 	cudaUnbindTexture(texbrightness);
 	cudaUnbindTexture(texsig);
@@ -408,7 +491,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	cudaFree(pcc);
 	cudaFree(pfr);
 	cudaFree(pbrightness);
-	cudaFree(psig);
+	cudaFree(psig);*/
 
 	free((void*)res);
 

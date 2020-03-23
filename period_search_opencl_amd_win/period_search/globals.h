@@ -1,4 +1,10 @@
 #pragma once
+//#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define __CL_ENABLE_EXCEPTIONS
+
+#include <CL/cl.hpp>
 #include <CL/cl.hpp>
 #include <cstdio>
 #include "constants.h"
@@ -19,13 +25,15 @@ pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 d_bl_matrix[3][4][4],
 weight[MAX_N_OBS + 1];
 
-extern std::vector<cl_int2, int> texture;
+//extern std::vector<std::vector<int, int>, int> texture;
+//extern std::vector<cl_int2, int> texture;
 
 // OpenCL
 extern cl_double Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1], Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1], Dg[MAX_N_FAC + 1][MAX_N_PAR + 1];
 extern cl_double Area[MAX_N_FAC + 1], Darea[MAX_N_FAC + 1];
 
-extern std::string kernelCurv, kernelDaveFile, kernelSig2wghtFile;
+extern std::string KernelCudaCalculatePrepare;
+//extern std::string kernelCurv, kernelDaveFile, kernelSig2wghtFile;
 extern std::vector<cl::Platform> platforms;
 extern std::vector<cl::Device> devices;
 extern cl::Context context;
@@ -39,49 +47,49 @@ extern cl::Buffer bufDave, bufDyda;
 extern cl::Buffer bufD;
 
 // NOTE: global to one thread
-struct FreqContext
-{
-	//	double Area[MAX_N_FAC+1];
-	double* Area;
-	//	double Dg[(MAX_N_FAC+1)*(MAX_N_PAR+1)];
-	double* Dg;
-	//	double alpha[MAX_N_PAR+1][MAX_N_PAR+1];
-	double* alpha;
-	//	double covar[MAX_N_PAR+1][MAX_N_PAR+1];
-	double* covar;
-	//	double dytemp[(POINTS_MAX+1)*(MAX_N_PAR+1)]
-	double* dytemp;
-	//	double ytemp[POINTS_MAX+1],
-	double* ytemp;
-	double cg[MAX_N_PAR + 1];
-	double Ochisq, Chisq, Alamda;
-	double atry[MAX_N_PAR + 1], beta[MAX_N_PAR + 1], da[MAX_N_PAR + 1];
-	double Blmat[4][4];
-	double Dblm[3][4][4];
-	//mrqcof locals
-	double dyda[MAX_N_PAR + 1], dave[MAX_N_PAR + 1];
-	double trial_chisq, ave;
-	int np, np1, np2;
-	//bright
-	double e_1[POINTS_MAX + 1], e_2[POINTS_MAX + 1], e_3[POINTS_MAX + 1], e0_1[POINTS_MAX + 1], e0_2[POINTS_MAX + 1], e0_3[POINTS_MAX + 1], de[POINTS_MAX + 1][4][4], de0[POINTS_MAX + 1][4][4];
-	double jp_Scale[POINTS_MAX + 1];
-	double jp_dphp_1[POINTS_MAX + 1], jp_dphp_2[POINTS_MAX + 1], jp_dphp_3[POINTS_MAX + 1];
-	// gaus
-	int indxc[MAX_N_PAR + 1], indxr[MAX_N_PAR + 1], ipiv[MAX_N_PAR + 1];
-	//global
-	double freq;
-	int isNiter;
-	double iter_diff, rchisq, dev_old, dev_new;
-	int Niter;
-	double chck[4];
-	int isAlamda; //Alamda<0 for init
-	//
-	int isInvalid;
-	//test
-};
-
-struct FreqResult
-{
-	int isReported;
-	double dark_best, per_best, dev_best, la_best, be_best;
-};
+//struct FreqContext
+//{
+//	//	double Area[MAX_N_FAC+1];
+//	double* Area;
+//	//	double Dg[(MAX_N_FAC+1)*(MAX_N_PAR+1)];
+//	double* Dg;
+//	//	double alpha[MAX_N_PAR+1][MAX_N_PAR+1];
+//	double* alpha;
+//	//	double covar[MAX_N_PAR+1][MAX_N_PAR+1];
+//	double* covar;
+//	//	double dytemp[(POINTS_MAX+1)*(MAX_N_PAR+1)]
+//	double* dytemp;
+//	//	double ytemp[POINTS_MAX+1],
+//	double* ytemp;
+//	double cg[MAX_N_PAR + 1];
+//	double Ochisq, Chisq, Alamda;
+//	double atry[MAX_N_PAR + 1], beta[MAX_N_PAR + 1], da[MAX_N_PAR + 1];
+//	double Blmat[4][4];
+//	double Dblm[3][4][4];
+//	//mrqcof locals
+//	double dyda[MAX_N_PAR + 1], dave[MAX_N_PAR + 1];
+//	double trial_chisq, ave;
+//	int np, np1, np2;
+//	//bright
+//	double e_1[POINTS_MAX + 1], e_2[POINTS_MAX + 1], e_3[POINTS_MAX + 1], e0_1[POINTS_MAX + 1], e0_2[POINTS_MAX + 1], e0_3[POINTS_MAX + 1], de[POINTS_MAX + 1][4][4], de0[POINTS_MAX + 1][4][4];
+//	double jp_Scale[POINTS_MAX + 1];
+//	double jp_dphp_1[POINTS_MAX + 1], jp_dphp_2[POINTS_MAX + 1], jp_dphp_3[POINTS_MAX + 1];
+//	// gaus
+//	int indxc[MAX_N_PAR + 1], indxr[MAX_N_PAR + 1], ipiv[MAX_N_PAR + 1];
+//	//global
+//	double freq;
+//	int isNiter;
+//	double iter_diff, rchisq, dev_old, dev_new;
+//	int Niter;
+//	double chck[4];
+//	int isAlamda; //Alamda<0 for init
+//	//
+//	int isInvalid;
+//	//test
+//};
+//
+//struct FreqResult
+//{
+//	int isReported;
+//	double dark_best, per_best, dev_best, la_best, be_best;
+//};

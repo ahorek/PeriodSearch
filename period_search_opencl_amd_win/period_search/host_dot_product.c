@@ -1,10 +1,10 @@
-/* dot product of two vectors 
+/* dot product of two vectors
    input: vectors a, b
    output: dot product a.b
 
    8.11.2006
 */
-#pragma once
+
 #include "declarations.hpp"
 
 double host_dot_product(double a[4], double b[4])
