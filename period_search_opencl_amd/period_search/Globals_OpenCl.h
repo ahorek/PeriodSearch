@@ -8,6 +8,15 @@
 
 #define __kernel
 
+//#ifdef __GNUC__
+//#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+//#endif
+//
+//#ifdef _MSC_VER
+//#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+//#endif
+
+
 //global to one thread
 struct freq_context
 {
@@ -68,10 +77,13 @@ extern cl::Image1D texDg;
 //extern texture<int2, 1> texArea;
 //extern texture<int2, 1> texDg;
 
+// NOTE: Check here https://docs.microsoft.com/en-us/cpp/preprocessor/pack?redirectedfrom=MSDN&view=vs-2019
+//#pragma pack(4)
 struct freq_result
 {
 	int isReported;
 	double dark_best, per_best, dev_best, la_best, be_best;
 };
 
-extern freq_result* CUDA_FR;
+//extern freq_result CUDA_FR;
+extern __declspec(align(16)) freq_result* CUDA_FR;

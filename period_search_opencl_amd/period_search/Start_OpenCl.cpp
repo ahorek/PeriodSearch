@@ -24,7 +24,7 @@
 #endif
 
 
-#include "Start.h"
+#include "Start_OpenCL.h"
 
 
 using std::cout;
@@ -50,7 +50,11 @@ int CUDA_grid_dim;
 cl::Image1D texWeight;  //NOTE: CUDA's 'texture<int2, 1>{}' structure equivalent
 
 // NOTE: global to one thread
-freq_result* CUDA_FR;
+#ifdef __GNUC__
+freq_result* CUDA_FR __attribute__((aligned(16)));
+#else
+__declspec(align(16)) freq_result* CUDA_FR;
+#endif
 
 double* pee, * pee0, * pWeight;
 
@@ -391,15 +395,16 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	}
 
 
-	auto bufPerBest = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof per_best, &per_best, err)
-	
+	auto bufCudaFr = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof freq_result, &CUDA_FR, err);
+	//auto bufPerBest = cl::Buffer(context, CL_MEM_ALLOC_HOST_PTR, sizeof per_best, &per_best, err);
+
 	cl::Kernel kernelCalculatePrepare = cl::Kernel(program, "CLCalculatePrepare");
-	kernelCalculatePrepare.setArg(0, bufPerBest);
-	
+	kernelCalculatePrepare.setArg(0, bufCudaFr);
+
 
 	for (n = 1; n <= max_test_periods; n += CUDA_Grid_dim_precalc)
 	{
-		queue.enqueueNDRangeKernel(kernelCudaCalculatePreparernel, cl::NDRange(), cl::NDRange(Numfac), cl::NDRange(Numfac));
+		queue.enqueueNDRangeKernel(kernelCalculatePrepare, cl::NDRange(), cl::NDRange(Numfac), cl::NDRange(Numfac));
 		//CudaCalculatePrepare(n, max_test_periods, freq_start, freq_step); // << <CUDA_Grid_dim_precalc, 1 >> >
 
 		// TODO: Sync kernels here - waith for event

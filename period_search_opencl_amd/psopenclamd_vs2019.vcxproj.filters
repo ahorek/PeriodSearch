@@ -66,7 +66,7 @@
     <None Include="period_search\Curve2.cl">
       <Filter>Source files</Filter>
     </None>
-    <None Include="period_search\Start.cl">
+    <None Include="Start.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>

@@ -204,7 +204,7 @@
       <!-- <SubSystem>Windows</SubSystem> -->
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;D:\boincsdk\boinc_repo\win_build\Build\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc_staticcrt.lib;libboincapi_staticcrt.lib;ShLwApi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi_staticcrt.lib;ShLwApi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
     </Link>
@@ -347,9 +347,7 @@
     <None Include="period_search\sig2iwght.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="period_search\Start.cl">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
+    <None Include="Start.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
