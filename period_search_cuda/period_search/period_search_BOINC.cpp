@@ -56,18 +56,20 @@
 
 #ifdef _WIN32
 #include "boinc_win.h"
+#include "Windows.h"
 #include <Shlwapi.h>
-
+#include "Version.h"
 #else
-#include "../win_build/config.h"
+//#include "../win_build/config.h"
 #include <cstdio>
 #include <cctype>
 #include <ctime>
 #include <cstring>
 #include <cstdlib>
 #include <csignal>
-#include <io.h>
-//#include <unistd.h>
+//#include <io.h>
+#include <unistd.h>
+#include <limits>
 #endif
 
 #include "str_util.h"
@@ -233,12 +235,26 @@ int main(int argc, char** argv)
 		exit(retval);
 	}
 
+#ifdef _WIN32
 	// -------------------
 	char buffer[MAX_PATH];
 	GetModuleFileName(NULL, buffer, MAX_PATH);
 	string::size_type pos = string(buffer).find_last_of("\\/");
 	auto result = string(buffer).substr(0, pos);
 	//--------------------------------------------
+#else
+	// open the input file (resolve logical name first)
+	//
+	boinc_resolve_filename(input_filename, inputPath, sizeof(inputPath));
+	infile = boinc_fopen(inputPath, "r");
+	if (!infile) {
+		fprintf(stderr,
+			"%s Couldn't find input file, resolved name %s.\n",
+			boinc_msg_prefix(buf, sizeof(buf)), inputPath
+		);
+		exit(-1);
+	}
+#endif
 
 	// open the input file (resolve logical name first)
 	//

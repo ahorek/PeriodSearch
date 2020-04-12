@@ -27,12 +27,10 @@ void shell(int n, double a[], int index[]);
 double *vector_double(int length);
 int *vector_int(int length);
 double **matrix_double(int rows, int columns);
-double **aligned_matrix_double(int rows, int columns);
 int **matrix_int(int rows, int columns);
 double ***matrix_3_double(int n_1, int n_2, int n_3);
 void deallocate_vector(void *p_x);
 void deallocate_matrix_double(double **p_x, int rows);
-void aligned_deallocate_matrix_double(double **p_x, int rows);
 void deallocate_matrix_int(int **p_x, int rows);
 void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
 
