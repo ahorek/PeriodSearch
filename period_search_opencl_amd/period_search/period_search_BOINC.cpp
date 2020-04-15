@@ -27,6 +27,7 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define __CL_ENABLE_EXCEPTIONS
 
+#include <CL/cl.h>
 #include <CL/cl.hpp>
 #include "stdafx.h"
 #include <cstdio>
@@ -60,7 +61,9 @@
 
 #ifdef _WIN32
 #include "boinc_win.h"
-
+#include "Windows.h"
+#include <Shlwapi.h>
+#include "Version.h"
 #else
 #include "../win_build/config.h"
 #include <cstdio>
@@ -521,12 +524,41 @@ int main(int argc, char** argv)
 
     // extract a --device option
     int cudaDevice = -1;
-    for (int ii = 0; ii < argc; ii++) {
-        if (cudaDevice < 0 && strcmp(argv[ii], "--device") == 0 && ii + 1 < argc)
-            cudaDevice = atoi(argv[++ii]);
+    APP_INIT_DATA aid;
+
+    // NOTE: Applications that use coprocessors https://boinc.berkeley.edu/trac/wiki/AppCoprocessor
+    // Some hosts have multiple GPUs. The BOINC client tells your application which instance to use.
+    // Call boinc_get_init_data() to get an APP_INIT_DATA structure; the device number (0, 1, ...) is in the gpu_device_num field. Old (pre-7.0.12) clients pass the device number via a command-line argument, --device N.
+    // In this case API_INIT_DATA::gpu_device_num will be -1, and your application must check its command-line args.
+    boinc_get_init_data(aid);
+	if (aid.gpu_device_num >= 0)
+    {
+        cudaDevice = aid.gpu_device_num;
     }
-    if (cudaDevice < 0)
-        cudaDevice = 0;
+    else
+    {
+        for (auto ii = 0; ii < argc; ii++) {
+            if (cudaDevice < 0 && strcmp(argv[ii], "--device") == 0 && ii + 1 < argc)
+                cudaDevice = atoi(argv[++ii]);
+        }
+    }
+
+    if (cudaDevice < 0) cudaDevice = 0;
+    if (!checkpointExists)
+    {
+        fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
+        fprintf(stderr, "BOINC GPU type '%s', deviceId=%d, slot=%d\n", aid.gpu_type, cudaDevice, aid.slot);
+
+#ifdef _WIN32
+        int major, minor, build, revision;
+        TCHAR filepath[MAX_PATH]; // = getenv("_");
+        GetModuleFileName(nullptr, filepath, MAX_PATH);
+        auto filename = PathFindFileName(filepath);
+        GetVersionInfo(filename, major, minor, build, revision);
+        fprintf(stderr, "Application: %s\n", filename);
+        fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
+#endif
+    }
 
     retval = ClPrepare(cudaDevice, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
     if (retval)
@@ -535,19 +567,18 @@ int main(int argc, char** argv)
         exit(2);
     }
 
-    //#if _DEBUG
-   //    GetCUDAOccupancy(cudaDevice);
-   //
-   //    fflush(stderr);
-   //    exit(0);
-   //#endif
-
-       /* optimization of the convexity weight **************************************************************/
+    /* optimization of the convexity weight **************************************************************/
     if (!checkpointExists)
     {
         conwR = conw / escl / escl;
         newConw = 0;
         boinc_fraction_done(0.0001); //signal start
+#if _DEBUG
+        std::time_t time = std::time(nullptr);   // get time now
+        std::tm* now = std::localtime(&time);
+        printf("%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
+        fprintf(stderr, "%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
+#endif
     }
     while ((newConw != 1) && ((conwR * escl * escl) < 10.0))
     {

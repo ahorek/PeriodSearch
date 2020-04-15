@@ -1,149 +1,198 @@
-#include "Globals_OpenCL.h"
-PACK(struct freq_result
-{
-	int isReported;
-	double dark_best, per_best, dev_best, la_best, be_best;
-});
-
-
 __kernel void CLCalculatePrepare(
-	__global double* per_best,
-	__global double* dark_best,
-	__global double* la_best,
-	__global double* be_best,
-	__global double* dev_best,
-	__global double* freq,
-	int isInvalid,
-	int n_start,
-	int n_max,
+	__global struct freq_context2* CUDA_CC,
+	__global struct freq_result* CUDA_FR,
+	__read_only int max_test_periods,
+	__read_only int n_start,
 	double freq_start,
 	double freq_step)
 {
-	size_t idx = get_global_id(0);
-	int n = n_start + idx;
-	/*const int CUDA_LCC = &CUDA_CC[idx];
-	const int CUDA_LFR = &CUDA_FR[idx];*/
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	printf("blockIdx.x = ", blockIdx.x);
+
+	//struct freq_result* CUDA_LCC = &CUDA_CC[idx];
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	__global struct freq_result* CUDA_LFR = &CUDA_FR[blockIdx.x];
+	int n = n_start + blockIdx.x;
 
 	//zero context
 	//	CUDA_CC is zeroed itself as global memory but need to reset between freq TODO
-	if (n > n_max)
+	if (n > max_test_periods)
 	{
-		isInvalid = 1;
-		return;
+		(*CUDA_LCC).isInvalid = 1;
+		{
+			return;
+		}
 	}
 	else
 	{
-		isInvalid = 0;
+		(*CUDA_LCC).isInvalid = 0;
 	}
 
-	freq[idx] = freq_start - (n - 1) * freq_step;
+	(*CUDA_LCC).freq = freq_start - (n - 1) * freq_step;
+	printf("CUDA_CC2[%d].freq = %.6f\n", blockIdx.x, (*CUDA_LCC).freq);
 
 	/* initial poles */
-	per_best[idx] = 0;
-	dark_best[idx] = 0;
-	la_best[idx] = 0;
-	be_best[idx] = 0;
-	dev_best[idx] = 1e40;
+	(*CUDA_FR).per_best = 0;
+	(*CUDA_FR).dark_best = 0;
+	(*CUDA_FR).la_best = 0;
+	(*CUDA_FR).be_best = 0;
+	(*CUDA_FR).dev_best = 1e40;
 }
 
-//__kernel void CudaCalculatePreparePole(int m)
+__kernel void CLCalculateFinish(
+	__global struct freq_context2* CUDA_CC2,
+	__global struct freq_result* CUDA_FR)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	//const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
+	//const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+
+	if ((CUDA_CC2[blockIdx.x]).isInvalid)
+	{
+		return;
+	}
+
+	if ((CUDA_FR[blockIdx.x]).la_best < 0)
+	{
+		(CUDA_FR[blockIdx.x]).la_best += 360;
+	}
+
+	if (isnan((CUDA_FR[blockIdx.x]).dark_best) == 1)
+	{
+		(CUDA_FR[blockIdx.x]).dark_best = 1.0;
+	}
+}
+
+__kernel void CLCalculatePreparePole(
+	__global struct freq_context2* CUDA_CC,
+	__global struct freq_result* CUDA_FR,
+	__global int* CUDA_End,
+	__global double* CUDA_cg_first,
+	__global double* CUDA_beta_pole,
+	__global double* CUDA_lambda_pole,
+	__global double* CUDA_par,
+	double log_cl,
+	int m,
+	int n_coef,
+	int n_ph_par)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	/*const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
+	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];*/
+
+	if (CUDA_CC[blockIdx.x].isInvalid)
+	{
+		atomic_add(CUDA_End, 1);
+		CUDA_FR[blockIdx.x].isReported = 0; //signal not to read result
+
+		return;
+	}
+
+	double period = 1 / CUDA_CC[blockIdx.x].freq;
+
+	/* starts from the initial ellipsoid */
+	for (int i = 1; i <= n_coef; i++)
+	{
+		CUDA_CC[blockIdx.x].cg[i] = CUDA_cg_first[i];
+	}
+
+	CUDA_CC[blockIdx.x].cg[n_coef + 1] = CUDA_beta_pole[m];
+	CUDA_CC[blockIdx.x].cg[n_coef + 2] = CUDA_lambda_pole[m];
+
+	/* The formulas use beta measured from the pole */
+	CUDA_CC[blockIdx.x].cg[n_coef + 1] = 90 - CUDA_CC[blockIdx.x].cg[n_coef + 1];
+
+	/* conversion of lambda, beta to radians */
+	CUDA_CC[blockIdx.x].cg[n_coef + 1] = DEG2RAD * CUDA_CC[blockIdx.x].cg[n_coef + 1];
+	CUDA_CC[blockIdx.x].cg[n_coef + 2] = DEG2RAD * CUDA_CC[blockIdx.x].cg[n_coef + 2];
+
+	/* Use omega instead of period */
+	CUDA_CC[blockIdx.x].cg[n_coef + 3] = 24 * 2 * M_PI / period;
+
+	for (int i = 1; i <= n_ph_par; i++)
+	{
+		CUDA_CC[blockIdx.x].cg[n_coef + 3 + i] = CUDA_par[i];
+		//              ia[Ncoef+3+i] = ia_par[i]; moved to global
+	}
+
+	/* Lommel-Seeliger part */
+	CUDA_CC[blockIdx.x].cg[n_coef + 3 + n_ph_par + 2] = 1;
+	/* Use logarithmic formulation for Lambert to keep it positive */
+	CUDA_CC[blockIdx.x].cg[n_coef + 3 + n_ph_par + 1] = log_cl; // log(CUDA_cl);
+
+	/* Levenberg-Marquardt loop */
+	// moved to global iter_max,iter_min,iter_dif_max
+	//
+	CUDA_CC[blockIdx.x].rchisq = -1;
+	CUDA_CC[blockIdx.x].Alamda = -1;
+	CUDA_CC[blockIdx.x].Niter = 0;
+	CUDA_CC[blockIdx.x].iter_diff = 1e40;
+	CUDA_CC[blockIdx.x].dev_old = 1e30;
+	CUDA_CC[blockIdx.x].dev_new = 0;
+	//	(*CUDA_LCC).Lastcall=0; always ==0
+	CUDA_FR[blockIdx.x].isReported = 0;
+}
+
+__kernel void CLCalculateIter1Begin(
+	__global struct freq_context2* CUDA_CC,
+	__global struct freq_result* CUDA_FR,
+	__global int* CUDA_End,
+	int n_iter_min,
+	int n_iter_max,
+	double iter_diff_max,
+	double aLambda_start)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	if (CUDA_CC[blockIdx.x].isInvalid)
+	{
+		return;
+	}
+
+	CUDA_CC[blockIdx.x].isNiter = ((CUDA_CC[blockIdx.x].Niter < n_iter_max) && (CUDA_CC[blockIdx.x].iter_diff > iter_diff_max)) || (CUDA_CC[blockIdx.x].Niter < n_iter_min);
+	if (CUDA_CC[blockIdx.x].isNiter)
+	{
+		if (CUDA_CC[blockIdx.x].Alamda < 0)
+		{
+			CUDA_CC[blockIdx.x].isAlamda = 1;
+			CUDA_CC[blockIdx.x].Alamda = aLambda_start; /* initial alambda */
+		}
+		else
+		{
+			CUDA_CC[blockIdx.x].isAlamda = 0;
+		}
+	}
+	else
+	{
+		if (!CUDA_FR[blockIdx.x].isReported)
+		{
+			atomic_add(CUDA_End, 1);
+			CUDA_FR[blockIdx.x].isReported = 1;
+		}
+	}
+}
+
+//__kernel void CLCalculateIter1Mrqcof1Start(
+//	__global struct freq_context2* CUDA_CC,
+//	struct funcarrays FA)
 //{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+//	int3 blockIdx;
+//	blockIdx.x = get_global_id(0);
+//	__global struct freq_context2* CUDA_LCC;
+//	CUDA_LCC = &CUDA_CC[blockIdx.x];
 //
-//	if ((*CUDA_LCC).isInvalid)
-//	{
-//		atomicAdd(&CUDA_End, 1);
-//		(*CUDA_LFR).isReported = 0; //signal not to read result
+//	if (CUDA_CC[blockIdx.x].isInvalid) return;
 //
-//		return;
-//	}
+//	if (!CUDA_CC[blockIdx.x].isNiter) return;
 //
-//	const auto period = 1 / (*CUDA_LCC).freq;
+//	if (!CUDA_CC[blockIdx.x].isAlamda) return;
 //
-//	/* starts from the initial ellipsoid */
-//	for (auto i = 1; i <= CUDA_Ncoef; i++)
-//	{
-//		(*CUDA_LCC).cg[i] = CUDA_cg_first[i];
-//	}
-//
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 1] = CUDA_beta_pole[m];
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 2] = CUDA_lambda_pole[m];
-//
-//	/* The formulas use beta measured from the pole */
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 1] = 90 - (*CUDA_LCC).cg[CUDA_Ncoef + 1];
-//
-//	/* conversion of lambda, beta to radians */
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 1] = DEG2RAD * (*CUDA_LCC).cg[CUDA_Ncoef + 1];
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 2] = DEG2RAD * (*CUDA_LCC).cg[CUDA_Ncoef + 2];
-//
-//	/* Use omega instead of period */
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 3] = 24 * 2 * PI / period;
-//
-//	for (auto i = 1; i <= CUDA_Nphpar; i++)
-//	{
-//		(*CUDA_LCC).cg[CUDA_Ncoef + 3 + i] = CUDA_par[i];
-//		//              ia[Ncoef+3+i] = ia_par[i]; moved to global
-//	}
-//
-//	/* Lommel-Seeliger part */
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 3 + CUDA_Nphpar + 2] = 1;
-//	/* Use logarithmic formulation for Lambert to keep it positive */
-//	(*CUDA_LCC).cg[CUDA_Ncoef + 3 + CUDA_Nphpar + 1] = log(CUDA_cl);
-//
-//	/* Levenberg-Marquardt loop */
-//	// moved to global iter_max,iter_min,iter_dif_max
-//	//
-//	(*CUDA_LCC).rchisq = -1;
-//	(*CUDA_LCC).Alamda = -1;
-//	(*CUDA_LCC).Niter = 0;
-//	(*CUDA_LCC).iter_diff = 1e40;
-//	(*CUDA_LCC).dev_old = 1e30;
-//	(*CUDA_LCC).dev_new = 0;
-//	//	(*CUDA_LCC).Lastcall=0; always ==0
-//	(*CUDA_LFR).isReported = 0;
+//	mrqcof_start(CUDA_LCC, FA, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
 //}
-//
-//__kernel void CudaCalculateIter1Begin(void)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid)
-//	{
-//		return;
-//	}
-//
-//	(*CUDA_LCC).isNiter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
-//
-//	if ((*CUDA_LCC).isNiter)
-//	{
-//		if ((*CUDA_LCC).Alamda < 0)
-//		{
-//			(*CUDA_LCC).isAlamda = 1;
-//			(*CUDA_LCC).Alamda = CUDA_Alamda_start; /* initial alambda */
-//		}
-//		else
-//			(*CUDA_LCC).isAlamda = 0;
-//	}
-//	else
-//	{
-//		if (!(*CUDA_LFR).isReported)
-//		{
-//			atomicAdd(&CUDA_End, 1);
-//#ifdef _DEBUG
-//			/*const int is_precalc = CUDA_Is_Precalc;
-//			if(is_precalc)
-//			{
-//				printf("%d ", CUDA_End);
-//			}*/
-//#endif
-//			(*CUDA_LFR).isReported = 1;
-//		}
-//	}
-//
-//}
-//
+
 //__kernel void CudaCalculateIter1Mrqmin1End(void)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
@@ -167,20 +216,9 @@ __kernel void CLCalculatePrepare(
 //	mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
 //	(*CUDA_LCC).Niter++;
 //}
-//
-//__kernel void CudaCalculateIter1Mrqcof1Start(void)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	if (!(*CUDA_LCC).isAlamda) return;
-//
-//	mrqcof_start(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
-//}
-//
+
+
+
 //__kernel void CudaCalculateIter1Mrqcof1Matrix(const int lpoints)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];

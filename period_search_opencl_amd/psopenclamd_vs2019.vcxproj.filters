@@ -19,6 +19,9 @@
     <ClCompile Include="period_search\Start_OpenCl.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="period_search\VersionInfo.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="period_search\Start_OpenCl.h">
@@ -51,22 +54,47 @@
     <ClInclude Include="period_search\Globals_OpenCl.h">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="period_search\Version.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\resource.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="period_search\clear_files.bat" />
-    <None Include="period_search\curv.cl" />
     <None Include="period_search\dave.cl" />
     <None Include="period_search\period_search_in" />
     <None Include="period_search\sig2iwght.cl" />
-    <None Include="period_search\bright.cl" />
-    <None Include="period_search\blmatrix.cl" />
-    <None Include="period_search\conv.cl" />
-    <None Include="period_search\mrqcof.cl" />
     <None Include="period_search\mrqmin.cl" />
     <None Include="period_search\Curve2.cl">
       <Filter>Source files</Filter>
     </None>
-    <None Include="Start.cl">
+    <None Include="period_search\Start.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\mrqcof.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\curv.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\blmatrix.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\Globals.hcl">
+      <Filter>Header files</Filter>
+    </None>
+    <None Include="period_search\Intrnsics.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\bright.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\conv.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\CLCalculateIter1Mrqcof1Start.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>
@@ -80,5 +108,17 @@
     <Filter Include="Source files">
       <UniqueIdentifier>{f5c6aeed-1811-4f1b-8211-a477d7374e4f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource files">
+      <UniqueIdentifier>{751662c0-2228-4389-94d0-6c8e656fa4ea}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="period_search\psopenclamd_vs2019.rc">
+      <Filter>Resource files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="logo_Nta_icon.ico" />
+    <Image Include="period_search\logo_Nta_icon.ico" />
   </ItemGroup>
 </Project>

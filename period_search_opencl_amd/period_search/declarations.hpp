@@ -11,16 +11,16 @@ void ludcmp(double **a, int n, int indx[], double d[]);
 int mrqmin(double **x1, double **x2, double x3[], double y[],
             double sig[], double a[], int ia[], int ma,
 	    double **covar, double **alpha);
-double mrqcof(double **x1, double **x2, double x3[], double y[],
-              double sig[], double a[], int ia[], int ma,
-	      double **alpha, double beta[], int mfit, int lastone, int lastma);
+//double mrqcof(double **x1, double **x2, double x3[], double y[],
+//              double sig[], double a[], int ia[], int ma,
+//	      double **alpha, double beta[], int mfit, int lastone, int lastma);
 //double mrqcof(double **x1, double **x2, double x3[], double y[],
 //    double sig[], double a[], int ia[], int ma,
 //    double **alpha, double beta[], int mfit, int lastone, int lastma,
 //    cl_double _Fc[], cl_double _Fs[], cl_double _Dsph[], cl_double _Dg[]);
-void curv(double cg[]);
-void blmatrix(double bet, double lam);
-double conv(int nc, double dres[], int ma);
+//void curv(double cg[]);
+//void blmatrix(double bet, double lam);
+//double conv(int nc, double dres[], int ma);
 //void gauss_1(double **aa, int n, double b[]);
 void covsrt(double **covar, int ma, int ia[], int mfit);
 void phasec(double dcdp[], double alpha, double p[]);

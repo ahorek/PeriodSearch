@@ -8,35 +8,38 @@
 //#include "globals_CUDA.h"
 
 
-__kernel void curv(freq_context* CUDA_LCC, double cg[], int brtmpl, int brtmph)
+void curv(__global struct freq_context2 *CUDA_LCC, struct funcarrays FA, double cg[], int brtmpl, int brtmph)
 {
     int i, m, n, l, k;
-
-    double fsum,
-        g;
-
+    double fsum, g;
 
     for (i = brtmpl; i <= brtmph; i++)
     {
         g = 0;
         n = 0;
-        for (m = 0; m <= CUDA_Mmax; m++)
-            for (l = m; l <= CUDA_Lmax; l++)
+        for (m = 0; m <= FA.Mmax; m++)
+        {
+            for (l = m; l <= FA.Lmax; l++)
             {
                 n++;
-                fsum = cg[n] * CUDA_Fc[i][m];
+                fsum = cg[n] * FA.Fc[i][m];
                 if (m != 0)
                 {
                     n++;
-                    fsum = fsum + cg[n] * CUDA_Fs[i][m];
+                    fsum = fsum + cg[n] * FA.Fs[i][m];
                 }
-                g = g + CUDA_Pleg[i][l][m] * fsum;
+                g = g + FA.Pleg[i][l][m] * fsum;
             }
-        g = exp(g);
-        (*CUDA_LCC).Area[i] = CUDA_Darea[i] * g;
-        for (k = 1; k <= n; k++)
-            (*CUDA_LCC).Dg[i + k * (CUDA_Numfac1)] = g * CUDA_Dsph[i][k];
+        }
 
+        g = exp(g);
+        (*CUDA_LCC).Area[i] = FA.Darea[i] * g;
+        for (k = 1; k <= n; k++)
+        {
+            (*CUDA_LCC).Dg[i + k * FA.Numfac1] = g * FA.Dsph[i][k];
+        }
     }
-    __syncthreads();
+
+    //__syncthreads();
+    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }

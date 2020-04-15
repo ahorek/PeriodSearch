@@ -14,6 +14,7 @@ __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, 
 	const auto n = n_start + blockIdx.x;
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	//printf("idx[%d]", blockIdx.x);
 
 	//zero context
 	//	CUDA_CC is zeroed itself as global memory but need to reset between freq TODO
@@ -28,6 +29,7 @@ __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, 
 	}
 
 	(*CUDA_LCC).freq = freq_start - (n - 1) * freq_step;
+	printf("CUDA_LCC[%d].freq = %.6f\n", blockIdx.x, (*CUDA_LCC).freq);
 
 	/* initial poles */
 	(*CUDA_LFR).per_best = 0;

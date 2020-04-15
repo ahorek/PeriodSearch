@@ -3,10 +3,10 @@
    8.11.2006
 */
 
-#include <math.h>
+//#include <math.h>
 //#include "globals_CUDA.h"
 
-__device__ void blmatrix(freq_context* CUDA_LCC, double bet, double lam)
+void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const double lam)
 {
     double cb, sb, cl, sl;
 

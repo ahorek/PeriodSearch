@@ -2,6 +2,7 @@
 
    8.11.2006
 */
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 #include "stdafx.h"
 #include <math.h>

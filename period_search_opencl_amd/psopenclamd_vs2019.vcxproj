@@ -60,6 +60,7 @@
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>NotSet</CharacterSet>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Remote Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -118,9 +119,10 @@
     <IncludePath>$(AMDAPPSDKROOT)\include;$(IncludePath)</IncludePath>
     <ReferencePath>$(AMDAPPSDKROOT)\include;$(ReferencePath)</ReferencePath>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
-    <LibraryPath>D:\boincsdk\boinc_repo\win_build\Build\x64\Debug;$(AMDAPPSDKROOT)\lib\x86_64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\boincsdk\boinc_repo\win_build\Build\x64\Debug;$(AMDAPPSDKROOT)\lib\x86_64;$(LibraryPath)</LibraryPath>
     <CodeAnalysisRuleSet>C:\Program Files (x86)\Microsoft Visual Studio 14.0\Team Tools\Static Analysis Tools\Rule Sets\NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
+    <TargetName>Period_search_$(SDKIdentifier)_$(WindowsTargetPlatformVersion)_$(Platform)_amd_opencl__$(Configuration)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Remote Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -185,28 +187,33 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_USE_MATH_DEFINES;_DEBUG;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\boincsdk\boinc_repo\api;D:\boincsdk\boinc_repo\lib;D:\boincsdk\boinc_repo\win_build\Build\x64\Debug;$(AMDAPPSDKROOT)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\boincsdk\boinc_repo\lib;C:\boincsdk\boinc_repo\api;$(AMDAPPSDKROOT)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <OmitFramePointers>false</OmitFramePointers>
       <EnablePREfast>false</EnablePREfast>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
+      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <!-- <SubSystem>Windows</SubSystem> -->
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;D:\boincsdk\boinc_repo\win_build\Build\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi_staticcrt.lib;ShLwApi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboinc.lib;libboincapi_staticcrt.lib;OpenCL.lib;Version.lib;ShLwApi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>
+      </IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
+      <OptimizeReferences>false</OptimizeReferences>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Remote Debug|x64'">
@@ -292,11 +299,13 @@
     <ClInclude Include="period_search\declarations_OpenCl.h" />
     <ClInclude Include="period_search\globals.h" />
     <ClInclude Include="period_search\Globals_OpenCl.h" />
+    <ClInclude Include="period_search\resource.h" />
     <ClInclude Include="period_search\Start.h" />
     <ClInclude Include="period_search\Start_OpenCl.h" />
     <ClInclude Include="period_search\stdafx.h" />
     <ClInclude Include="period_search\targetver.h" />
     <ClInclude Include="period_search\uc2.h" />
+    <ClInclude Include="period_search\Version.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="period_search\areanorm.cpp" />
@@ -309,7 +318,9 @@
     <ClCompile Include="period_search\lubksb.c" />
     <ClCompile Include="period_search\ludcmp.c" />
     <ClCompile Include="period_search\memory.c" />
-    <ClCompile Include="period_search\period_search_BOINC.cpp" />
+    <ClCompile Include="period_search\period_search_BOINC.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\boincsdk\boinc_repo\lib;C:\boincsdk\boinc_repo\api;$(AMDAPPSDKROOT)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="period_search\phasec.c" />
     <ClCompile Include="period_search\sphfunc.cpp" />
     <ClCompile Include="period_search\Start_OpenCl.cpp" />
@@ -322,12 +333,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="period_search\trifac.c" />
+    <ClCompile Include="period_search\VersionInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="period_search\blmatrix.cl" />
     <None Include="period_search\bright.cl">
-      <FileType>CppCode</FileType>
+      <FileType>Document</FileType>
     </None>
+    <None Include="period_search\CLCalculateIter1Mrqcof1Start.cl" />
     <None Include="period_search\clear_files.bat">
       <DeploymentContent>true</DeploymentContent>
     </None>
@@ -339,6 +352,10 @@
     <None Include="period_search\dave.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="period_search\Globals.hcl">
+      <FileType>CppHeader</FileType>
+    </None>
+    <None Include="period_search\Intrnsics.cl" />
     <None Include="period_search\mrqcof.cl" />
     <None Include="period_search\mrqmin.cl" />
     <None Include="period_search\period_search_in">
@@ -347,7 +364,16 @@
     <None Include="period_search\sig2iwght.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="Start.cl" />
+    <None Include="period_search\Start.cl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="period_search\psopenclamd_vs2019.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="logo_Nta_icon.ico" />
+    <Image Include="period_search\logo_Nta_icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

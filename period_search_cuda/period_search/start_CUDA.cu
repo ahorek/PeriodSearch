@@ -224,6 +224,26 @@ void CUDAUnprepare(void)
 	cudaFree(pWeight);
 }
 
+//void PrintFreqResult(const int maxItterator, freq_context* CUDA_CC, freq_result* CUDA_FR)
+//{
+//	for (auto l = 0; l < maxItterator; l++)
+//	{
+//		const auto freq = (CUDA_CC)[l].freq;
+//		const auto la_best = (CUDA_FR)[l].la_best;
+//		std::cerr << "freq[" << l << "] = " << freq << " | la_best[" << l << "] = " << la_best << std::endl;
+//	}
+//}
+
+void PrintFreqResult(const int maxItterator, void *pcc, void *pfr)
+{
+	for (auto l = 0; l < maxItterator; l++)
+	{
+		const auto freq = 0;// ((freq_context*)&pcc)[l].freq;
+		const auto la_best = ((freq_result*)&pfr)[l].la_best;
+		std::cerr << "freq[" << l << "] = " << freq << " | la_best[" << l << "] = " << la_best << std::endl;
+	}
+}
+
 int CUDAPrecalc(double freq_start, double freq_end, double freq_step, double stop_condition, int n_iter_min, double* conw_r,
 	int ndata, int* ia, int* ia_par, int* new_conw, double* cg_first, double* sig, int Numfac, double* brightness)
 {
@@ -234,6 +254,7 @@ int CUDAPrecalc(double freq_start, double freq_end, double freq_step, double sto
 	int n_iter_max;
 	double iter_diff_max;
 	freq_result* res;
+	freq_context* fcr;
 	void* pcc, * pfr, * pbrightness, * psig;
 
 	// NOTE: max_test_periods dictates the CUDA_Grid_dim_precalc value which is actual Threads-per-Block
@@ -388,11 +409,22 @@ int CUDAPrecalc(double freq_start, double freq_end, double freq_step, double sto
 	}
 
 	res = (freq_result*)malloc(CUDA_Grid_dim_precalc * sizeof(freq_result));
+	//------------------------------------------
+	fcr = (freq_context*)malloc(CUDA_Grid_dim_precalc * sizeof(freq_context));
+	/*err = cudaMemcpy(fcr, pcc, sizeof(freq_context) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);
+	err = cudaMemcpy(res, pfr, sizeof(freq_result) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);*/
+	//PrintFreqResult(CUDA_Grid_dim_precalc, &pcc, &pfr);
+	//------------------------------------------
 
 	for (n = 1; n <= max_test_periods; n += CUDA_Grid_dim_precalc)
 	{
 		CudaCalculatePrepare<<<CUDA_Grid_dim_precalc, 1>>>(n, max_test_periods, freq_start, freq_step);
 		err = cudaDeviceSynchronize();
+		// --------------------------
+		err = cudaMemcpy(fcr, pcc, sizeof(freq_context) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);
+		err = cudaMemcpy(res, pfr, sizeof(freq_result) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost);
+		PrintFreqResult(CUDA_Grid_dim_precalc, &pcc, &pfr);
+		//-----------------------------------
 
 		for (m = 1; m <= N_POLES; m++)
 		{

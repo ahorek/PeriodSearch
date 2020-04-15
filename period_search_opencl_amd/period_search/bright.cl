@@ -10,44 +10,44 @@
 //#include "globals.h"
 //#include "declarations_OpenCl.h"
 
-//__device__ void matrix_neo(freq_context* CUDA_LCC, double cg[], int lnp1, int Lpoints)
-__kernel void matrix_neo(freq_context* CUDA_LCC, cl_double cg[], int lnp1, int Lpoints)
+void matrix_neo(struct freq_context2* CUDA_LCC, struct funcarrays FA, double cg[], int lnp1, int Lpoints)
 {
-	cl_double f, cf, sf, pom, pom0, alpha;
-	cl_double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
-	int lnp, jp;
+	double f, cf, sf, pom, pom0, alpha;
+	double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
+	int lnp;
+	int3 threadIdx;
+	threadIdx.x = get_local_id(0);
 
 	int brtmph, brtmpl;
-	brtmph = Lpoints / CUDA_BLOCK_DIM;
-	if (Lpoints % CUDA_BLOCK_DIM) brtmph++;
+	brtmph = Lpoints / BLOCK_DIM;
+	if (Lpoints % BLOCK_DIM) brtmph++;
 	brtmpl = threadIdx.x * brtmph;
 	brtmph = brtmpl + brtmph;
 	if (brtmph > Lpoints) brtmph = Lpoints;
 	brtmpl++;
 
-
 	lnp = lnp1 + brtmpl - 1;
-	for (jp = brtmpl; jp <= brtmph; jp++)
+	for (int jp = brtmpl; jp <= brtmph; jp++)
 	{
 		lnp++;
-		ee_1 = CUDA_ee[lnp * 3 + 0];// position vectors
-		ee0_1 = CUDA_ee0[lnp * 3 + 0];
-		ee_2 = CUDA_ee[lnp * 3 + 1];
-		ee0_2 = CUDA_ee0[lnp * 3 + 1];
-		ee_3 = CUDA_ee[lnp * 3 + 2];
-		ee0_3 = CUDA_ee0[lnp * 3 + 2];
-		t = CUDA_tim[lnp];
+		ee_1 = FA.ee[lnp * 3][0];// position vectors
+		ee0_1 = FA.ee0[lnp * 3][0];
+		ee_2 = FA.ee[lnp * 3][1];
+		ee0_2 = FA.ee0[lnp * 3][1];
+		ee_3 = FA.ee[lnp * 3][2];
+		ee0_3 = FA.ee0[lnp * 3][2];
+		t = FA.tim[lnp];
 
 		alpha = acos(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3);
 		/* Exp-lin model (const.term=1.) */
-		f = exp(-alpha / cg[CUDA_ncoef0 + 2]);//f is temp here
-		(*CUDA_LCC).jp_Scale[jp] = 1 + cg[CUDA_ncoef0 + 1] * f + cg[CUDA_ncoef0 + 3] * alpha;
+		f = exp(-alpha / cg[FA.Ncoef0 + 2]);//f is temp here
+		(*CUDA_LCC).jp_Scale[jp] = 1 + cg[FA.Ncoef0 + 1] * f + cg[FA.Ncoef0 + 3] * alpha;
 		(*CUDA_LCC).jp_dphp_1[jp] = f;
-		(*CUDA_LCC).jp_dphp_2[jp] = cg[CUDA_ncoef0 + 1] * f * alpha / (cg[CUDA_ncoef0 + 2] * cg[CUDA_ncoef0 + 2]);
+		(*CUDA_LCC).jp_dphp_2[jp] = cg[FA.Ncoef0 + 1] * f * alpha / (cg[FA.Ncoef0 + 2] * cg[FA.Ncoef0 + 2]);
 		(*CUDA_LCC).jp_dphp_3[jp] = alpha;
 
 		//  matrix start
-		f = cg[CUDA_ncoef0] * t + CUDA_Phi_0;
+		f = cg[FA.Ncoef0] * t + FA.Phi_0;
 		f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
 		cf = cos(f);
 		sf = sin(f);
@@ -174,19 +174,22 @@ __kernel void matrix_neo(freq_context* CUDA_LCC, cl_double cg[], int lnp1, int L
 		(*CUDA_LCC).de0[jp][3][3] = pom0 + tmat * ee0_3;
 
 	}
-	__syncthreads();
+
+	//__syncthreads();
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 
 //__device__ double bright(freq_context* CUDA_LCC, double cg[], int jp, int Lpoints1, int Inrel)
-__kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints1, int Inrel, cl_double out)
+void bright(struct freq_context2* CUDA_LCC, struct funcarrays FA, int2* texArea, int2* texDg,
+	double cg[], int jp, int Lpoints1, int Inrel)
 {
 	int ncoef0, ncoef, i, j, incl_count = 0;
-	cl_double cl, cls, dnom, s, Scale;
-	cl_double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
+	double cl, cls, dnom, s, Scale;
+	double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
 
-	ncoef0 = CUDA_ncoef0;//ncoef - 2 - CUDA_Nphpar;
-	ncoef = CUDA_ma;
+	ncoef0 = FA.Ncoef0;//ncoef - 2 - CUDA_Nphpar;
+	ncoef = FA.ma;
 	cl = exp(cg[ncoef - 1]); /* Lambert */
 	cls = cg[ncoef];       /* Lommel-Seeliger */
 
@@ -229,6 +232,8 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 	short int incl[MAX_N_FAC];
 	double dbr[MAX_N_FAC];
 	int2 bfr;
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
 
 	br = 0;
 	tmp1 = 0;
@@ -236,34 +241,35 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 	tmp3 = 0;
 	tmp4 = 0;
 	tmp5 = 0;
-	j = blockIdx.x * (CUDA_Numfac1)+1;
-	for (i = 1; i <= CUDA_Numfac; i++, j++)
+	j = blockIdx.x * (FA.Numfac1)+1;
+	for (i = 1; i <= FA.Numfac; i++, j++)
 	{
-		lmu = e_1 * CUDA_Nor[i][0] + e_2 * CUDA_Nor[i][1] + e_3 * CUDA_Nor[i][2];
-		lmu0 = e0_1 * CUDA_Nor[i][0] + e0_2 * CUDA_Nor[i][1] + e0_3 * CUDA_Nor[i][2];
+		lmu = e_1 * FA.Nor[i][0] + e_2 * FA.Nor[i][1] + e_3 * FA.Nor[i][2];
+		lmu0 = e0_1 * FA.Nor[i][0] + e0_2 * FA.Nor[i][1] + e0_3 * FA.Nor[i][2];
 		if ((lmu > TINY) && (lmu0 > TINY))
 		{
 			dnom = lmu + lmu0;
 			s = lmu * lmu0 * (cl + cls / dnom);
-			bfr = tex1Dfetch(texArea, j);
+			bfr = texArea[j];
+			//bfr = tex1Dfetch(texArea, j);
 			ar = __hiloint2double(bfr.y, bfr.x);
 			br += ar * s;
 			//
 			incl[incl_count] = i;
-			dbr[incl_count] = CUDA_Darea[i] * s;
+			dbr[incl_count] = FA.Darea[i] * s;
 			incl_count++;
 			//
 			dsmu = cls * pow(lmu0 / dnom, 2) + cl * lmu0;
 			dsmu0 = cls * pow(lmu / dnom, 2) + cl * lmu;
 
-			sum1 = CUDA_Nor[i][0] * de[1][1] + CUDA_Nor[i][1] * de[2][1] + CUDA_Nor[i][2] * de[3][1];
-			sum10 = CUDA_Nor[i][0] * de0[1][1] + CUDA_Nor[i][1] * de0[2][1] + CUDA_Nor[i][2] * de0[3][1];
+			sum1 = FA.Nor[i][0] * de[1][1] + FA.Nor[i][1] * de[2][1] + FA.Nor[i][2] * de[3][1];
+			sum10 = FA.Nor[i][0] * de0[1][1] + FA.Nor[i][1] * de0[2][1] + FA.Nor[i][2] * de0[3][1];
 			tmp1 += ar * (dsmu * sum1 + dsmu0 * sum10);
-			sum2 = CUDA_Nor[i][0] * de[1][2] + CUDA_Nor[i][1] * de[2][2] + CUDA_Nor[i][2] * de[3][2];
-			sum20 = CUDA_Nor[i][0] * de0[1][2] + CUDA_Nor[i][1] * de0[2][2] + CUDA_Nor[i][2] * de0[3][2];
+			sum2 = FA.Nor[i][0] * de[1][2] + FA.Nor[i][1] * de[2][2] + FA.Nor[i][2] * de[3][2];
+			sum20 = FA.Nor[i][0] * de0[1][2] + FA.Nor[i][1] * de0[2][2] + FA.Nor[i][2] * de0[3][2];
 			tmp2 += ar * (dsmu * sum2 + dsmu0 * sum20);
-			sum3 = CUDA_Nor[i][0] * de[1][3] + CUDA_Nor[i][1] * de[2][3] + CUDA_Nor[i][2] * de[3][3];
-			sum30 = CUDA_Nor[i][0] * de0[1][3] + CUDA_Nor[i][1] * de0[2][3] + CUDA_Nor[i][2] * de0[3][3];
+			sum3 = FA.Nor[i][0] * de[1][3] + FA.Nor[i][1] * de[2][3] + FA.Nor[i][2] * de[3][3];
+			sum30 = FA.Nor[i][0] * de0[1][3] + FA.Nor[i][1] * de0[2][3] + FA.Nor[i][2] * de0[3][3];
 			tmp3 += ar * (dsmu * sum3 + dsmu0 * sum30);
 
 			tmp4 += lmu * lmu0 * ar;
@@ -298,17 +304,17 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 	if (Inrel)
 	{
 		iStart = 2;
-		m = blockIdx.x * CUDA_Dg_block + 2 * (CUDA_Numfac1);
+		m = blockIdx.x * FA.Dg_block + 2 * (FA.Numfac1);
 		d = jp + 2 * (Lpoints1);
 	}
 	else
 	{
 		iStart = 1;
-		m = blockIdx.x * CUDA_Dg_block + (CUDA_Numfac1);
+		m = blockIdx.x * FA.Dg_block + (FA.Numfac1);
 		d = jp + (Lpoints1);
 	}
-	m1 = m + (CUDA_Numfac1);
-	mr = 2 * CUDA_Numfac1;
+	m1 = m + (FA.Numfac1);
+	mr = 2 * FA.Numfac1;
 	d1 = d + (Lpoints1);
 	dr = 2 * Lpoints1;
 	/* Derivatives of brightness w.r.t. g-coeffs */
@@ -322,11 +328,13 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 			int l_incl = incl[0];
 
 			int2 xx;
-			xx = tex1Dfetch(texDg, m + l_incl);
+			xx = texDg[m + l_incl];
+			//xx = tex1Dfetch(texDg, m + l_incl);
 			tmp = l_dbr * __hiloint2double(xx.y, xx.x);
 			if ((i + 1) <= ncoef0)
 			{
-				xx = tex1Dfetch(texDg, m1 + l_incl);
+				xx = texDg[m1 + l_incl];
+				//xx = tex1Dfetch(texDg, m1 + l_incl);
 				tmp1 = l_dbr * __hiloint2double(xx.y, xx.x);
 			}
 			for (j = 1; j < incl_count; j++)
@@ -334,13 +342,15 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 				double l_dbr = dbr[j];
 				int l_incl = incl[j];
 
-				int2 xx;
-				xx = tex1Dfetch(texDg, m + l_incl);
-				tmp += l_dbr * __hiloint2double(xx.y, xx.x);
+				int2 xx1;
+				xx1 = texDg[m + l_incl];
+				//xx = tex1Dfetch(texDg, m + l_incl);
+				tmp += l_dbr * __hiloint2double(xx1.y, xx1.x);
 				if ((i + 1) <= ncoef0)
 				{
-					xx = tex1Dfetch(texDg, m1 + l_incl);
-					tmp1 += l_dbr * __hiloint2double(xx.y, xx.x);
+					xx1 = texDg[m1 + l_incl];
+					//xx = tex1Dfetch(texDg, m1 + l_incl);
+					tmp1 += l_dbr * __hiloint2double(xx1.y, xx1.x);
 				}
 			}
 
@@ -356,6 +366,4 @@ __kernel void bright(freq_context* CUDA_LCC, cl_double cg[], int jp, int Lpoints
 		for (i = 1; i <= ncoef0; i++, d += Lpoints1)
 			(*CUDA_LCC).dytemp[d] = 0;
 	}
-
-	return(0);
 }
