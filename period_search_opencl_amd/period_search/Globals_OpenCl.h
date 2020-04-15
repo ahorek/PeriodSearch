@@ -130,7 +130,7 @@ struct freq_result
 //extern freq_result CUDA_FR;
 extern __declspec(align(32)) freq_result* CUDA_FR;
 
-struct funcarrays
+struct FuncArrays
 {
 	int Mmax, Lmax;
 	int ma, Nphpar;
@@ -150,4 +150,6 @@ struct funcarrays
 	double Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1];
 };
 
-extern __declspec(align(32)) funcarrays FA;
+typedef struct FuncArrays varholder;
+
+extern varholder fa;

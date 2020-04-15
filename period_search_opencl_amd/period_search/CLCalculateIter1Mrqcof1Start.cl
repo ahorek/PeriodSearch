@@ -149,15 +149,23 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 {
 	int3 blockIdx;
 	blockIdx.x = get_global_id(0);
-	/*__global struct freq_context2* CUDA_LCC;
-	CUDA_LCC = &CUDA_CC[blockIdx.x];*/
+	__global struct freq_context2* CUDA_LCC;
+	CUDA_LCC = &CUDA_CC[blockIdx.x];
 
 
-	if (CUDA_CC[blockIdx.x].isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) {
+		return;
+	}
 
-	if (!CUDA_CC[blockIdx.x].isNiter) return;
+	if (!(*CUDA_LCC).isNiter)
+	{
+		return;
+	}
 
-	if (!CUDA_CC[blockIdx.x].isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda)
+	{
+		return;
+	}
 
 	//mrqcof_start(CUDA_LCC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, FA, (*CUDA_LCC).cg);
 }

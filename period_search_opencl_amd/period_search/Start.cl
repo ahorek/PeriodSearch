@@ -175,23 +175,24 @@ __kernel void CLCalculateIter1Begin(
 	}
 }
 
-//__kernel void CLCalculateIter1Mrqcof1Start(
-//	__global struct freq_context2* CUDA_CC,
-//	struct funcarrays FA)
-//{
-//	int3 blockIdx;
-//	blockIdx.x = get_global_id(0);
-//	__global struct freq_context2* CUDA_LCC;
-//	CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if (CUDA_CC[blockIdx.x].isInvalid) return;
-//
-//	if (!CUDA_CC[blockIdx.x].isNiter) return;
-//
-//	if (!CUDA_CC[blockIdx.x].isAlamda) return;
-//
-//	mrqcof_start(CUDA_LCC, FA, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
-//}
+__kernel void CLCalculateIter1Mrqcof1Start(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC;
+	CUDA_LCC = &CUDA_CC[blockIdx.x];
+	//printf("%d", Fa->Dg_block);
+
+	if ((*CUDA_CC).isInvalid) return;
+
+	if (!(*CUDA_CC).isNiter) return;
+
+	if (!(*CUDA_CC).isAlamda) return;
+
+	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+}
 
 //__kernel void CudaCalculateIter1Mrqmin1End(void)
 //{

@@ -29,7 +29,7 @@ struct freq_result
 	double dark_best, per_best, dev_best, la_best, be_best, freq;
 };
 
-struct funcarrays
+struct FuncArrays
 {
 	int Mmax, Lmax;
 	int ma, Nphpar;
@@ -48,3 +48,5 @@ struct funcarrays
 	double Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1];
 	double Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1];
 };
+
+typedef struct FuncArrays varholder;

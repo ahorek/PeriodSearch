@@ -111,6 +111,12 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 		const auto device = devices[deviceId];
 		const auto openClVersion = device.getInfo<CL_DEVICE_OPENCL_C_VERSION>();
 		const auto clDeviceVersion = device.getInfo<CL_DEVICE_VERSION>();
+		const auto clDeviceGlobalMemSize = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+		const auto clDeviceLocalMemSize = device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>();
+		const auto clDeviceMaxConstantArgs = device.getInfo<CL_DEVICE_MAX_CONSTANT_ARGS>();
+		const auto clDeviceMaxConstantBufferSize = device.getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>();
+		const auto clDeviceMaxParameterSize = device.getInfo<CL_DEVICE_MAX_PARAMETER_SIZE>();
+		const auto clDeviceMaxMemAllocSize = device.getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
 		const auto deviceName = device.getInfo<CL_DEVICE_NAME>();
 		const auto deviceMaxWorkItemDims = device.getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>();
 		const auto clGlobalMemory = device.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
@@ -131,7 +137,16 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 		std::cerr << "Multiprocessors: " << msCount << endl;
 		std::cerr << "Max Samplers: " << block << endl;
 		std::cerr << "Max work item dimensions: " << deviceMaxWorkItemDims << endl;
+#ifdef _DEBUG
+		std::cerr << "Debug info:" << endl;
 		std::cerr << "CL_DEVICE_EXTENSIONS: " << deviceExtensions << endl;
+		std::cerr << "CL_DEVICE_GLOBAL_MEM_SIZE: " << clDeviceGlobalMemSize << " B" << endl;
+		std::cerr << "CL_DEVICE_LOCAL_MEM_SIZE: " << clDeviceLocalMemSize << " B" << endl;
+		std::cerr << "CL_DEVICE_MAX_CONSTANT_ARGS: " << clDeviceMaxConstantArgs << endl;
+		std::cerr << "CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE: " << clDeviceMaxConstantBufferSize << " B" << endl;
+		std::cerr << "CL_DEVICE_MAX_PARAMETER_SIZE: " << clDeviceMaxParameterSize << " B" << endl;
+		std::cerr << "CL_DEVICE_MAX_MEM_ALLOC_SIZE: " << clDeviceMaxMemAllocSize << " B" << endl;
+#endif
 
 		// TODO: Calculate this:
 		auto SMXBlock = 128;
@@ -404,23 +419,25 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	std::ifstream constantsFile("period_search/constants.h");
 	std::ifstream globalsFile("period_search/Globals.hcl");
 	//std::ifstream intrinsicsFile("period_search/Intrnsics.cl");
-	//std::ifstream curvFile("period_search/curv.cl");
+	std::ifstream curvFile("period_search/curv.cl");
 	//std::ifstream convFile("period_search/conv.cl");
-	//std::ifstream blmatrixFile("period_search/blmatrix.cl");
+	std::ifstream blmatrixFile("period_search/blmatrix.cl");
 	//std::ifstream brightFile("period_search/bright.cl");
-	//std::ifstream mrqcofFile("period_search/mrqcof.cl");
+	std::ifstream mrqcofFile("period_search/mrqcof.cl");
 	std::ifstream kernelFile("period_search/Start.cl");
 
 	std::stringstream st;
 	st << constantsFile.rdbuf();
 	st << globalsFile.rdbuf();
 	//st << intrinsicsFile.rdbuf();
-	//st << curvFile.rdbuf();
+	st << curvFile.rdbuf();
 	//st << convFile.rdbuf();
-	//st << blmatrixFile.rdbuf();
+	st << blmatrixFile.rdbuf();
 	//st << brightFile.rdbuf();
-	//st << mrqcofFile.rdbuf();
+	st << mrqcofFile.rdbuf();
 	st << kernelFile.rdbuf();
+	//std::ifstream iter1Mrqcof1StartFile("period_search/CLCalculateIter1Mrqcof1Start.cl");
+	//st << iter1Mrqcof1StartFile.rdbuf();
 	auto KernelStart = st.str();
 	kernelFile.close();
 	constantsFile.close();
@@ -430,23 +447,24 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	cl::Program::Sources sources(1, std::make_pair(KernelStart.c_str(), KernelStart.length()));
 	program = cl::Program(context, sources, err);
 
-	std::stringstream stt;
-	std::ifstream constantsFile1("period_search/constants.h");
-	std::ifstream globalsFile1("period_search/Globals.hcl");
-	//std::ifstream intrinsicsFile1("period_search/Intrnsics.cl");
-	std::ifstream iter1Mrqcof1StartFile("period_search/CLCalculateIter1Mrqcof1Start.cl");
-	stt << constantsFile1.rdbuf();
-	stt << globalsFile1.rdbuf();
-	//stt << intrinsicsFile1.rdbuf();
-	stt << iter1Mrqcof1StartFile.rdbuf();
-	auto KernelIter1Mrqcof1Start = stt.str();
 
-	cl::Program::Sources sourcesMrqcof(1, std::make_pair(KernelIter1Mrqcof1Start.c_str(), KernelIter1Mrqcof1Start.length()));
-	programIter1Mrqcof1Start = cl::Program(context, sourcesMrqcof, err);
+	//std::stringstream stt;
+	//std::ifstream constantsFile1("period_search/constants.h");
+	//std::ifstream globalsFile1("period_search/Globals.hcl");
+	////std::ifstream intrinsicsFile1("period_search/Intrnsics.cl");
+	//std::ifstream iter1Mrqcof1StartFile("period_search/CLCalculateIter1Mrqcof1Start.cl");
+	//stt << constantsFile1.rdbuf();
+	//stt << globalsFile1.rdbuf();
+	////stt << intrinsicsFile1.rdbuf();
+	//stt << iter1Mrqcof1StartFile.rdbuf();
+	//auto KernelIter1Mrqcof1Start = stt.str();
+
+	/*cl::Program::Sources sourcesMrqcof(1, std::make_pair(KernelIter1Mrqcof1Start.c_str(), KernelIter1Mrqcof1Start.length()));
+	programIter1Mrqcof1Start = cl::Program(context, sourcesMrqcof, err);*/
 	try
 	{
 		program.build(devices);
-		programIter1Mrqcof1Start.build(devices);
+		//programIter1Mrqcof1Start.build(devices);
 	}
 	catch (cl::Error& e)
 	{
@@ -456,16 +474,16 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 			{
 				// Check the build status
 				cl_build_status status1 = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
-				cl_build_status status2 = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
-				if (status1 != CL_BUILD_ERROR && status2 != CL_BUILD_ERROR)
+				//cl_build_status status2 = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
+				if (status1 != CL_BUILD_ERROR) // && status2 != CL_BUILD_ERROR)
 					continue;
 
 				// Get the build log
 				std::string name = dev.getInfo<CL_DEVICE_NAME>();
 				std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
 				std::cerr << "Build log for " << name << ":" << std::endl << buildlog << std::endl;
-				buildlog = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
-				std::cerr << buildlog << std::endl;
+				//buildlog = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
+				//std::cerr << buildlog << std::endl;
 			}
 		}
 		else

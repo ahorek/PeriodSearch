@@ -8,7 +8,7 @@
 //#include "globals_CUDA.h"
 
 
-void curv(__global struct freq_context2 *CUDA_LCC, struct funcarrays FA, double cg[], int brtmpl, int brtmph)
+void curv(__global struct freq_context2 *CUDA_LCC, __global varholder* Fa, double cg[], int brtmpl, int brtmph)
 {
     int i, m, n, l, k;
     double fsum, g;
@@ -17,26 +17,26 @@ void curv(__global struct freq_context2 *CUDA_LCC, struct funcarrays FA, double 
     {
         g = 0;
         n = 0;
-        for (m = 0; m <= FA.Mmax; m++)
+        for (m = 0; m <= Fa->Mmax; m++)
         {
-            for (l = m; l <= FA.Lmax; l++)
+            for (l = m; l <= Fa->Lmax; l++)
             {
                 n++;
-                fsum = cg[n] * FA.Fc[i][m];
+                fsum = cg[n] * Fa->Fc[i][m];
                 if (m != 0)
                 {
                     n++;
-                    fsum = fsum + cg[n] * FA.Fs[i][m];
+                    fsum = fsum + cg[n] * Fa->Fs[i][m];
                 }
-                g = g + FA.Pleg[i][l][m] * fsum;
+                g = g + Fa->Pleg[i][l][m] * fsum;
             }
         }
 
         g = exp(g);
-        (*CUDA_LCC).Area[i] = FA.Darea[i] * g;
+        (*CUDA_LCC).Area[i] = Fa->Darea[i] * g;
         for (k = 1; k <= n; k++)
         {
-            (*CUDA_LCC).Dg[i + k * FA.Numfac1] = g * FA.Dsph[i][k];
+            (*CUDA_LCC).Dg[i + k * Fa->Numfac1] = g * Fa->Dsph[i][k];
         }
     }
 
