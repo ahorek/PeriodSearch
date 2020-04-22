@@ -3,17 +3,26 @@
     You can express these operations via a union. This will not create extra overhead with modern compilers as long as optimization is on (nvcc -O3 ...).
 */
 
-double __hiloint2double(int hi, int lo)
+struct HiLo
 {
-    union {
-        double val;
-        struct {
-            int lo;
-            int hi;
-        };
-    } u;
-    u.hi = hi;
-    u.lo = lo;
+    int lo;
+    int hi;
+};
+
+typedef struct HiLo hilo;
+
+union U {
+    double val;
+    hilo hiLo;
+};
+
+double HiLoint2double(int hi, int lo)
+{
+    union U u;
+
+    u.hiLo.hi = hi;
+    u.hiLo.lo = lo;
+
     return u.val;
 }
 

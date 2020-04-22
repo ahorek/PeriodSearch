@@ -102,6 +102,8 @@ struct Texture
 extern cl_int2* texWeight;
 extern cl_int2* texArea;
 extern cl_int2* texDg;
+extern cl_int2* texbrightness;
+extern cl_int2* texsig;
 
 //extern cl::Image1D textWeight;
 //extern cl::Image1D texbrightness;

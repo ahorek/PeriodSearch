@@ -85,9 +85,6 @@
     <None Include="period_search\Globals.hcl">
       <Filter>Header files</Filter>
     </None>
-    <None Include="period_search\Intrnsics.cl">
-      <Filter>Source files</Filter>
-    </None>
     <None Include="period_search\bright.cl">
       <Filter>Source files</Filter>
     </None>
@@ -95,6 +92,15 @@
       <Filter>Source files</Filter>
     </None>
     <None Include="period_search\CLCalculateIter1Mrqcof1Start.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\Curv2.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\Intrnsics.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\curv2_2.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>

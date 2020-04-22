@@ -194,6 +194,44 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
 }
 
+__kernel void CLCalculateIter1Mrqcof1Matrix(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa,
+	const int lpoints)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if ((*CUDA_LCC).isInvalid) return;
+
+	if (!(*CUDA_LCC).isNiter) return;
+
+	if (!(*CUDA_LCC).isAlamda) return;
+
+	mrqcof_matrix(CUDA_LCC, Fa, (*CUDA_LCC).cg, lpoints);
+}
+
+__kernel void CLCalculateIter1Mrqcof1Curve1(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa,
+	__global int2* texArea,
+	__global int2* texDg,
+	const int inrel, const int lpoints)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if ((*CUDA_LCC).isInvalid) return;
+
+	if (!(*CUDA_LCC).isNiter) return;
+
+	if (!(*CUDA_LCC).isAlamda) return;
+
+	mrqcof_curve1(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).cg, (*CUDA_LCC).beta, inrel, lpoints); //(*CUDA_LCC).alpha,
+}
+
 //__kernel void CudaCalculateIter1Mrqmin1End(void)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
@@ -218,34 +256,6 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 //	(*CUDA_LCC).Niter++;
 //}
 
-
-
-//__kernel void CudaCalculateIter1Mrqcof1Matrix(const int lpoints)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	if (!(*CUDA_LCC).isAlamda) return;
-//
-//	mrqcof_matrix(CUDA_LCC, (*CUDA_LCC).cg, lpoints);
-//}
-//
-//__kernel void CudaCalculateIter1Mrqcof1Curve1(const int inrel, const int lpoints)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	if (!(*CUDA_LCC).isAlamda) return;
-//
-//	mrqcof_curve1(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
-//}
-//
 //__kernel void CudaCalculateIter1Mrqcof1Curve1Last(const int inrel, const int lpoints)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];

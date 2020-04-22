@@ -56,6 +56,8 @@ double aLambda_start;
 cl_int2* texWeight;
 cl_int2* texArea;
 cl_int2* texDg;
+cl_int2* texbrightness;
+cl_int2* texsig;
 
 //cl::Image1D texWeight;  //NOTE: CUDA's 'texture<int2, 1>{}' structure equivalent
 //cl::Image1D texArea;
@@ -418,26 +420,27 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	// Load CL file, build CL program object, create CL kernel object
 	std::ifstream constantsFile("period_search/constants.h");
 	std::ifstream globalsFile("period_search/Globals.hcl");
-	//std::ifstream intrinsicsFile("period_search/Intrnsics.cl");
+	std::ifstream intrinsicsFile("period_search/Intrnsics.cl");
 	std::ifstream curvFile("period_search/curv.cl");
 	//std::ifstream convFile("period_search/conv.cl");
 	std::ifstream blmatrixFile("period_search/blmatrix.cl");
-	//std::ifstream brightFile("period_search/bright.cl");
+	std::ifstream brightFile("period_search/bright.cl");
 	std::ifstream mrqcofFile("period_search/mrqcof.cl");
+	std::ifstream curv2File("period_search/curv2_2.cl");
 	std::ifstream kernelFile("period_search/Start.cl");
 
 	std::stringstream st;
 	st << constantsFile.rdbuf();
 	st << globalsFile.rdbuf();
-	//st << intrinsicsFile.rdbuf();
+	st << intrinsicsFile.rdbuf();
 	st << curvFile.rdbuf();
 	//st << convFile.rdbuf();
 	st << blmatrixFile.rdbuf();
-	//st << brightFile.rdbuf();
+	st << brightFile.rdbuf();
 	st << mrqcofFile.rdbuf();
+	st << curv2File.rdbuf();
 	st << kernelFile.rdbuf();
-	//std::ifstream iter1Mrqcof1StartFile("period_search/CLCalculateIter1Mrqcof1Start.cl");
-	//st << iter1Mrqcof1StartFile.rdbuf();
+
 	auto KernelStart = st.str();
 	kernelFile.close();
 	constantsFile.close();
@@ -447,24 +450,20 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	cl::Program::Sources sources(1, std::make_pair(KernelStart.c_str(), KernelStart.length()));
 	program = cl::Program(context, sources, err);
 
+	/*std::ifstream curv2File("period_search/Curv2.cl");
+	std::stringstream curv2String;
+	curv2String << curv2File.rdbuf();
+	auto KernelCurv2 = curv2String.str();
+	curv2File.close();
+	curv2String.flush();
 
-	//std::stringstream stt;
-	//std::ifstream constantsFile1("period_search/constants.h");
-	//std::ifstream globalsFile1("period_search/Globals.hcl");
-	////std::ifstream intrinsicsFile1("period_search/Intrnsics.cl");
-	//std::ifstream iter1Mrqcof1StartFile("period_search/CLCalculateIter1Mrqcof1Start.cl");
-	//stt << constantsFile1.rdbuf();
-	//stt << globalsFile1.rdbuf();
-	////stt << intrinsicsFile1.rdbuf();
-	//stt << iter1Mrqcof1StartFile.rdbuf();
-	//auto KernelIter1Mrqcof1Start = stt.str();
+	cl::Program::Sources curv2Source(1, std::make_pair(KernelCurv2.c_str(), KernelCurv2.length()));
+	auto curv2Program = cl::Program(context, curv2Source, err);*/
 
-	/*cl::Program::Sources sourcesMrqcof(1, std::make_pair(KernelIter1Mrqcof1Start.c_str(), KernelIter1Mrqcof1Start.length()));
-	programIter1Mrqcof1Start = cl::Program(context, sourcesMrqcof, err);*/
 	try
 	{
 		program.build(devices);
-		//programIter1Mrqcof1Start.build(devices);
+		//curv2Program.build(devices);
 	}
 	catch (cl::Error& e)
 	{
@@ -474,7 +473,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 			{
 				// Check the build status
 				cl_build_status status1 = program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
-				//cl_build_status status2 = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
+				//cl_build_status status2 = curv2Program.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
 				if (status1 != CL_BUILD_ERROR) // && status2 != CL_BUILD_ERROR)
 					continue;
 
@@ -482,7 +481,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				std::string name = dev.getInfo<CL_DEVICE_NAME>();
 				std::string buildlog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
 				std::cerr << "Build log for " << name << ":" << std::endl << buildlog << std::endl;
-				//buildlog = programIter1Mrqcof1Start.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
+				//buildlog = curv2Program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
 				//std::cerr << buildlog << std::endl;
 			}
 		}
@@ -500,6 +499,9 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	cl::Kernel kernelCalculatePreparePole = cl::Kernel(program, "CLCalculatePreparePole");
 	cl::Kernel kernelCalculateIter1Begin = cl::Kernel(program, "CLCalculateIter1Begin");
 	cl::Kernel kernelCalculateIter1Mrqcof1Start = cl::Kernel(program, "CLCalculateIter1Mrqcof1Start");
+	cl::Kernel kernelCalculateIter1Mrqcof1Matrix = cl::Kernel(program, "CLCalculateIter1Mrqcof1Matrix");
+	cl::Kernel kernelCalculateIter1Mrqcof1Curve1 = cl::Kernel(program, "CLCalculateIter1Mrqcof1Curve1");
+	cl::Kernel kernelCalculateIter1Mrqcof1Curve2 = cl::Kernel(program, "CLCalculateIter1Mrqcof1Curve2");
 
 
 	kernelCalculateFinish.setArg(0, CUDA_CC2);
@@ -566,12 +568,34 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				kernelCalculateIter1Mrqcof1Start.setArg(0, CUDA_CC);
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Start, cl::NDRange(), cl::NDRange(CUDA_Grid_dim_precalc), cl::NDRange(BLOCK_DIM));
 
-				/*for (iC = 1; iC < l_curves; iC++)
+				for (iC = 1; iC < l_curves; iC++)
 				{
-					CudaCalculateIter1Mrqcof1Matrix(l_points[iC]);					//<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
-					CudaCalculateIter1Mrqcof1Curve1(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
-					CudaCalculateIter1Mrqcof1Curve2(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					// NOTE: CudaCalculateIter1Mrqcof1Matrix(l_points[iC]);					//<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >>
+					kernelCalculateIter1Mrqcof1Matrix.setArg(0, CUDA_CC);
+					kernelCalculateIter1Mrqcof1Matrix.setArg(0, CUDA_FR);
+					kernelCalculateIter1Mrqcof1Matrix.setArg(1, sizeof l_points[iC], &l_points[iC]);
+					queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Matrix, cl::NDRange(), cl::NDRange(CUDA_Grid_dim_precalc), cl::NDRange(BLOCK_DIM));
+
+					// NOTE: CudaCalculateIter1Mrqcof1Curve1(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Curve1, cl::NDRange(), cl::NDRange(CUDA_Grid_dim_precalc), cl::NDRange(BLOCK_DIM));
+					kernelCalculateIter1Mrqcof1Curve1.setArg(0, CUDA_CC);
+					kernelCalculateIter1Mrqcof1Curve1.setArg(1, CUDA_FR);
+					kernelCalculateIter1Mrqcof1Curve1.setArg(2, texArea);
+					kernelCalculateIter1Mrqcof1Curve1.setArg(3, texDg);
+					kernelCalculateIter1Mrqcof1Curve1.setArg(4, sizeof in_rel[iC], &in_rel[iC]);
+					kernelCalculateIter1Mrqcof1Curve1.setArg(5, sizeof l_points[iC], &l_points[iC]);
+
+					// NOTE: CudaCalculateIter1Mrqcof1Curve2(in_rel[iC], l_points[iC]);		// << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, CUDA_CC);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, CUDA_FR);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, texsig);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, texWeight);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, texbrightness);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, sizeof in_rel[iC], &in_rel[iC]);
+					kernelCalculateIter1Mrqcof1Curve2.setArg(0, sizeof l_points[iC], &l_points[iC]);
+					queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Curve2, cl::NDRange(), cl::NDRange(CUDA_Grid_dim_precalc), cl::NDRange(BLOCK_DIM));
 				}
+				/*
 				CudaCalculateIter1Mrqcof1Curve1Last(in_rel[l_curves], l_points[l_curves]);	//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				CudaCalculateIter1Mrqcof1Curve2(in_rel[l_curves], l_points[l_curves]);		//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				CudaCalculateIter1Mrqcof1End();												//	<< <CUDA_Grid_dim_precalc, 1 >> >
