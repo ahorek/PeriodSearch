@@ -314,7 +314,6 @@
     <ClCompile Include="period_search\ellfit.cpp" />
     <ClCompile Include="period_search\FreqContext.cpp" />
     <ClCompile Include="period_search\host_dot_product.c" />
-    <ClCompile Include="period_search\gauss_errc.c" />
     <ClCompile Include="period_search\lubksb.c" />
     <ClCompile Include="period_search\ludcmp.c" />
     <ClCompile Include="period_search\memory.c" />
@@ -348,12 +347,11 @@
     <None Include="period_search\curv.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="period_search\Curv2.cl" />
-    <None Include="period_search\curv2_2.cl" />
     <None Include="period_search\Curve2.cl" />
     <None Include="period_search\dave.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="period_search\gauss_errc.cl" />
     <None Include="period_search\Globals.hcl">
       <FileType>CppHeader</FileType>
     </None>

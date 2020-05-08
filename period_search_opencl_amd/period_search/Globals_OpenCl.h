@@ -141,6 +141,7 @@ struct FuncArrays
 	int Lmfit, Lmfit1;
 	int Dg_block;
 	double Phi_0;
+	int ia[MAX_N_PAR + 1];
 	double tim[MAX_N_OBS + 1];
 	double Darea[MAX_N_FAC + 1];
 	double ee[MAX_N_OBS + 1][3];

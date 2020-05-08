@@ -2,6 +2,7 @@ struct freq_context2
 {
 	double Area[MAX_N_FAC + 1];
 	double Dg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
+	double covar[MAX_N_PAR+1][MAX_N_PAR+1];
 	double freq;
 	double Ochisq, Chisq, Alamda;
 	double Blmat[4][4];
@@ -15,6 +16,7 @@ struct freq_context2
 	double de[POINTS_MAX + 1][4][4], de0[POINTS_MAX + 1][4][4];
 	double jp_Scale[POINTS_MAX + 1];
 	double jp_dphp_1[POINTS_MAX + 1], jp_dphp_2[POINTS_MAX + 1], jp_dphp_3[POINTS_MAX + 1];
+	int indxc[MAX_N_PAR + 1], indxr[MAX_N_PAR + 1], ipiv[MAX_N_PAR + 1];
 	double cg[MAX_N_PAR + 1];
 	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
 	double ytemp[POINTS_MAX + 1];
@@ -38,6 +40,7 @@ struct FuncArrays
 	int Lmfit, Lmfit1;
 	int Dg_block;
 	double Phi_0;
+	int ia[MAX_N_PAR + 1];
 	double tim[MAX_N_OBS + 1];
 	double Darea[MAX_N_FAC + 1];
 	double ee[MAX_N_OBS + 1][3];

@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="period_search\covsrt.c" />
     <ClCompile Include="period_search\host_dot_product.c" />
-    <ClCompile Include="period_search\gauss_errc.c" />
     <ClCompile Include="period_search\lubksb.c" />
     <ClCompile Include="period_search\ludcmp.c" />
     <ClCompile Include="period_search\memory.c" />
@@ -28,9 +27,6 @@
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\constants.h">
-      <Filter>Header files</Filter>
-    </ClInclude>
-    <ClInclude Include="period_search\declarations.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\declarations_OpenCl.h">
@@ -58,6 +54,9 @@
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\resource.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\declarations.hpp">
       <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -94,13 +93,10 @@
     <None Include="period_search\CLCalculateIter1Mrqcof1Start.cl">
       <Filter>Source files</Filter>
     </None>
-    <None Include="period_search\Curv2.cl">
-      <Filter>Source files</Filter>
-    </None>
     <None Include="period_search\Intrnsics.cl">
       <Filter>Source files</Filter>
     </None>
-    <None Include="period_search\curv2_2.cl">
+    <None Include="period_search\gauss_errc.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>

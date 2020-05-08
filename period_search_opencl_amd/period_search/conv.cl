@@ -11,10 +11,17 @@
 
 //#define __device
 
-double conv(struct freq_context2* CUDA_LCC, struct funcarrays FA, int2* texArea, int2* texDg, int nc, int tmpl, int tmph, int brtmpl, int brtmph)
+double conv(
+	__global struct freq_context2* CUDA_LCC,
+	__global varholder* Fa,
+	__global int2* texArea, 
+	__global int2* texDg, 
+	__local double* res,
+	int nc, int tmpl, int tmph, int brtmpl, int brtmph)
 {
 	int i, j, k;
-	double res[BLOCK_DIM]; // NOTE: __shared__
+	// NOTE: variable length arrays are not supported in OpenCL, also it is "__shared__"
+	//double res[Fa->blockDim]; 
 	double tmp, dtmp;
 	int2 bfr;
 	int3 blockIdx, threadIdx;
@@ -22,12 +29,12 @@ double conv(struct freq_context2* CUDA_LCC, struct funcarrays FA, int2* texArea,
 	threadIdx.x = get_local_id(0);
 
 	tmp = 0;
-	j = blockIdx.x * (FA.Numfac1) + brtmpl;
+	j = blockIdx.x * (Fa->Numfac1) + brtmpl;
 	for (i = brtmpl; i <= brtmph; i++, j++)
 	{
 		bfr = texArea[j];
 		//bfr = tex1Dfetch(texArea, j);
-		tmp += __hiloint2double(bfr.y, bfr.x) * FA.Nor[i][nc];
+		tmp += HiLoint2double(bfr.y, bfr.x) * Fa->Nor[i][nc];
 	}
 
 	res[threadIdx.x] = tmp;
@@ -59,18 +66,18 @@ double conv(struct freq_context2* CUDA_LCC, struct funcarrays FA, int2* texArea,
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 	int2 xx;
-	int m = blockIdx.x * FA.Dg_block + tmpl * FA.Numfac1;
-	for (j = tmpl; j <= tmph; j++, m += FA.Numfac1)
+	int m = blockIdx.x * Fa->Dg_block + tmpl * Fa->Numfac1;
+	for (j = tmpl; j <= tmph; j++, m += Fa->Numfac1)
 	{
 		dtmp = 0;
-		if (j <= FA.Ncoef)
+		if (j <= Fa->Ncoef)
 		{
 			int mm = m + 1;
-			for (i = 1; i <= FA.Numfac; i++, mm++)
+			for (i = 1; i <= Fa->Numfac; i++, mm++)
 			{
 				xx = texDg[mm];
 				//xx = tex1Dfetch(texDg, mm);
-				dtmp += FA.Darea[i] * __hiloint2double(xx.y, xx.x) * FA.Nor[i][nc];
+				dtmp += Fa->Darea[i] * HiLoint2double(xx.y, xx.x) * Fa->Nor[i][nc];
 			}
 		}
 		(*CUDA_LCC).dyda[j] = dtmp;

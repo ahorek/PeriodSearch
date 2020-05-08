@@ -8,7 +8,10 @@
 //#include "globals_CUDA.h"
 
 
-void curv(__global struct freq_context2 *CUDA_LCC, __global varholder* Fa, double cg[], int brtmpl, int brtmph)
+void curv(
+    __global struct freq_context2 *CUDA_LCC, 
+    __global varholder* Fa, 
+    double cg[], int brtmpl, int brtmph)
 {
     int i, m, n, l, k;
     double fsum, g;

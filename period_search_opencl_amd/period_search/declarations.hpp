@@ -72,7 +72,7 @@ double mrqcof_ell(double **x1, double **x2, double x3[], double y[],
               double sig[], double a[], int ia[], int ma,
 	      double **alpha, double beta[], double (*funcs)());
 */
-int gauss_errc(double **aa, int n, double b[]);
+//int gauss_errc(double **aa, int n, double b[]);
 /*
 void matrix_ell(double omg, double fi0, double t, double tmat[][4], double dtm[][4][4]);
 double bright_ell(double ee[], double ee0[], double t, double cg[],
@@ -82,4 +82,4 @@ double bright_ell_YORP(double ee[], double ee0[], double t, double cg[],
             double dyda[], int ncoef);
 void matrix_ell_YORP(double omg, double fi0, double yorp, double t, double tmat[][4], double dtm[][4][4]);
 */
-void curv1D(double cg[]);
+//void curv1D(double cg[]);

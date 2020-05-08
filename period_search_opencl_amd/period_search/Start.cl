@@ -217,7 +217,8 @@ __kernel void CLCalculateIter1Mrqcof1Curve1(
 	__global varholder* Fa,
 	__global int2* texArea,
 	__global int2* texDg,
-	const int inrel, const int lpoints)
+	const int inrel, 
+	const int lpoints)
 {
 	int3 blockIdx;
 	blockIdx.x = get_global_id(0);
@@ -232,18 +233,62 @@ __kernel void CLCalculateIter1Mrqcof1Curve1(
 	mrqcof_curve1(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).cg, (*CUDA_LCC).beta, inrel, lpoints); //(*CUDA_LCC).alpha,
 }
 
-//__kernel void CudaCalculateIter1Mrqmin1End(void)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	int block = CUDA_BLOCK_DIM;
-//	/*gauss_err=*/mrqmin_1_end(CUDA_LCC, CUDA_ma, CUDA_mfit, CUDA_mfit1, block);
-//}
-//
+__kernel void CLCalculateIter1Mrqcof1Curve1Last(
+	__global struct freq_context2* CUDA_CC, 
+	__global varholder* Fa,
+	__global int2* texArea,
+	__global int2* texDg,
+	__local double* res,
+	const int inrel, 
+	const int lpoints)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if ((*CUDA_LCC).isInvalid) return;
+
+	if (!(*CUDA_LCC).isNiter) return;
+
+	if (!(*CUDA_LCC).isAlamda) return;
+
+	mrqcof_curve1_last(CUDA_LCC, Fa, texArea, texDg, res, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
+}
+
+__kernel void CLCalculateIter1Mrqcof1End(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if ((*CUDA_LCC).isInvalid) return;
+
+	if (!(*CUDA_LCC).isNiter) return;
+
+	if (!(*CUDA_LCC).isAlamda) return;
+
+	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).alpha);
+}
+
+__kernel void CLCalculateIter1Mrqmin1End(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa)
+{
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if ((*CUDA_LCC).isInvalid) return;
+
+	if (!(*CUDA_LCC).isNiter) return;
+
+	//int block = CUDA_BLOCK_DIM;
+	//gauss_err=
+	mrqmin_1_end(CUDA_LCC, Fa);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
+}
+
 //__kernel void CudaCalculateIter1Mrqmin2End(void)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
@@ -256,32 +301,8 @@ __kernel void CLCalculateIter1Mrqcof1Curve1(
 //	(*CUDA_LCC).Niter++;
 //}
 
-//__kernel void CudaCalculateIter1Mrqcof1Curve1Last(const int inrel, const int lpoints)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	if (!(*CUDA_LCC).isAlamda) return;
-//
-//	mrqcof_curve1_last(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
-//}
-//
-//__kernel void CudaCalculateIter1Mrqcof1End(void)
-//{
-//	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-//
-//	if ((*CUDA_LCC).isInvalid) return;
-//
-//	if (!(*CUDA_LCC).isNiter) return;
-//
-//	if (!(*CUDA_LCC).isAlamda) return;
-//
-//	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).alpha);
-//}
-//
+
+
 //__kernel void CudaCalculateIter1Mrqcof2Start(void)
 //{
 //	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
