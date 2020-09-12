@@ -48,11 +48,11 @@ void mrqmin_1_end(
         int ixx = j * Fa->Lmfit1 + 1;
         for (k = 1; k <= Fa->Lmfit; k++, ixx++)
         {
-            *(*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
+            (*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
         }
 
         int idx = j * Fa->Lmfit1 + j;
-        *(*CUDA_LCC).covar[idx] = (*CUDA_LCC).alpha[idx] * (1 + (*CUDA_LCC).Alamda);
+        (*CUDA_LCC).covar[idx] = (*CUDA_LCC).alpha[idx] * (1 + (*CUDA_LCC).Alamda);
         (*CUDA_LCC).da[j] = (*CUDA_LCC).beta[j];
     }
 
@@ -86,28 +86,33 @@ void mrqmin_1_end(
     //return(err_code);
 }
 
-//void mrqmin_2_end(freq_context* CUDA_LCC, int ia[], int ma)
-//{
-//    int j, k, l;
-//
-//    if ((*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
-//    {
-//        (*CUDA_LCC).Alamda = (*CUDA_LCC).Alamda / CUDA_Alamda_incr;
-//        for (j = 1; j <= CUDA_mfit; j++)
-//        {
-//            for (k = 1; k <= CUDA_mfit; k++)
-//                (*CUDA_LCC).alpha[j * CUDA_mfit1 + k] = (*CUDA_LCC).covar[j * CUDA_mfit1 + k];
-//            (*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
-//        }
-//        for (l = 1; l <= ma; l++)
-//            (*CUDA_LCC).cg[l] = (*CUDA_LCC).atry[l];
-//    }
-//    else
-//    {
-//        (*CUDA_LCC).Alamda = CUDA_Alamda_incr * (*CUDA_LCC).Alamda;
-//        (*CUDA_LCC).Chisq = (*CUDA_LCC).Ochisq;
-//    }
-//
-//    return;
-//}
+void mrqmin_2_end(
+    __global struct freq_context2* CUDA_LCC, 
+    __global varholder* Fa)
+{
+    int j, k, l;
+
+    if ((*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
+    {
+        (*CUDA_LCC).Alamda = (*CUDA_LCC).Alamda / Fa->Alamda_incr;
+        for (j = 1; j <= Fa->Lmfit; j++)
+        {
+            for (k = 1; k <= Fa->Lmfit; k++)
+            {
+                (*CUDA_LCC).alpha[j * Fa->Lmfit1 + k] = (*CUDA_LCC).covar[j * Fa->Lmfit1 + k];
+            }
+
+            (*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
+        }
+        for (l = 1; l <= Fa->ma; l++)
+        {
+            (*CUDA_LCC).cg[l] = (*CUDA_LCC).atry[l];
+        }
+    }
+    else
+    {
+        (*CUDA_LCC).Alamda = Fa->Alamda_incr * (*CUDA_LCC).Alamda;
+        (*CUDA_LCC).Chisq = (*CUDA_LCC).Ochisq;
+    }
+}
 

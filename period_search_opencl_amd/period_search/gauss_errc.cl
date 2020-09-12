@@ -75,7 +75,7 @@ int gauss_errc(
 					if ((*CUDA_LCC).ipiv[k] == 0)
 					{
 						//  double n = *(double *)num;
-						covar = *(*CUDA_LCC).covar[ixx];
+						covar = (*CUDA_LCC).covar[ixx];
 						double tmpcov = fabs(covar);
 						if (tmpcov >= big)
 						{
@@ -125,7 +125,7 @@ int gauss_errc(
 				int index = irow * Fa->Lmfit1 + l;
 				for (l = 1; l <= n; l++)
 				{
-					SWAP(*(*CUDA_LCC).covar[index], *(*CUDA_LCC).covar[index])
+					SWAP((*CUDA_LCC).covar[index], (*CUDA_LCC).covar[index])
 				}
 
 				SWAP((*CUDA_LCC).da[irow], (*CUDA_LCC).da[icol])
@@ -135,7 +135,7 @@ int gauss_errc(
 			(*CUDA_LCC).indxr[i] = irow;
 			(*CUDA_LCC).indxc[i] = icol;
 			int colIdx = icol * Fa->Lmfit1 + icol;
-			if (*(*CUDA_LCC).covar[colIdx] == 0.0)
+			if ((*CUDA_LCC).covar[colIdx] == 0.0)
 			{
 				j = 0;
 				for (int l = 1; l <= ma; l++)
@@ -152,8 +152,8 @@ int gauss_errc(
 												deallocate_vector((void *) indxr);*/
 				return(2);
 			}
-			pivinv = 1.0 / *(*CUDA_LCC).covar[colIdx];
-			*(*CUDA_LCC).covar[colIdx] = 1.0;
+			pivinv = 1.0 / (*CUDA_LCC).covar[colIdx];
+			(*CUDA_LCC).covar[colIdx] = 1.0;
 			(*CUDA_LCC).da[icol] *= pivinv;
 			//b[icol] *= pivinv;
 		}
@@ -163,7 +163,7 @@ int gauss_errc(
 
 		for (l = brtmpl; l <= brtmph; l++)
 		{
-			*(*CUDA_LCC).covar[icol * Fa->Lmfit1 + l] *= pivinv;
+			(*CUDA_LCC).covar[icol * Fa->Lmfit1 + l] *= pivinv;
 		}
 
 		//__syncthreads();
@@ -174,13 +174,13 @@ int gauss_errc(
 			{
 				int ixx = ll * Fa->Lmfit1;
 				int jxx = icol * Fa->Lmfit1;
-				dum = *(*CUDA_LCC).covar[ixx + icol];
-				*(*CUDA_LCC).covar[ixx + icol] = 0.0;
+				dum = (*CUDA_LCC).covar[ixx + icol];
+				(*CUDA_LCC).covar[ixx + icol] = 0.0;
 				ixx++;
 				jxx++;
 				for (l = 1; l <= n; l++, ixx++, jxx++)
 				{
-					*(*CUDA_LCC).covar[ixx] -= *(*CUDA_LCC).covar[jxx] * dum;
+					(*CUDA_LCC).covar[ixx] -= (*CUDA_LCC).covar[jxx] * dum;
 				}
 
 				(*CUDA_LCC).da[ll] -= (*CUDA_LCC).da[icol] * dum;
@@ -198,7 +198,7 @@ int gauss_errc(
 			{
 				for (k = 1; k <= n; k++)
 				{
-					SWAP(*(*CUDA_LCC).covar[k * Fa->Lmfit1 + (*CUDA_LCC).indxr[l]], *(*CUDA_LCC).covar[k * Fa->Lmfit1 + (*CUDA_LCC).indxc[l]]);
+					SWAP((*CUDA_LCC).covar[k * Fa->Lmfit1 + (*CUDA_LCC).indxr[l]], (*CUDA_LCC).covar[k * Fa->Lmfit1 + (*CUDA_LCC).indxc[l]]);
 				}
 			}
 		}

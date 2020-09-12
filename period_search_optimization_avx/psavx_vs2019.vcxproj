@@ -476,7 +476,9 @@
     <Image Include="period_search\logo_Nta_icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="period_search\Makefile" />
+    <None Include="period_search\Makefile">
+      <FileType>Makefile</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -66,9 +66,6 @@
     <None Include="period_search\period_search_in" />
     <None Include="period_search\sig2iwght.cl" />
     <None Include="period_search\mrqmin.cl" />
-    <None Include="period_search\Curve2.cl">
-      <Filter>Source files</Filter>
-    </None>
     <None Include="period_search\Start.cl">
       <Filter>Source files</Filter>
     </None>
@@ -97,6 +94,9 @@
       <Filter>Source files</Filter>
     </None>
     <None Include="period_search\gauss_errc.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\Curv2.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>

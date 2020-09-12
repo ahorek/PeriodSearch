@@ -16,12 +16,11 @@ double conv(
 	__global varholder* Fa,
 	__global int2* texArea, 
 	__global int2* texDg, 
-	__local double* res,
 	int nc, int tmpl, int tmph, int brtmpl, int brtmph)
 {
 	int i, j, k;
 	// NOTE: variable length arrays are not supported in OpenCL, also it is "__shared__"
-	//double res[Fa->blockDim]; 
+	__local double res[BLOCK_DIM];
 	double tmp, dtmp;
 	int2 bfr;
 	int3 blockIdx, threadIdx;

@@ -1,4 +1,6 @@
 #pragma once
+#include "CL/cl.hpp"
+#include <CL/cl_platform.h>
 #include "globals.h"
 #include "globals_OpenCl.h"
 
@@ -6,7 +8,7 @@
 //void curv(freq_context* CUDA_LCC, double cg[], int brtmpl, int brtmph);
 //extern int mrqmin_1_end(freq_context* CUDA_LCC, int ma, int mfit, int mfit1, int block);
  //void mrqmin_2_end(freq_context* CUDA_LCC, int ia[], int ma);
- //void mrqcof_start(freq_context* CUDA_LCC, double a[], double* alpha, double beta[]);
+//void mrqcof_start(__global struct freq_context2* CUDA_LCC, varholder* Fa, double a[], double* alpha, double* beta);
  //void mrqcof_matrix(freq_context* CUDA_LCC, double a[], int Lpoints);
  //void mrqcof_curve1(freq_context* CUDA_LCC, double a[], double* alpha, double beta[], int Inrel, int Lpoints);
  //void mrqcof_curve1_last(freq_context* CUDA_LCC, double a[], double* alpha, double beta[], int Inrel, int Lpoints);
