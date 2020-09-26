@@ -149,7 +149,7 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 {
 	int3 blockIdx;
 	blockIdx.x = get_global_id(0);
-	__global struct freq_context2* CUDA_LCC;
+	__global struct freq_context* CUDA_LCC;
 	CUDA_LCC = &CUDA_CC[blockIdx.x];
 
 

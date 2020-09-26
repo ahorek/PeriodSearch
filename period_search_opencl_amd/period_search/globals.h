@@ -8,11 +8,15 @@
 #include <CL/cl.hpp>
 #include <cstdio>
 #include "constants.h"
+#include <array>
 
 extern int l_max, m_max, n_iter, last_call,
 	n_coef, num_fac, l_curves, n_ph_par,
-	l_points[MAX_LC + 1], in_rel[MAX_LC + 1],
+	l_points[MAX_LC + 1], 
+	in_rel[MAX_LC + 1],
 	deallocate, max_l_points;
+
+//std::array<int, MAX_LC + 1> l_points;
 
 extern double o_chi_square, chi_square, a_lambda, a_lamda_incr, a_lamda_start, phi_0, scale,
 area[MAX_N_FAC + 1], d_area[MAX_N_FAC + 1], sclnw[MAX_LC + 1],

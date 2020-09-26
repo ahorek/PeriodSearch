@@ -321,7 +321,8 @@ __kernel void CLCalculateIter1Mrqcof2Curve2(
 	__global int2* texsig,
 	__global int2* texWeight,
 	__global int2* texbrightness,
-	int inrel, int lpoints)
+	const int inrel, 
+	const int lpoints)
 {
 	int3 blockIdx;
 	blockIdx.x = get_global_id(0);

@@ -9,6 +9,9 @@
 void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const double lam)
 {
     double cb, sb, cl, sl;
+    int3 threadIdx, blockIdx;
+    threadIdx.x = get_local_id(0);
+    blockIdx.x = get_group_id(0);
 
     cb = cos(bet);
     sb = sin(bet);
@@ -23,6 +26,10 @@ void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const d
     (*CUDA_LCC).Blmat[3][1] = sb * cl;
     (*CUDA_LCC).Blmat[3][2] = sb * sl;
     (*CUDA_LCC).Blmat[3][3] = cb;
+
+    //printf("blmatrix >>> [%d][%d]: \tbet: % .6f, lam: % .6f\n", blockIdx.x, threadIdx.x, bet, lam);
+    //printf("blmatrix >>> [%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1]);
+
     /* Ders. of Blmat w.r.t. bet */
     (*CUDA_LCC).Dblm[1][1][1] = -sb * cl;
     (*CUDA_LCC).Dblm[1][1][2] = -sb * sl;

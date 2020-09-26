@@ -36,6 +36,7 @@
 #include <ctime>
 #include <cstring>
 #include <cstdlib>
+#include <array>
 //#include <memory.h>
 
 #include "declarations.hpp"
@@ -142,8 +143,10 @@ void update_shmem() {
 // NOTE: global parameters
 int l_max, m_max, n_iter, last_call,
 	n_coef, num_fac, l_curves, n_ph_par,
-	l_points[MAX_LC + 1], in_rel[MAX_LC + 1],
+	l_points[MAX_LC + 1], 
+	in_rel[MAX_LC + 1],
 	deallocate, max_l_points; // n_iter,
+//std::array<int, MAX_LC + 1> l_points;
 
 double o_chi_square, chi_square, a_lambda, a_lamda_incr, a_lamda_start, phi_0, scale,
 	d_area[MAX_N_FAC + 1], sclnw[MAX_LC + 1], /*Area[MAX_N_FAC+1],*/

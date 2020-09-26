@@ -14,73 +14,98 @@
 /*#define YORP*/
 
 void mrqcof_start(
-	__global struct freq_context2* CUDA_LCC, 
+	__global struct freq_context2* CUDA_LCC,
 	__global struct FuncArrays* Fa,
-	double a[], 
-	__global double* alpha, 
-	__global double* beta,
-	__read_only int Numfac,
-	__read_only int Mmax,
-	__read_only int Lmax)
+	__global double a[],
+	__global double* alpha,
+	__global double beta[])
+	//__read_only int Numfac,
+	//__read_only int Mmax,
+	//__read_only int Lmax)
 {
 	int j, k;
 	int brtmph, brtmpl;
-	int3 threadIdx;
-	threadIdx.x = get_global_id(0);
+	int3 threadIdx, blockIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
 
-	printf("Numfac: %d\n", Numfac);
+	brtmph = Fa->Numfac / BLOCK_DIM;
+	if (Fa->Numfac % BLOCK_DIM)
+	{
+		brtmph++;
+	}
 
-	brtmph = Numfac / BLOCK_DIM;
-	if (Numfac % BLOCK_DIM) brtmph++;
 	brtmpl = threadIdx.x * brtmph;
 	brtmph = brtmpl + brtmph;
-	if (brtmph > Numfac) brtmph = Numfac;
+	if (brtmph > Fa->Numfac)
+	{
+		brtmph = Fa->Numfac;
+	}
+
 	brtmpl++;
+	//printf("brtmpl: %d, brtmph: %d\n", brtmpl, brtmph);
 
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
-	curv(CUDA_LCC, Fa, a, brtmpl, brtmph, Numfac, Mmax, Lmax);
+	   //curv(CUDA_LCC, Fa, a, brtmpl, brtmph, Fa->Numfac, Fa->Mmax, Fa->Lmax);
+	curv(CUDA_LCC, Fa, a, brtmpl, brtmph);
 
-	//if (threadIdx.x == 0)
-	//{
-	//	//   #ifdef YORP
-	//	//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
-	//	  // #else
-	//	blmatrix(CUDA_LCC, a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
-	//	//   #endif
-	//	(*CUDA_LCC).trial_chisq = 0;
-	//	(*CUDA_LCC).np = 0;
-	//	(*CUDA_LCC).np1 = 0;
-	//	(*CUDA_LCC).np2 = 0;
-	//	(*CUDA_LCC).ave = 0;
-	//}
+	if (threadIdx.x == 0)
+	{
 
-	//brtmph = Fa->Lmfit / BLOCK_DIM;
-	//if (Fa->Lmfit % BLOCK_DIM)
-	//{
-	//	brtmph++;
-	//}
 
-	//brtmpl = threadIdx.x * brtmph;
-	//brtmph = brtmpl + brtmph;
-	//if (brtmph > Fa->Lmfit)
-	//{
-	//	brtmph = Fa->Lmfit;
-	//}
+		//   #ifdef YORP
+		//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
+		  // #else
+		blmatrix(CUDA_LCC, a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
+		//   #endif
+		(*CUDA_LCC).trial_chisq = 0;
+		(*CUDA_LCC).np = 0;
+		(*CUDA_LCC).np1 = 0;
+		(*CUDA_LCC).np2 = 0;
+		(*CUDA_LCC).ave = 0;
 
-	//brtmpl++;
-	//for (j = brtmpl; j <= brtmph; j++)
-	//{
-	//	for (k = 1; k <= j; k++)
-	//	{
-	//		alpha[j * (Fa->Lmfit1) + k] = 0;
-	//	}
+		if (blockIdx.x == 1) {
+			printf("CUDA_ma: %d, CUDA_Nphpar: %d, (*CUDA_LCC).np: %d\n", Fa->ma, Fa->Nphpar, (*CUDA_LCC).np);
+			printf("%f, %f\n", a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
+			printf("cg[1]: %.6f\n", a[1]);
+			printf("cg[%d]: %.6f\n cg[%d]: %.6f\n", Fa->ma - 4 - Fa->Nphpar, a[Fa->ma - 4 - Fa->Nphpar], Fa->ma - 3 - Fa->Nphpar, a[Fa->ma - 3 - Fa->Nphpar]);
+		}
 
-	//	beta[j] = 0;
-	//}
+		//if (blockIdx.x == 1)
+		//{
+		//	printf("mrqcof >>> [%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1]);
+		//	//printf("[%d][%d]: \t% .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).e_3[jp], (*CUDA_LCC).e0_3[jp]);
+		//}
+	}
+
+	brtmph = Fa->Lmfit / BLOCK_DIM;
+	if (Fa->Lmfit % BLOCK_DIM)
+	{
+		brtmph++;
+	}
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > Fa->Lmfit)
+	{
+		brtmph = Fa->Lmfit;
+	}
+
+
+	brtmpl++;
+	for (j = brtmpl; j <= brtmph; j++)
+	{
+		for (k = 1; k <= j; k++)
+		{
+			alpha[j * (Fa->Lmfit1) + k] = 0;
+		}
+
+		beta[j] = 0;
+	}
 
 	////__syncthreads(); //for sure
-	//barrier(CLK_LOCAL_MEM_FENCE); // | CLK_GLOBAL_MEM_FENCE);
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 //double mrqcof_end(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, __global double* alpha)
@@ -99,10 +124,45 @@ void mrqcof_start(
 //	return (*CUDA_LCC).trial_chisq;
 //}
 
-//void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double a[], int Lpoints)
-//{
-//	matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
-//}
+void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double a[], int Lpoints)
+{
+	int3 blockIdx;
+	blockIdx.x = get_group_id(0);
+
+	// NOTE: AMD APP SDK OpenCL Optimization Guide (2015): http://developer.amd.com/wordpress/media/2013/12/AMD_OpenCL_Programming_Optimization_Guide2.pdf
+	/*
+		3.1.2.2 Reads Of The Same Address:
+		Under certain conditions, one unexpected case of a channel conflict is that
+		reading from the same address is a conflict, even on the FastPath.
+
+		This does not happen on the read-only memories, such as constant buffers,
+		textures, or shader resource view (SRV); but it is possible on the read/write UAV
+		memory or OpenCL global memory.
+		From a hardware standpoint, reads from a fixed address have the same upper
+		bits, so they collide and are serialized. To read in a single value, read the value
+		in a single work-item, place it in local memory, and then use that location:
+		Avoid:
+			temp = input[3] // if input is from global space
+
+		Use:
+			if (get_local_id(0) == 0) {
+			local = input[3]
+			}
+			barrier(CLK_LOCAL_MEM_FENCE);
+			temp = local
+	
+	*/
+
+	__local int Np;
+	if (get_group_id(0) == 0)
+	{
+		Np = (*CUDA_LCC).np;
+	}
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+		//matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
+	matrix_neo(CUDA_LCC, Fa, a, Np, Lpoints);
+}
 
 //void mrqcof_curve1(
 //	__global struct freq_context2* CUDA_LCC,

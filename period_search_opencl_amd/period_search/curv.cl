@@ -2,33 +2,28 @@
 
    8.11.2006
 */
-//
-//#include <cuda.h>
-//#include <math.h>
-//#include "globals_CUDA.h"
-
 
 void curv(
     __global struct freq_context2 *CUDA_LCC, 
     __global struct FuncArrays* Fa, 
     double cg[], 
     int brtmpl, 
-    int brtmph,
-    __read_only int Numfac,
-    __read_only int Mmax,
-    __read_only int Lmax)
+    int brtmph)
+    //__read_only int Numfac,
+    //__read_only int Mmax,
+    //__read_only int Lmax)
 {
     int i, m, n, l, k;
-    int Numfac1 = Numfac + 1;
+    int Numfac1 = Fa->Numfac + 1;
     double fsum, g;
 
     for (i = brtmpl; i <= brtmph; i++)
     {
         g = 0;
         n = 0;
-        for (m = 0; m <= Mmax; m++)
+        for (m = 0; m <= Fa->Mmax; m++)
         {
-            for (l = m; l <= Lmax; l++)
+            for (l = m; l <= Fa->Lmax; l++)
             {
                 n++;
                 fsum = cg[n] * Fa->Fc[i][m];
