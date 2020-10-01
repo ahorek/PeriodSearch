@@ -70,6 +70,7 @@ struct freq_context2
 	double chck[4];
 	double Area[MAX_N_FAC + 1];
 	double Dg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
+	double Sig[MAX_N_OBS + 1], Weight[MAX_N_OBS + 1], Brightness[MAX_N_OBS + 1];
 	double freq;
 	double Ochisq, Chisq, Alamda;
 	double Blmat[4][4];
@@ -182,6 +183,7 @@ typedef struct FuncArrays
 	double Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1];
 	double Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1];
 	double cg[MAX_N_PAR + 1];
+	double Sig[MAX_N_OBS + 1];
 } varholder;
 
 //typedef struct FuncArrays varholder;

@@ -29,7 +29,7 @@ void mrqcof_start(
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
-	brtmph = Fa->Numfac / BLOCK_DIM;
+	/*brtmph = Fa->Numfac / BLOCK_DIM;
 	if (Fa->Numfac % BLOCK_DIM)
 	{
 		brtmph++;
@@ -42,13 +42,13 @@ void mrqcof_start(
 		brtmph = Fa->Numfac;
 	}
 
-	brtmpl++;
+	brtmpl++;*/
 	//printf("brtmpl: %d, brtmph: %d\n", brtmpl, brtmph);
 
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
 	   //curv(CUDA_LCC, Fa, a, brtmpl, brtmph, Fa->Numfac, Fa->Mmax, Fa->Lmax);
-	curv(CUDA_LCC, Fa, a, brtmpl, brtmph);
+	//curv(CUDA_LCC, Fa, a, brtmpl, brtmph);
 
 	if (threadIdx.x == 0)
 	{
@@ -65,12 +65,12 @@ void mrqcof_start(
 		(*CUDA_LCC).np2 = 0;
 		(*CUDA_LCC).ave = 0;
 
-		if (blockIdx.x == 1) {
+		/*if (blockIdx.x == 1) {
 			printf("CUDA_ma: %d, CUDA_Nphpar: %d, (*CUDA_LCC).np: %d\n", Fa->ma, Fa->Nphpar, (*CUDA_LCC).np);
 			printf("%f, %f\n", a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
 			printf("cg[1]: %.6f\n", a[1]);
 			printf("cg[%d]: %.6f\n cg[%d]: %.6f\n", Fa->ma - 4 - Fa->Nphpar, a[Fa->ma - 4 - Fa->Nphpar], Fa->ma - 3 - Fa->Nphpar, a[Fa->ma - 3 - Fa->Nphpar]);
-		}
+		}*/
 
 		//if (blockIdx.x == 1)
 		//{
@@ -150,7 +150,7 @@ void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* 
 			}
 			barrier(CLK_LOCAL_MEM_FENCE);
 			temp = local
-	
+
 	*/
 
 	__local int Np;
@@ -158,106 +158,172 @@ void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* 
 	{
 		Np = (*CUDA_LCC).np;
 	}
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
-		//matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
+	//matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
 	matrix_neo(CUDA_LCC, Fa, a, Np, Lpoints);
 }
 
-//void mrqcof_curve1(
-//	__global struct freq_context2* CUDA_LCC,
-//	__global varholder* Fa,
-//	__global int2* texArea,
-//	__global int2* texDg,
-//	double a[], 
-//	double beta[], 
-//	int Inrel, 
-//	int Lpoints) //double* alpha,
-//{
-//	__local		double tmave[BLOCK_DIM]; // NOTE: __shared__
-//	int l, k, jp, lnp, Lpoints1 = Lpoints + 1;
-//	double lave;
-//	int3 threadIdx;
-//	threadIdx.x = get_local_id(0);
-//
-//	lnp = (*CUDA_LCC).np;
-//	lave = (*CUDA_LCC).ave;
-//	//precalc thread boundaries
-//	int brtmph, brtmpl;
-//	brtmph = Lpoints / BLOCK_DIM;
-//	if (Lpoints % BLOCK_DIM) brtmph++;
-//	brtmpl = threadIdx.x * brtmph;
-//	brtmph = brtmpl + brtmph;
-//	if (brtmph > Lpoints) brtmph = Lpoints;
-//	brtmpl++;
-//	//
-//
-//	for (jp = brtmpl; jp <= brtmph; jp++)
-//	{
-//		bright(CUDA_LCC, Fa, texArea, texDg, a, jp, Lpoints1, Inrel);
-//	}
-//
-//	//__syncthreads();
-//	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-//
-//	if (Inrel == 1) {
-//		int tmph, tmpl;
-//		tmph = Fa->ma / BLOCK_DIM;
-//		if (Fa->ma % BLOCK_DIM) tmph++;
-//		tmpl = threadIdx.x * tmph;
-//		tmph = tmpl + tmph;
-//		if (tmph > Fa->ma) tmph = Fa->ma;
-//		tmpl++;
-//		if (tmpl == 1) tmpl++;
-//
-//		int ixx;
-//		ixx = tmpl * Lpoints1;
-//		for (l = tmpl; l <= tmph; l++)
-//		{
-//			//jp==1
-//			ixx++;
-//			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
-//			//jp>=2
-//			ixx++;
-//			for (jp = 2; jp <= Lpoints; jp++, ixx++)
-//			{
-//				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
-//			}
-//
-//		}
-//
-//		tmave[threadIdx.x] = 0;
-//		for (jp = brtmpl; jp <= brtmph; jp++)
-//		{
-//			tmave[threadIdx.x] += (*CUDA_LCC).ytemp[jp];
-//		}
-//
-//		//__syncthreads();
-//		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-//
-//		//parallel reduction
-//		k = BLOCK_DIM >> 1;
-//		while (k > 1)
-//		{
-//			if (threadIdx.x < k)
-//			{
-//				tmave[threadIdx.x] += tmave[threadIdx.x + k];
-//			}
-//
-//			k = k >> 1;
-//			//__syncthreads();
-//			barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-//		}
-//		if (threadIdx.x == 0) lave = tmave[0] + tmave[1];
-//		//parallel reduction end
-//
-//	}
-//	if (threadIdx.x == 0)
-//	{
-//		(*CUDA_LCC).np = lnp + Lpoints;
-//		(*CUDA_LCC).ave = lave;
-//	}
-//}
+void mrqcof_curve1(
+	__global struct freq_context2* CUDA_LCC,
+	__global varholder* Fa,
+	/*__global int2* texArea,
+	__global int2* texDg,*/
+	double a[],
+	//double alpha,
+	//double beta[],
+	int brtmpl,
+	int brtmph, 
+	int Inrel,
+	int Lpoints)
+{
+	int3 threadIdx, blockIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+
+	__local	double tmave[BLOCK_DIM]; // NOTE: __shared__
+	//int j_p;
+	__private int l, k, j_p, lnp, Lpoints1 = Lpoints + 1;
+	__private double lave;
+
+	lnp = (*CUDA_LCC).np;
+	lave = (*CUDA_LCC).ave;
+	//barrier(CLK_LOCAL_MEM_FENCE) // TODO: Test it. If it is needed put everithing inside first check for globalIdx.x == 0). Otherwise just delete this line.
+
+	/*if (threadIdx.x == 0) {
+		printf("mrqcof_curve1 >>> [%d][%d]\t%d,  % .6f\n", blockIdx.x, threadIdx.x, lnp, lave);
+	}*/
+
+	//precalc thread boundaries
+	/*__private int brtmph, brtmpl;
+	brtmph = Lpoints / BLOCK_DIM;
+	if (Lpoints % BLOCK_DIM)
+	{
+		brtmph++;
+	}
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > Lpoints)
+	{
+		brtmph = Lpoints;
+	}
+
+	brtmpl++;*/
+
+	/*if (blockIdx.x == 1) 
+		printf("[%d][%d]\tbrtmpl: %d\n", blockIdx.x, threadIdx.x, brtmpl);*/
+
+	/*if(blockIdx.x == 0)
+		printf("[%d][%d]  \tbrtmpl: %d,\tbrtmph: %d\n", blockIdx.x, threadIdx.x, brtmpl, brtmph);*/
+
+	// NOTE: Don't use function calls inside for lops with OpenCl 1.2 as there is an issue https://stackoverflow.com/questions/23986825/opencl-for-loop-execution-model
+	// TODO:Have to be tested with OpenCl 2.0 and higher versions
+	//for (j_p = brtmpl; j_p <= brtmph; j_p++)
+	//{
+	//	bright(CUDA_LCC, Fa, (*CUDA_LCC).cg, j_p, Lpoints1, Inrel);
+	//	//bright(CUDA_LCC, Fa, a, brtmpl, brtmph, Lpoints1, Inrel);
+	//	if (blockIdx.x == 1)
+	//		printf("thread[%d], brtmpl: %d, brtmph: %d, jp: %d\n", threadIdx.x, brtmpl, brtmph, j_p);
+	//}
+
+	//j_p = brtmph;
+	//barrier(CLK_LOCAL_MEM_FENCE);
+	//bright(CUDA_LCC, Fa, a, j_p, Lpoints1, Inrel);
+	//do {
+	//	//if (jp > brtmph) return;
+	//	//bright(CUDA_LCC, Fa, a, jp, Lpoints1, Inrel);	
+
+	//	bright(CUDA_LCC, Fa, a, j_p, Lpoints1, Inrel);	
+	//	//if(blockIdx.x == 2)
+	//	//	printf("thread[%d], brtmpl: %d, brtmph: %d, jp: %d\n", threadIdx.x, brtmpl, brtmph, jp);
+
+	//	j_p--;
+	//} while (j_p >= brtmpl);
+
+	//__syncthreads();
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	if (Inrel == 1) {
+		int tmph, tmpl;
+		tmph = Fa->ma / BLOCK_DIM;
+		if (Fa->ma % BLOCK_DIM) tmph++;
+		tmpl = threadIdx.x * tmph;
+		tmph = tmpl + tmph;
+		if (tmph > Fa->ma) tmph = Fa->ma;
+		tmpl++;
+		if (tmpl == 1) tmpl++;
+
+		int ixx;
+		ixx = tmpl * Lpoints1;
+
+		for (l = tmpl; l <= tmph; l++)
+		{
+			//jp==1
+			ixx++;
+			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
+
+			//if (blockIdx.x == 2)
+			//	printf("%2d/%2d  dytemp[%3d]: % .6f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).dytemp[ixx]);
+
+			//jp>=2
+			ixx++;
+			for (int jp = 2; jp <= Lpoints; jp++, ixx++)
+			{
+				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
+			}
+
+		}
+
+		tmave[threadIdx.x] = 0;
+		for (int jp = brtmpl; jp <= brtmph; jp++)
+		{
+			tmave[threadIdx.x] += (*CUDA_LCC).ytemp[jp];
+			
+			//if (blockIdx.x == 2)
+			//	printf("[%d][%d]  \tytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
+				//printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
+		}
+		//if (blockIdx.x == 2) {
+		//	printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
+		//}
+
+		//__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+		//parallel reduction
+		k = BLOCK_DIM >> 1;
+		while (k > 1)
+		{
+			if (threadIdx.x < k)
+			{
+				tmave[threadIdx.x] += tmave[threadIdx.x + k];
+			}
+
+			k = k >> 1;
+			//__syncthreads();
+			barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+		}
+		if (threadIdx.x == 0)
+		{
+			lave = tmave[0] + tmave[1];
+			//if (blockIdx.x == 2)
+			//	printf("[%d][%d]  \tlave: % .6f\n", blockIdx.x, threadIdx.x, lave);
+		}
+		//parallel reduction end
+
+	}
+
+	if (threadIdx.x == 0)
+	{
+		(*CUDA_LCC).np = lnp + Lpoints;
+		(*CUDA_LCC).ave = lave;
+
+		//if (blockIdx.x == 2)
+		//	printf("[%d][%d]  \tave: % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave);
+	}
+}
 
 //void mrqcof_curve1_last(
 //	__global struct freq_context2* CUDA_LCC, 

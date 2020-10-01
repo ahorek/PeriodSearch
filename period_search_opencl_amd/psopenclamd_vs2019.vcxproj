@@ -355,7 +355,7 @@
     <None Include="period_search\Globals.hcl">
       <FileType>CppHeader</FileType>
     </None>
-    <None Include="period_search\Intrnsics.cl" />
+    <None Include="period_search\Intrinsics.cl" />
     <None Include="period_search\mrqcof.cl">
       <FileType>CppCode</FileType>
     </None>

@@ -86,9 +86,6 @@
     <None Include="period_search\CLCalculateIter1Mrqcof1Start.cl">
       <Filter>Source files</Filter>
     </None>
-    <None Include="period_search\Intrnsics.cl">
-      <Filter>Source files</Filter>
-    </None>
     <None Include="period_search\gauss_errc.cl">
       <Filter>Source files</Filter>
     </None>
@@ -99,6 +96,9 @@
       <Filter>Source files</Filter>
     </None>
     <None Include="period_search\mrqmin.cl">
+      <Filter>Source files</Filter>
+    </None>
+    <None Include="period_search\Intrinsics.cl">
       <Filter>Source files</Filter>
     </None>
   </ItemGroup>
