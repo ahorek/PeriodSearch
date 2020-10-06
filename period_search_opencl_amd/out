@@ -20,180 +20,40 @@ New epoch of zero time  2457320.000000
 Wild guess for initial sphere size is 1.39517
 Suggested scaled a,b,c: 1.46554 1.39575 1.32596
 
-00:12:52 | Fraction done: 0.0001% (start signal)
-CUDA_LCC[0].freq = 0.093481
+03:23:16 | Fraction done: 0.0001% (start signal)
+n_start: 1, id: 2, max_test_periods: 10
+n_start: 1, id: 8, max_test_periods: 10
+n_start: 1, id: 0, max_test_periods: 10
+n_start: 1, id: 6, max_test_periods: 10
+n_start: 1, id: 1, max_test_periods: 10
+n_start: 1, id: 7, max_test_periods: 10
+n_start: 1, id: 4, max_test_periods: 10
+n_start: 1, id: 3, max_test_periods: 10
+n_start: 1, id: 9, max_test_periods: 10
+n_start: 1, id: 5, max_test_periods: 10
 CUDA_LCC[6].freq = 0.093423
-CUDA_LCC[2].freq = 0.093462
-CUDA_LCC[8].freq = 0.093404
-CUDA_LCC[1].freq = 0.093471
-CUDA_LCC[7].freq = 0.093414
+CUDA_LCC[0].freq = 0.093481
 CUDA_LCC[4].freq = 0.093443
+CUDA_LCC[8].freq = 0.093404
+CUDA_LCC[2].freq = 0.093462
+CUDA_LCC[1].freq = 0.093471
 CUDA_LCC[3].freq = 0.093452
-CUDA_LCC[9].freq = 0.093395
+CUDA_LCC[7].freq = 0.093414
 CUDA_LCC[5].freq = 0.093433
-[0] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[6] Ncoef = 49, Nphpar = 3, isInvalid = 0
+CUDA_LCC[9].freq = 0.093395
+[2] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [8] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[6] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[0] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [1] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [7] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[2] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[3] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [9] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[3] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [4] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [5] Ncoef = 49, Nphpar = 3, isInvalid = 0
- 2/64  dytemp[443]: -0.729134
- 2/65  dytemp[445]: -0.718452
- 2/66  dytemp[447]: -0.718535
- 2/67  dytemp[449]: -0.710033
- 2/68  dytemp[451]: -0.706738
- 2/69  dytemp[453]: -0.685052
- 2/70  dytemp[455]: -0.687972
- 2/71  dytemp[457]: -0.704192
- 2/72  dytemp[459]: -0.879939
- 2/73  dytemp[461]: -0.877742
- 2/74  dytemp[463]: -0.883774
- 2/75  dytemp[465]: -0.902642
- 2/76  dytemp[467]: -0.932485
- 2/77  dytemp[469]: -0.932679
- 2/ 0  dytemp[315]:  1.133504
- 2/ 1  dytemp[317]:  1.525912
- 2/ 2  dytemp[319]:  1.668977
- 2/ 3  dytemp[321]:  1.663002
- 2/ 4  dytemp[323]:  1.663278
- 2/ 5  dytemp[325]:  1.687141
- 2/ 6  dytemp[327]:  1.832247
- 2/ 7  dytemp[329]:  1.829612
- 2/ 8  dytemp[331]:  1.809255
- 2/ 9  dytemp[333]:  1.685765
- 2/10  dytemp[335]:  1.685956
- 2/11  dytemp[337]:  1.687765
- 2/12  dytemp[339]:  1.687765
- 2/13  dytemp[341]:  1.653137
- 2/14  dytemp[343]:  1.574358
- 2/15  dytemp[345]:  1.386127
- 2/16  dytemp[347]:  1.383159
- 2/17  dytemp[349]:  1.382303
- 2/18  dytemp[351]:  1.351019
- 2/19  dytemp[353]:  1.350480
- 2/20  dytemp[355]:  1.346668
- 2/21  dytemp[357]:  1.344787
- 2/22  dytemp[359]:  1.408083
- 2/23  dytemp[361]:  1.409734
- 2/24  dytemp[363]:  1.420368
- 2/25  dytemp[365]:  1.418145
- 2/26  dytemp[367]:  1.419546
- 2/27  dytemp[369]:  1.424639
- 2/28  dytemp[371]:  1.429217
- 2/29  dytemp[373]:  2.030949
- 2/30  dytemp[375]:  2.137193
- 2/31  dytemp[377]:  2.615159
- 2/32  dytemp[379]:  2.739619
- 2/33  dytemp[381]:  2.869196
- 2/34  dytemp[383]:  2.869196
- 2/35  dytemp[385]:  2.869435
- 2/36  dytemp[387]:  2.978576
- 2/37  dytemp[389]:  2.978886
- 2/38  dytemp[391]:  2.979453
- 2/39  dytemp[393]:  2.980007
- 2/40  dytemp[395]:  2.681119
- 2/41  dytemp[397]:  2.679440
- 2/42  dytemp[399]:  2.537169
- 2/43  dytemp[401]:  2.536531
- 2/44  dytemp[403]:  2.465032
- 2/45  dytemp[405]:  2.464728
- 2/46  dytemp[407]:  2.464512
- 2/47  dytemp[409]:  2.464512
- 2/48  dytemp[411]:  2.104490
- 2/49  dytemp[413]:  2.103673
- 2/50  dytemp[415]:  2.103117
- 2/51  dytemp[417]:  2.067660
- 2/52  dytemp[419]:  2.036418
- 2/53  dytemp[421]:  2.036122
- 2/54  dytemp[423]: -0.020381
- 2/55  dytemp[425]: -0.020269
- 2/56  dytemp[427]: -0.022362
- 2/57  dytemp[429]: -0.279538
- 2/58  dytemp[431]: -0.704172
- 2/59  dytemp[433]: -0.685244
- 2/60  dytemp[435]: -0.917418
- 2/61  dytemp[437]: -0.728005
- 2/62  dytemp[439]: -0.728571
- 2/63  dytemp[441]: -0.728571
- 2/64  dytemp[444]: -0.713870
- 2/65  dytemp[446]: -0.718452
- 2/66  dytemp[448]: -0.710033
- 2/67  dytemp[450]: -0.708680
- 2/68  dytemp[452]: -0.706738
- 2/69  dytemp[454]: -0.687972
- 2/70  dytemp[456]: -0.687972
- 2/71  dytemp[458]: -0.879939
- 2/72  dytemp[460]: -0.877742
- 2/73  dytemp[462]: -0.883774
- 2/74  dytemp[464]: -0.883774
- 2/75  dytemp[466]: -0.907881
- 2/76  dytemp[468]: -0.934381
- 2/77  dytemp[470]: -0.934464
- 2/ 0  dytemp[316]:  1.140702
- 2/ 1  dytemp[318]:  1.524006
- 2/ 2  dytemp[320]:  1.668977
- 2/ 3  dytemp[322]:  1.663408
- 2/ 4  dytemp[324]:  1.663278
- 2/ 5  dytemp[326]:  1.685853
- 2/ 6  dytemp[328]:  1.830182
- 2/ 7  dytemp[330]:  1.829612
- 2/ 8  dytemp[332]:  1.808274
- 2/ 9  dytemp[334]:  1.685956
- 2/10  dytemp[336]:  1.685956
- 2/11  dytemp[338]:  1.687765
- 2/12  dytemp[340]:  1.681641
- 2/13  dytemp[342]:  1.574358
- 2/14  dytemp[344]:  1.574358
- 2/15  dytemp[346]:  1.387461
- 2/16  dytemp[348]:  1.382303
- 2/17  dytemp[350]:  1.351019
- 2/18  dytemp[352]:  1.350480
- 2/19  dytemp[354]:  1.351760
- 2/20  dytemp[356]:  1.344787
- 2/21  dytemp[358]:  1.408083
- 2/22  dytemp[360]:  1.409734
- 2/23  dytemp[362]:  1.420368
- 2/24  dytemp[364]:  1.419632
- 2/25  dytemp[366]:  1.418145
- 2/26  dytemp[368]:  1.419546
- 2/27  dytemp[370]:  1.427064
- 2/28  dytemp[372]:  2.030949
- 2/29  dytemp[374]:  2.137193
- 2/30  dytemp[376]:  2.137609
- 2/31  dytemp[378]:  2.739619
- 2/32  dytemp[380]:  2.740424
- 2/33  dytemp[382]:  2.869196
- 2/34  dytemp[384]:  2.869435
- 2/35  dytemp[386]:  2.869680
- 2/36  dytemp[388]:  2.978886
- 2/37  dytemp[390]:  2.979453
- 2/38  dytemp[392]:  2.980007
- 2/39  dytemp[394]:  2.980234
- 2/40  dytemp[396]:  2.679440
- 2/41  dytemp[398]:  2.537125
- 2/42  dytemp[400]:  2.536531
- 2/43  dytemp[402]:  2.536531
- 2/44  dytemp[404]:  2.464728
- 2/45  dytemp[406]:  2.464546
- 2/46  dytemp[408]:  2.464512
- 2/47  dytemp[410]:  2.104490
- 2/48  dytemp[412]:  2.104490
- 2/49  dytemp[414]:  2.103673
- 2/50  dytemp[416]:  2.068308
- 2/51  dytemp[418]:  2.036418
- 2/52  dytemp[420]:  2.036104
- 2/53  dytemp[422]:  2.036863
- 2/54  dytemp[424]: -0.020381
- 2/55  dytemp[426]: -0.022362
- 2/56  dytemp[428]: -0.026119
- 2/57  dytemp[430]: -0.704172
- 2/58  dytemp[432]: -0.685244
- 2/59  dytemp[434]: -0.692149
- 2/60  dytemp[436]: -0.917418
- 2/61  dytemp[438]: -0.728571
- 2/62  dytemp[440]: -0.728571
- 2/63  dytemp[442]: -0.729134
+Iter1Mrqcof1Matrix >>> isInvalid: 0
+Iter1Mrqcof1Matrix >>> isInvalid: 0, isNiter: 1, isAlamda: 1
+[0]  1
+[0]  2
+[2][0]  	lave:  513.766055
+mrqcof_curve1 >> [2][0]  	ave:  513.766055

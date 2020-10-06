@@ -26,20 +26,6 @@
 //    return u.val;
 //}
 //
-//double hiloint2double(int hi, int lo)
-//{
-//    union {
-//        double val;
-//        struct {
-//            int lo;
-//            int hi;
-//        };
-//    } u;
-//    u.hi = hi;
-//    u.lo = lo;
-//    return u.val;
-//}
-
 typedef union {
     double val;
     struct {
@@ -47,6 +33,23 @@ typedef union {
         int hi;
     };
 } un;
+
+double HiLoint2double(int hi, int lo)
+{
+    /*union {
+        double val;
+        struct {
+            int lo;
+            int hi;
+        };
+    } u;*/
+    un u;
+
+    u.hi = hi;
+    u.lo = lo;
+    return u.val;
+}
+
 
 int double2hiint(double val)
 {

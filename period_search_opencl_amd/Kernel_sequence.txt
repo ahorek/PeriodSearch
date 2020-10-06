@@ -1,0 +1,43 @@
+
+kernelCalculatePrepare
+
+for (m = 1; m <= N_POLES; m++)
+{
+	kernelCalculatePreparePole
+	
+	while (!theEnd)
+	{
+		kernelCalculateIter1Begin
+		kernelCalculateIter1Mrqcof1Start
+	
+		for (iC = 1; iC < l_curves; iC++)
+		{
+			kernelCalculateIter1Mrqcof1Matrix
+			kernelCalculateIter1Mrqcof1Curve1 - Tested bright: OK, next - mrqcof_curve1
+			kernelCalculateIter1Mrqcof1Curve2
+		}
+	
+		kernelCalculateIter1Mrqcof1Curve1Last
+		kernelCalculateIter1Mrqcof1Curve2
+		kernelCalculateIter1Mrqcof1End
+		kernelCalculateIter1Mrqmin1End
+		kernelCalculateIter1Mrqcof2Start
+	
+		for (iC = 1; iC < l_curves; iC++)
+		{
+			kernelCalculateIter1Mrqcof2Matrix
+			kernelCalculateIter1Mrqcof2Curve1
+			kernelCalculateIter1Mrqcof2Curve2
+		}
+	
+		kernelCalculateIter1Mrqcof2Curve1Last
+		kernelCalculateIter1Mrqcof2Curve2
+		kernelCalculateIter1Mrqcof2End
+		kernelCalculateIter1Mrqmin2End
+		kernelCalculateIter2
+	}
+
+	kernelCalculateFinishPole
+}
+
+kernelCalculateFinish

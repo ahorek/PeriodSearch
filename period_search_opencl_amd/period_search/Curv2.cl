@@ -71,7 +71,7 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 			for (l = 2; l <= Fa->ma; l++, ixx += Lpoints1)
 			{
 				(*CUDA_LCC).dytemp[ixx] = coef * ((*CUDA_LCC).dytemp[ixx] - coef1 * (*CUDA_LCC).dave[l]);
-				//if (blockIdx.x == 2)
+				//if (blockIdx.x == 2 && threadIdx.x == 2)
 				//	printf("%2d/%2d  dytemp[%3d]: % .6f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).dytemp[ixx]);
 			}
 		}
@@ -87,6 +87,9 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 
 	lnp2 = (*CUDA_LCC).np2;
 	ltrial_chisq = (*CUDA_LCC).trial_chisq;
+
+	if (blockIdx.x == 2 && threadIdx.x == 2)
+		printf("%3d/%3d  np1: %d, lnp2: %d, ia[1]: %d\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).np1, lnp2, Fa->ia[1]);
 
 	if (Fa->ia[1]) //not relative
 	{
@@ -107,17 +110,21 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 			//xx = texsig[lnp2];
 			//xx = tex1Dfetch(texsig, lnp2);
 			//sig2i = 1 / (HiLoint2double(xx.y, xx.x) * HiLoint2double(xx.y, xx.x));
-			sig2i = 1 / ((*CUDA_LCC).Sig[lnp2] * (*CUDA_LCC).Sig[lnp2]);
+			double bfr = Fa->Sig[lnp2];
+			sig2i = 1 / (bfr * bfr);
+
+			//if (blockIdx.x == 0)
+			//	printf("bright >>> [%3d][%3d][%3d] bfr: % .6f, sig2i: % .6f\n", blockIdx.x, threadIdx.x, jp, bfr, sig2i);
 
 			//xx = texweight[lnp2];
 			//xx = tex1Dfetch(texWeight, lnp2);
 			//wght = HiLoint2double(xx.y, xx.x);
-			wght = (*CUDA_LCC).Weight[lnp2];
+			wght = Fa->Weight[lnp2];
 
 			//xx = texbrightness[lnp2];
 			//xx = tex1Dfetch(texbrightness, lnp2);
 			//dy = HiLoint2double(xx.y, xx.x) - ymod;
-			dy = (*CUDA_LCC).Brightness[lnp2] - ymod;
+			dy = Fa->Brightness[lnp2] - ymod;
 
 			j = 0;
 			//
@@ -203,6 +210,9 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 			for (l = matmpl; l <= matmph; l++, ixx += Lpoints1)
 			{
 				(*CUDA_LCC).dyda[l] = (*CUDA_LCC).dytemp[ixx];
+
+				if (blockIdx.x == 0 && threadIdx.x == 2)
+					printf("[%2d][%2d][%3d][%3d]  \tdyda[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, j, l, (*CUDA_LCC).dyda[l]);
 			}
 
 			//__syncthreads();
@@ -213,17 +223,28 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 			//xx = texsig[lnp2];
 			//xx = tex1Dfetch(texsig, lnp2);
 			//sig2i = 1 / (HiLoint2double(xx.y, xx.x) * HiLoint2double(xx.y, xx.x));
-			sig2i = 1 / ((*CUDA_LCC).Sig[lnp2] * (*CUDA_LCC).Sig[lnp2]);
+			double bfr = Fa->Sig[lnp2];
+			sig2i = 1 / (bfr * bfr);
+
+			//if (blockIdx.x == 1)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] bfr: % .6f, sig2i: % .6f\n", blockIdx.x, threadIdx.x, jp, lnp2, Fa->Sig[lnp2], sig2i);
 
 			//xx = (*CUDA_LCC).Weight[lnp2];
 			//xx = tex1Dfetch(texWeight, lnp2);
 			//wght = HiLoint2double(xx.y, xx.x);
-			wght = (*CUDA_LCC).Weight[lnp2];
+			wght = Fa->Weight[lnp2];
+
+			//if (blockIdx.x == 1)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] Weight: % .6f\n", blockIdx.x, threadIdx.x, jp, lnp2, Fa->Weight[lnp2]);
 
 			//xx = texbrightness[lnp2];
 			//xx = tex1Dfetch(texbrightness, lnp2);
 			//dy = HiLoint2double(xx.y, xx.x) - ymod;
-			dy = (*CUDA_LCC).Brightness[lnp2] - ymod;
+			bfr = Fa->Brightness[lnp2];
+			dy = bfr - ymod;
+
+			//if (blockIdx.x == 1 && threadIdx.x == 9)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] bfr: % .6f, ymod: % .6f\n", blockIdx.x, threadIdx.x, jp, lnp2, bfr, ymod);
 
 			j = 0;
 			//
@@ -234,6 +255,10 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 			{
 				j++;
 				wt = (*CUDA_LCC).dyda[l] * sig2iwght;
+
+				//if (blockIdx.x == 2 && threadIdx.x == 2 && l == 2 && jp == 2)
+				//	printf("[%2d][%2d][%3d][%3d]  \tdyda[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, j, l, (*CUDA_LCC).dyda[l]);
+
 				//				   k = 0;
 				//precalc thread boundaries
 				tmph = l / BLOCK_DIM;
@@ -256,12 +281,15 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 				if (threadIdx.x == 0)
 				{
 					beta[j] = beta[j] + dy * wt;
-					printf("[%d][%d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[j]);
+
+					//if (blockIdx.x == 2 && jp == 1)
+					//	printf("[%2d][%2d][%3d][%3d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, j, l, beta[j]);
 				}
 
 				__syncthreads();
 				barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 			} /* l */
+
 			for (; l <= Fa->lastma; l++)
 			{
 				if (Fa->ia[l])
@@ -296,7 +324,7 @@ void MrqcofCurve2(__global struct freq_context2* CUDA_LCC,
 						} /* m */
 
 						beta[j] = beta[j] + dy * wt;
-						printf("[%d][%d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[j]);
+						//printf("[%d][%d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[j]);
 					}
 
 					//__syncthreads();
@@ -328,16 +356,20 @@ __kernel void CLCalculateIter1Mrqcof1Curve2(
 	//__global int2* texbrightness,
 	int inrel, int lpoints)
 {
-	int3 blockIdx;
+	int3 blockIdx, threadIdx;
 	blockIdx.x = get_group_id(0);
+	threadIdx.x = get_local_id(0);
+
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).isInvalid) return;
+	if (Fa->isInvalid) return;
 
-	if (!(*CUDA_LCC).isNiter) return;
+	if (!Fa->isNiter) return;
 
-	if (!(*CUDA_LCC).isAlamda) return;
+	if (!Fa->isAlamda) return;
 
+	//if (blockIdx.x == 1)
+	//	printf("(*CUDA_LCC).beta[threadIdx.x]: % .6f\n", (*CUDA_LCC).beta[threadIdx.x]);
 	//MrqcofCurve2(CUDA_LCC, Fa, texsig, texWeight, texbrightness, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 	MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 }
@@ -355,9 +387,9 @@ __kernel void CLCalculateIter1Mrqcof2Curve2(
 	blockIdx.x = get_group_id(0);
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).isInvalid) return;
+	if (Fa->isInvalid) return;
 
-	if (!(*CUDA_LCC).isNiter) return;
+	if (!Fa->isNiter) return;
 
 	//MrqcofCurve2(CUDA_LCC, Fa, texsig, texWeight, texbrightness, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
 	MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);

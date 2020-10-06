@@ -55,11 +55,11 @@ double logCl;
 double aLambda_start;
 
 
-cl_int2* texWeight;
-cl_int2* texArea;
-cl_int2* texDg;
-cl_int2* texbrightness;
-cl_int2* texsig;
+//cl_int2* texWeight;
+//cl_int2* texArea;
+//cl_int2* texDg;
+//cl_int2* texbrightness;
+//cl_int2* texsig;
 
 //cl::Image1D texWeight;  //NOTE: CUDA's 'texture<int2, 1>{}' structure equivalent
 //cl::Image1D texArea;
@@ -81,7 +81,7 @@ __declspec(align(4)) FuncArrays* Fa;
 
 double* pee, * pee0, * pWeight;
 
-cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* par, double ia, double Alambda_start, double Alambda_incr,
+cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* par, double cl, double Alambda_start, double Alambda_incr,
 	double ee[][3], double ee0[][3], double* tim, double Phi_0, int checkex, int ndata)
 {
 	Fa = static_cast<FuncArrays*>(malloc(sizeof(FuncArrays)));
@@ -175,11 +175,8 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 		//CUDA_par = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof(double) * 4, par, err);
 				
 		memcpy((*Fa).par, par, sizeof(double) * 4);
-		memcpy((*Fa).ia, &ia, sizeof(double));
-		
-		logCl = log(ia);
-		(*Fa).logCl = log(ia);
-		//auto clCl = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof cl, &cl, err);
+		(*Fa).logCl = log(cl);
+
 		aLambda_start = Alambda_start;
 		//auto clAlambdaStart = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof Alambda_start, &Alambda_start, err);
 		auto clAlambdaIncr = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof Alambda_incr, &Alambda_incr, err);
@@ -329,11 +326,15 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	auto cgFirst = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(double) * (MAX_N_PAR + 1), cg_first, err);
 	queue.enqueueWriteBuffer(cgFirst, CL_TRUE, 0, sizeof(double) * (MAX_N_PAR + 1), cg_first);
 	
-	auto clIa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * (MAX_N_PAR + 1), ia);
+	//auto clIa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof(int) * (MAX_N_PAR + 1), ia);
 	auto clNdata = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof ndata, &ndata, err);
 	auto clConwR = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof conw_r, conw_r, err);
-	
+
+	memcpy((*Fa).ia, ia, sizeof(int) * (MAX_N_PAR + 1));
 	memcpy((*Fa).Sig, sig, sizeof(double) * (MAX_N_OBS + 1));
+	memcpy((*Fa).Weight, weight, sizeof(double) * (MAX_N_OBS + 1));
+	memcpy((*Fa).Brightness, brightness, sizeof(double) * (MAX_N_OBS + 1));
+	
 	memcpy((*Fa).Fc, f_c, sizeof(double) * (MAX_N_FAC + 1) * (MAX_LM + 1));
 	memcpy((*Fa).Fs, f_s, sizeof(double) * (MAX_N_FAC + 1) * (MAX_LM + 1));
 	memcpy((*Fa).Pleg, pleg, sizeof(double) * (MAX_N_FAC + 1) * (MAX_LM + 1) * (MAX_LM + 1));
@@ -369,12 +370,16 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 
 	auto clMa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof ma, &ma, err);
 	(*Fa).ma = ma;
-	auto clMFit = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof lmfit, & lmfit, err);
+	(*Fa).Lmfit = lmfit;
+	//auto clMFit = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof lmfit, & lmfit, err);
 	m = lmfit + 1;
 	lmfit1 = m;
-	auto clMFit1 = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof m, &m, err);
-	auto clLastMa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastma, &llastma, err);
-	auto clMLastOne = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastone, &llastone, err);
+	(*Fa).Lmfit1 = lmfit1;
+	//(*Fa).lastone = llastone;
+	//(*Fa).lastma = llastma;
+	//auto clMFit1 = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof m, &m, err);
+	//auto clLastMa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastma, &llastma, err);
+	//auto clMLastOne = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastone, &llastone, err);
 	m = ma - 2 - n_ph_par;
 	(*Fa).Ncoef0 = m;
 	//auto clNCoef0 = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof m, &m, err);
@@ -404,14 +409,14 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	(*Fa).Dg_block = m;
 	//auto clDbBlock = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof m, &m, err);
 	
-	double* pa, * pg, * pal, * pco, * pdytemp, * pytemp;
-	
-	pa = vector_double(CUDA_Grid_dim_precalc * (Numfac + 1) * sizeof(double));
-	pg = vector_double(CUDA_Grid_dim_precalc * (Numfac + 1) * (n_coef + 1) * sizeof(double));
-	pal = vector_double(CUDA_Grid_dim_precalc * (lmfit + 1) * (lmfit + 1) * sizeof(double));
-	pco = vector_double(CUDA_Grid_dim_precalc * (lmfit + 1) * (lmfit + 1) * sizeof(double));
-	pdytemp = vector_double(CUDA_Grid_dim_precalc * (max_l_points + 1) * (ma + 1) * sizeof(double));
-	pytemp = vector_double(CUDA_Grid_dim_precalc * (max_l_points + 1) * sizeof(double));
+	//double* pa, * pg, * pal, * pco, * pdytemp, * pytemp;
+	//
+	//pa = vector_double(CUDA_Grid_dim_precalc * (Numfac + 1) * sizeof(double));
+	//pg = vector_double(CUDA_Grid_dim_precalc * (Numfac + 1) * (n_coef + 1) * sizeof(double));
+	//pal = vector_double(CUDA_Grid_dim_precalc * (lmfit + 1) * (lmfit + 1) * sizeof(double));
+	//pco = vector_double(CUDA_Grid_dim_precalc * (lmfit + 1) * (lmfit + 1) * sizeof(double));
+	//pdytemp = vector_double(CUDA_Grid_dim_precalc * (max_l_points + 1) * (ma + 1) * sizeof(double));
+	//pytemp = vector_double(CUDA_Grid_dim_precalc * (max_l_points + 1) * sizeof(double));
 	
 	// TODO: FIX THIS
 	/*texArea = nullptr;
@@ -430,6 +435,10 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 
 	//auto paSize = CUDA_Grid_dim_precalc * (Numfac + 1) * sizeof(double);
 	//auto clTexArea = cl::Buffer(context, CL_MEM_READ_WRITE, paSize, &pa, err);
+	std::fill_n((*Fa).isNiter, MAX_N_ITER, 0);
+	std::fill_n((*Fa).isAlamda, MAX_N_ITER, 0);
+	std::fill_n((*Fa).isInvalid, MAX_N_ITER, 0);
+	std::fill_n((*Fa).isReported, MAX_N_ITER, 0);
 
 	auto pFaSize = sizeof(FuncArrays);
 	//pFa = static_cast<varholder*>(malloc(pFaSize));
@@ -472,9 +481,9 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	for (m = 0; m < CUDA_Grid_dim_precalc; m++)
 	{
 		auto pt = &static_cast<freq_context2*>(pcc2)[m];
-		pt->isInvalid = 0;
-		pt->isAlamda = 0;
-		pt->isNiter = 0;
+		//pt->isInvalid = 0;
+		//pt->isAlamda = 0;
+		//pt->isNiter = 0;
 				
 		std::fill_n(pt->Area, (MAX_N_FAC + 1), 0.0);
 		std::fill_n(pt->cg, (MAX_N_PAR + 1), 0.0);
@@ -612,12 +621,14 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 #pragma region SetKernelArgs
 	kernelCalculateFinish.setArg(0, CUDA_CC2);
 	kernelCalculateFinish.setArg(1, CUDA_FR);
+	kernelCalculateFinish.setArg(2, clFa);
 	
 	kernelCalculatePrepare.setArg(0, CUDA_CC2);
 	kernelCalculatePrepare.setArg(1, CUDA_FR);
 	kernelCalculatePrepare.setArg(2, sizeof max_test_periods, &max_test_periods);
 	kernelCalculatePrepare.setArg(4, sizeof freq_start, &freq_start);
 	kernelCalculatePrepare.setArg(5, sizeof freq_step, &freq_step);
+	kernelCalculatePrepare.setArg(6, clFa);
 	
 	kernelCalculatePreparePole.setArg(0, CUDA_CC2);
 	kernelCalculatePreparePole.setArg(1, CUDA_FR);
@@ -635,6 +646,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	kernelCalculateIter1Begin.setArg(4, sizeof(int), &n_iter_max);
 	kernelCalculateIter1Begin.setArg(5, sizeof(double), &iter_diff_max);
 	kernelCalculateIter1Begin.setArg(6, sizeof(double), &aLambda_start);
+	kernelCalculateIter1Begin.setArg(7, clFa);
 
 	kernelCalculateIter1Mrqcof1Start.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqcof1Start.setArg(1, clFa);
@@ -779,11 +791,12 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				clFinish(queue());
 				//queue.enqueueReadBuffer(CUDA_CC2, CL_BLOCKING, 0, pcc2Size, pcc2);
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
-				//queue.enqueueBarrierWithWaitList();
+				queue.enqueueBarrierWithWaitList();
 
 				for (iC = 1; iC < l_curves; iC++)
 				{
-					kernelCalculateIter1Mrqcof1Matrix.setArg(2, sizeof (l_points[iC]), &(l_points[iC]));
+					kernelCalculateIter1Mrqcof1Matrix.setArg(2, l_points[iC]);
+					queue.enqueueBarrierWithWaitList();
 																// NOTE: CudaCalculateIter1Mrqcof1Matrix(l_points[iC]);					//<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >>
 					ce = queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Matrix, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 					clFinish(queue());

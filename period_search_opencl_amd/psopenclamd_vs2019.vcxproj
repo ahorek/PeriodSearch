@@ -291,6 +291,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Kernel_sequence.txt" />
     <Text Include="period_search\ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -312,7 +313,6 @@
     <ClCompile Include="period_search\covsrt.c" />
     <ClCompile Include="period_search\cpp.hint" />
     <ClCompile Include="period_search\ellfit.cpp" />
-    <ClCompile Include="period_search\FreqContext.cpp" />
     <ClCompile Include="period_search\host_dot_product.c" />
     <ClCompile Include="period_search\lubksb.c" />
     <ClCompile Include="period_search\ludcmp.c" />

@@ -48,17 +48,58 @@ void mrqcof_start(
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
 	   //curv(CUDA_LCC, Fa, a, brtmpl, brtmph, Fa->Numfac, Fa->Mmax, Fa->Lmax);
-	//curv(CUDA_LCC, Fa, a, brtmpl, brtmph);
+		//curv(CUDA_LCC, Fa, a, brtmpl, brtmph);
 
 	if (threadIdx.x == 0)
 	{
+		/* blmatrix */
+		double cb, sb, cl, sl, bet, lam;
+		bet = a[Fa->ma - 4 - Fa->Nphpar];
+		lam = a[Fa->ma - 3 - Fa->Nphpar];
+
+		cb = cos(bet);
+		sb = sin(bet);
+		cl = cos(lam);
+		sl = sin(lam);
+		int x = blockIdx.x;
+		Fa->Blmat[x][1][1] = cb * cl;
+		Fa->Blmat[x][1][2] = cb * sl;
+		Fa->Blmat[x][1][3] = -sb;
+		Fa->Blmat[x][2][1] = -sl;
+		Fa->Blmat[x][2][2] = cl;
+		Fa->Blmat[x][2][3] = 0;
+		Fa->Blmat[x][3][1] = sb * cl;
+		Fa->Blmat[x][3][2] = sb * sl;
+		Fa->Blmat[x][3][3] = cb;
+
+		/* Ders. of Blmat w.r.t. bet */
+		Fa->Dblm[x][1][1][1] = -sb * cl;
+		Fa->Dblm[x][1][1][2] = -sb * sl;
+		Fa->Dblm[x][1][1][3] = -cb;
+		Fa->Dblm[x][1][2][1] = 0;
+		Fa->Dblm[x][1][2][2] = 0;
+		Fa->Dblm[x][1][2][3] = 0;
+		Fa->Dblm[x][1][3][1] = cb * cl;
+		Fa->Dblm[x][1][3][2] = cb * sl;
+		Fa->Dblm[x][1][3][3] = -sb;
+		/* Ders. w.r.t. lam */
+		Fa->Dblm[x][2][1][1] = -cb * sl;
+		Fa->Dblm[x][2][1][2] = cb * cl;
+		Fa->Dblm[x][2][1][3] = 0;
+		Fa->Dblm[x][2][2][1] = -cl;
+		Fa->Dblm[x][2][2][2] = -sl;
+		Fa->Dblm[x][2][2][3] = 0;
+		Fa->Dblm[x][2][3][1] = -sb * sl;
+		Fa->Dblm[x][2][3][2] = sb * cl;
+		Fa->Dblm[x][2][3][3] = 0;
 
 
-		//   #ifdef YORP
-		//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
-		  // #else
-		blmatrix(CUDA_LCC, a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
-		//   #endif
+		//printf("blmatrix >>> [%d][%d]: cb: %.6f, cl: %.6f, sb: %.6f, Dblm[1][3][3]: % .6f\n", blockIdx.x, threadIdx.x, cb, cl, sb, Fa->Dblm[x][1][3][3]);
+
+
+		//blmatrix(CUDA_LCC, a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
+		
+
 		(*CUDA_LCC).trial_chisq = 0;
 		(*CUDA_LCC).np = 0;
 		(*CUDA_LCC).np1 = 0;
@@ -80,6 +121,8 @@ void mrqcof_start(
 	}
 
 	brtmph = Fa->Lmfit / BLOCK_DIM;
+
+
 	if (Fa->Lmfit % BLOCK_DIM)
 	{
 		brtmph++;
@@ -99,6 +142,11 @@ void mrqcof_start(
 		for (k = 1; k <= j; k++)
 		{
 			alpha[j * (Fa->Lmfit1) + k] = 0;
+
+			//if (blockIdx.x == 1 && threadIdx.x == 0)
+			//{
+			//	printf("mrqcof_start >>> [%d][%d] alpha[%d]: % .6f\n", blockIdx.x, threadIdx.x, j * (Fa->Lmfit1) + k, alpha[j * (Fa->Lmfit1) + k]);
+			//}
 		}
 
 		beta[j] = 0;
@@ -153,16 +201,18 @@ void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* 
 
 	*/
 
-	__local int Np;
+	/*__local int Np;
 	if (get_group_id(0) == 0)
 	{
 		Np = (*CUDA_LCC).np;
 	}
 
-	barrier(CLK_LOCAL_MEM_FENCE);
+	barrier(CLK_LOCAL_MEM_FENCE);*/
 
-	//matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
-	matrix_neo(CUDA_LCC, Fa, a, Np, Lpoints);
+	printf("mrqcof_matrix >>>\n");
+
+	matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
+	//matrix_neo(CUDA_LCC, Fa, a, Np, Lpoints);
 }
 
 void mrqcof_curve1(
@@ -191,9 +241,9 @@ void mrqcof_curve1(
 	lave = (*CUDA_LCC).ave;
 	//barrier(CLK_LOCAL_MEM_FENCE) // TODO: Test it. If it is needed put everithing inside first check for globalIdx.x == 0). Otherwise just delete this line.
 
-	/*if (threadIdx.x == 0) {
-		printf("mrqcof_curve1 >>> [%d][%d]\t%d,  % .6f\n", blockIdx.x, threadIdx.x, lnp, lave);
-	}*/
+	//if (threadIdx.x == 0) {
+	//	printf("mrqcof_curve1 >>> [%d][%d]\t%d,  % .6f\n", blockIdx.x, threadIdx.x, lnp, (*CUDA_LCC).ave);
+	//}
 
 	//precalc thread boundaries
 	/*__private int brtmph, brtmpl;
@@ -243,7 +293,7 @@ void mrqcof_curve1(
 	//} while (j_p >= brtmpl);
 
 	//__syncthreads();
-	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 	if (Inrel == 1) {
 		int tmph, tmpl;
@@ -264,7 +314,11 @@ void mrqcof_curve1(
 			ixx++;
 			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
 
-			//if (blockIdx.x == 2)
+			// TODO: there are couple of differences compared to cuda_app
+			//  2/49  dytemp[7851]:  0.198331
+			//  2/50  dytemp[8008]: -1.785283
+//  
+			//if (blockIdx.x == 9)
 			//	printf("%2d/%2d  dytemp[%3d]: % .6f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).dytemp[ixx]);
 
 			//jp>=2
@@ -285,6 +339,7 @@ void mrqcof_curve1(
 			//	printf("[%d][%d]  \tytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
 				//printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
 		}
+		
 		//if (blockIdx.x == 2) {
 		//	printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
 		//}
@@ -320,8 +375,8 @@ void mrqcof_curve1(
 		(*CUDA_LCC).np = lnp + Lpoints;
 		(*CUDA_LCC).ave = lave;
 
-		//if (blockIdx.x == 2)
-		//	printf("[%d][%d]  \tave: % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave);
+		if (blockIdx.x == 2)
+			printf("mrqcof_curve1 >> [%d][%d]  \tave: % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave);
 	}
 }
 

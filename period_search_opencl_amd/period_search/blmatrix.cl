@@ -17,7 +17,7 @@ void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const d
     sb = sin(bet);
     cl = cos(lam);
     sl = sin(lam);
-    (*CUDA_LCC).Blmat[1][1] = cb * cl;
+    /*(*CUDA_LCC).Blmat[1][1] = cb * cl;
     (*CUDA_LCC).Blmat[1][2] = cb * sl;
     (*CUDA_LCC).Blmat[1][3] = -sb;
     (*CUDA_LCC).Blmat[2][1] = -sl;
@@ -25,13 +25,13 @@ void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const d
     (*CUDA_LCC).Blmat[2][3] = 0;
     (*CUDA_LCC).Blmat[3][1] = sb * cl;
     (*CUDA_LCC).Blmat[3][2] = sb * sl;
-    (*CUDA_LCC).Blmat[3][3] = cb;
+    (*CUDA_LCC).Blmat[3][3] = cb;*/
 
     //printf("blmatrix >>> [%d][%d]: \tbet: % .6f, lam: % .6f\n", blockIdx.x, threadIdx.x, bet, lam);
     //printf("blmatrix >>> [%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1]);
 
     /* Ders. of Blmat w.r.t. bet */
-    (*CUDA_LCC).Dblm[1][1][1] = -sb * cl;
+    /*(*CUDA_LCC).Dblm[1][1][1] = -sb * cl;
     (*CUDA_LCC).Dblm[1][1][2] = -sb * sl;
     (*CUDA_LCC).Dblm[1][1][3] = -cb;
     (*CUDA_LCC).Dblm[1][2][1] = 0;
@@ -39,9 +39,10 @@ void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const d
     (*CUDA_LCC).Dblm[1][2][3] = 0;
     (*CUDA_LCC).Dblm[1][3][1] = cb * cl;
     (*CUDA_LCC).Dblm[1][3][2] = cb * sl;
-    (*CUDA_LCC).Dblm[1][3][3] = -sb;
+    (*CUDA_LCC).Dblm[1][3][3] = -sb;*/
+
     /* Ders. w.r.t. lam */
-    (*CUDA_LCC).Dblm[2][1][1] = -cb * sl;
+    /*(*CUDA_LCC).Dblm[2][1][1] = -cb * sl;
     (*CUDA_LCC).Dblm[2][1][2] = cb * cl;
     (*CUDA_LCC).Dblm[2][1][3] = 0;
     (*CUDA_LCC).Dblm[2][2][1] = -cl;
@@ -49,5 +50,8 @@ void blmatrix(__global struct freq_context2* CUDA_LCC, const double bet, const d
     (*CUDA_LCC).Dblm[2][2][3] = 0;
     (*CUDA_LCC).Dblm[2][3][1] = -sb * sl;
     (*CUDA_LCC).Dblm[2][3][2] = sb * cl;
-    (*CUDA_LCC).Dblm[2][3][3] = 0;
+    (*CUDA_LCC).Dblm[2][3][3] = 0;*/
+
+
+    //printf("blmatrix >>> [%d][%d]: cb: %.6f, cl: %.6f, sb: %.6f, Dblm[1][3][3]: % .6f\n", blockIdx.x, threadIdx.x, cb, cl, sb, (*CUDA_LCC).Dblm[1][3][3]);
 }

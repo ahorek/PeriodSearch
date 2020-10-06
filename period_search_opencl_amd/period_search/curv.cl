@@ -4,10 +4,10 @@
 */
 
 void curv(
-    __global struct freq_context2 *CUDA_LCC, 
-    __global struct FuncArrays* Fa, 
+    __global struct freq_context2* CUDA_LCC,
+    __global struct FuncArrays* Fa,
     double cg[],
-    int brtmpl, 
+    int brtmpl,
     int brtmph)
     //int i) 
     //__read_only int Numfac,
@@ -39,7 +39,7 @@ void curv(
                 }
                 g = g + Fa->Pleg[i][l][m] * fsum;
             }
-        
+
 
         g = exp(g);
         (*CUDA_LCC).Area[i] = Fa->Darea[i] * g;
@@ -47,14 +47,17 @@ void curv(
         for (k = 1; k <= n; k++)
         {
             (*CUDA_LCC).Dg[i + k * Numfac1] = g * Fa->Dsph[i][k];
+            (*CUDA_LCC).texDg[i + k * Numfac1].x = double2loint((*CUDA_LCC).Dg[i + k * Numfac1]);
+            (*CUDA_LCC).texDg[i + k * Numfac1].y = double2hiint((*CUDA_LCC).Dg[i + k * Numfac1]);
+
             //if (blockIdx.x == 2)
             //    printf("curv >>> [%d][%d] i: %d, k: %d, Numfac1: %d, Dg[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, k, Numfac1, i + k * Numfac1, (*CUDA_LCC).Dg[i + k * Numfac1]);
-                
+
             //printf("curv >> [%d][%d]  \ti: %d\tbrtmpl: %d\tbrtmph: %d\n", blockIdx.x, threadIdx.x, i, brtmpl, brtmph);
         }
 
         //if (blockIdx.x == 2)
-        //    printf("curv >>> [%d][%d] \ti: %d\tArea[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, i, (*CUDA_LCC).Area[i]);
+        //    printf("curv >>> [%d][%d] \ti: %d\tArea[%d]: % .6f, Darea[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, i, (*CUDA_LCC).Area[i], i, Fa->Darea[i]);
     }
 
     //__syncthreads();

@@ -12,7 +12,6 @@
     <ClCompile Include="period_search\areanorm.cpp" />
     <ClCompile Include="period_search\cpp.hint" />
     <ClCompile Include="period_search\ellfit.cpp" />
-    <ClCompile Include="period_search\FreqContext.cpp" />
     <ClCompile Include="period_search\period_search_BOINC.cpp" />
     <ClCompile Include="period_search\sphfunc.cpp" />
     <ClCompile Include="period_search\Start_OpenCl.cpp">
@@ -104,6 +103,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="period_search\ReadMe.txt" />
+    <Text Include="Kernel_sequence.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header files">

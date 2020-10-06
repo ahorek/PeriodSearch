@@ -19,7 +19,7 @@ struct FreqContext
 	double Ochisq, Chisq, Alamda;
 	double atry[MAX_N_PAR + 1], beta[MAX_N_PAR + 1], da[MAX_N_PAR + 1];
 	double Blmat[4][4];
-	double Dblm[3][4][4];
+	double Dblm[4][4][4];
 	//mrqcof locals
 	double dyda[MAX_N_PAR + 1], dave[MAX_N_PAR + 1];
 	double trial_chisq, ave;
