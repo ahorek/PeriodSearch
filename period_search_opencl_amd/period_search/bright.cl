@@ -295,8 +295,8 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	blockIdx.x = get_group_id(0);
 	//jp = jpp;
 
-	if (blockIdx.x == 2 && threadIdx.x == 0)
-		printf("[%d]  %d\n", threadIdx.x, jp);
+	//if (blockIdx.x == 2 && threadIdx.x == 0)
+	//	printf("[%d]  %d\n", threadIdx.x, jp);
 
 	ncoef0 = Fa->Ncoef0;//ncoef - 2 - CUDA_Nphpar;
 	ncoef = Fa->ma;

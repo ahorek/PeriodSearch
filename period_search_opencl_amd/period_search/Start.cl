@@ -45,7 +45,7 @@ __kernel void CLCalculatePrepare(
 	__read_only int max_test_periods,
 	__read_only int n_start,
 	double freq_start,
-	double freq_step, 
+	double freq_step,
 	__global struct FuncArrays* Fa)
 {
 	//PrintSizes();
@@ -64,7 +64,7 @@ __kernel void CLCalculatePrepare(
 		printf("n_start: %d, id: %d, max_test_periods: %d\n", n_start, threadIdx.x, max_test_periods);
 
 	int n = n_start + threadIdx.x;
-	
+
 	//zero context
 	//	CUDA_CC is zeroed itself as global memory but need to reset between freq TODO
 	if (n > max_test_periods)
@@ -113,10 +113,10 @@ __kernel void CLCalculatePreparePole(
 
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 	__global struct freq_result* CUDA_LFR = &CUDA_FR[blockIdx.x];
-	
+
 	int localId = get_local_id(0);
 	//if ( blockIdx.x == 0)
-		printf("[%d] Ncoef = %d, Nphpar = %d, isInvalid = %d\n", blockIdx.x, Fa->Ncoef, Fa->Nphpar, Fa->isInvalid[blockIdx.x]);
+	printf("[%d] Ncoef = %d, Nphpar = %d, isInvalid = %d\n", blockIdx.x, Fa->Ncoef, Fa->Nphpar, Fa->isInvalid[blockIdx.x]);
 
 
 	if (Fa->isInvalid[blockIdx.x])
@@ -225,7 +225,7 @@ __kernel void CLCalculateIter1Begin(
 
 	//Fa->isNiter[blockIdx.x] = (((*CUDA_LCC).Niter < n_iter_max) && ((*CUDA_LCC).iter_diff > iter_diff_max)) || ((*CUDA_LCC).Niter < n_iter_min);
 	Fa->isNiter[blockIdx.x] = (((*CUDA_LCC).Niter < n_iter_max) && ((*CUDA_LCC).iter_diff > iter_diff_max)) || ((*CUDA_LCC).Niter < n_iter_min);
-	
+
 	if (Fa->isNiter[blockIdx.x])
 	{
 		if ((*CUDA_LCC).Alamda < 0)
@@ -255,6 +255,8 @@ __kernel void CLCalculateIter1Begin(
 __kernel void CLCalculateIter1Mrqcof1Start(
 	__global struct freq_context2* CUDA_CC,
 	__global varholder* Fa)
+	//__global double* alpha,
+	//__global double* beta)
 	//__read_only int Numfac,
 	//__read_only int Mmax,
 	//__read_only int Lmax)
@@ -296,7 +298,7 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 	//{
 	//	if (blockIdx.x == 1)
 	//		printf("curv >> [%d][%d]  \ti: %d\tbrtmpl: %d\tbrtmph: %d\n", blockIdx.x, threadIdx.x, i, brtmpl, brtmph);*/
-		curv(CUDA_LCC, Fa, (*CUDA_LCC).cg, brtmpl, brtmph);
+	curv(CUDA_LCC, Fa, (*CUDA_LCC).cg, brtmpl, brtmph);
 	//}
 
 	//__syncthreads();
@@ -308,13 +310,13 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 	//mrqcof_start(Fa->isAlamda[blockIdx.x]);
 
 	//printf("groupId[%d], localId[%d], globalId[%d]\n", get_group_id(0), get_local_id(0), get_global_id(0));
-	mrqcof_start(&(*CUDA_LCC), Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
 
-	//if (blockIdx.x == 1 && threadIdx.x == 5)
-	//{
-	//	printf("mrqcof afterStart >>> [%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1], (*CUDA_LCC).Blmat[3][1]);
-	//	//printf("[%d][%d]: \t% .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).e_3[jp], (*CUDA_LCC).e0_3[jp]);
-	//}
+	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+
+	//int idx = blockIdx.x * (MAX_N_PAR + 1);// +threadIdx.x;
+	//__global double* l_beta = &beta[idx];
+
+	//mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, alpha, l_beta);
 }
 
 __kernel void CLCalculateIter1Mrqcof1Matrix(
@@ -398,11 +400,11 @@ __kernel void CLCalculateIter1Mrqcof1Curve1(
 		bright(CUDA_LCC, Fa, (*CUDA_LCC).cg, jp, Lpoints + 1, inrel);
 	}
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-	
+
 	/*if(threadIdx.x == 0)
 		printf("1Mrqcof1Curve1 >> [%d][%d]\n", blockIdx.x, threadIdx.x);*/
 
-	//mrqcof_curve1(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).cg, (*CUDA_LCC).beta, _inrel, _lpoints); //, _np, _ave); //(*CUDA_LCC).alpha,
+		//mrqcof_curve1(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).cg, (*CUDA_LCC).beta, _inrel, _lpoints); //, _np, _ave); //(*CUDA_LCC).alpha,
 	mrqcof_curve1(CUDA_LCC, Fa, (*CUDA_LCC).cg, brtmpl, brtmph, inrel, Lpoints); //, _np, _ave); //(*CUDA_LCC).alpha,
 }
 

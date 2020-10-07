@@ -70,37 +70,37 @@ struct freq_context2
 	//double Sig[MAX_N_OBS + 1], Weight[MAX_N_OBS + 1], Brightness[MAX_N_OBS + 1];
 
 	cl_int4 texDg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
+	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
 	double Dg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
+	double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
+	double de[POINTS_MAX + 1][4][4];
+	double de0[POINTS_MAX + 1][4][4];
 	double e_1[POINTS_MAX + 1];
 	double e_2[POINTS_MAX + 1];
 	double e_3[POINTS_MAX + 1];
 	double e0_1[POINTS_MAX + 1];
 	double e0_2[POINTS_MAX + 1];
 	double e0_3[POINTS_MAX + 1];
-	double de[POINTS_MAX + 1][4][4];
-	double de0[POINTS_MAX + 1][4][4];
 	double jp_Scale[POINTS_MAX + 1];
 	double jp_dphp_1[POINTS_MAX + 1];
 	double jp_dphp_2[POINTS_MAX + 1];
 	double jp_dphp_3[POINTS_MAX + 1];
-	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
 	double ytemp[POINTS_MAX + 1];
-	//int texAr[MAX_N_FAC + 1][4];
-	double cg[MAX_N_PAR + 1];
 	double Area[MAX_N_FAC + 1];
+
+	double cg[MAX_N_PAR + 1];
+	double da[MAX_N_PAR + 1];
 	double dyda[MAX_N_PAR + 1];
 	double dave[MAX_N_PAR + 1];
-	double alpha[MAX_N_PAR + 1];
 	double atry[MAX_N_PAR + 1];
-	double beta[MAX_N_PAR + 1];
-	double da[MAX_N_PAR + 1];
 	double covar[MAX_N_PAR + 1];
+	double beta[MAX_N_PAR + 1];
 	/*double Blmat[4][4];
 	double Dblm[4][4][4];*/
-	double chck[4];
 	int indxc[MAX_N_PAR + 1];
 	int indxr[MAX_N_PAR + 1];
 	int ipiv[MAX_N_PAR + 1];
+	double chck[4];
 	double iter_diff, rchisq, dev_old, dev_new;
 	double trial_chisq, ave;
 	double freq;
@@ -111,7 +111,7 @@ struct freq_context2
 };
 
 //extern __declspec(align(4)) freq_context2* CUDA_CC2;
-extern freq_context2* CUDA_CC2;
+//extern freq_context2* CUDA_CC2;
 
 // TODO: 1) Define "Texture" like Texture<int2> as it is pointless to define multi dimensional vector type. Use this:
 // TODO: 2) Rename form "Texture" to something more suitable for the case like 'Matrix'...
@@ -152,7 +152,7 @@ struct freq_result
 };
 
 //extern freq_result CUDA_FR;
-extern __declspec(align(4)) freq_result* CUDA_FR;
+//extern __declspec(align(4)) freq_result* CUDA_FR;
 
 typedef struct FuncArrays
 {

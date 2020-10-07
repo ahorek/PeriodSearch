@@ -12,12 +12,12 @@ for (m = 1; m <= N_POLES; m++)
 	
 		for (iC = 1; iC < l_curves; iC++)
 		{
-			kernelCalculateIter1Mrqcof1Matrix
-			kernelCalculateIter1Mrqcof1Curve1 - Tested bright: OK, next - mrqcof_curve1
-			kernelCalculateIter1Mrqcof1Curve2
+			kernelCalculateIter1Mrqcof1Matrix - OK	26.09.2020
+			kernelCalculateIter1Mrqcof1Curve1 - OK	06.10.2020
+			kernelCalculateIter1Mrqcof1Curve2 - OK	07.10.2020
 		}
 	
-		kernelCalculateIter1Mrqcof1Curve1Last
+		kernelCalculateIter1Mrqcof1Curve1Last - 
 		kernelCalculateIter1Mrqcof1Curve2
 		kernelCalculateIter1Mrqcof1End
 		kernelCalculateIter1Mrqmin1End

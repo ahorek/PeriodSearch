@@ -18,7 +18,7 @@ void mrqcof_start(
 	__global struct FuncArrays* Fa,
 	__global double a[],
 	__global double* alpha,
-	__global double beta[])
+	__global double* beta)
 	//__read_only int Numfac,
 	//__read_only int Mmax,
 	//__read_only int Lmax)
@@ -141,7 +141,7 @@ void mrqcof_start(
 	{
 		for (k = 1; k <= j; k++)
 		{
-			alpha[j * (Fa->Lmfit1) + k] = 0;
+			alpha[j * (Fa->Lmfit1) + k] = 0.0;
 
 			//if (blockIdx.x == 1 && threadIdx.x == 0)
 			//{
@@ -149,10 +149,20 @@ void mrqcof_start(
 			//}
 		}
 
-		beta[j] = 0;
+		// TODO: Coment this in when done investigating beta[39] - beta[46] issue!
+		beta[j] = 0.0;
+		//Fa->beta[blockIdx.x][j] = 0;
+
+		//if (blockIdx.x == 0)
+		//	printf("mrqcof_start >>> [%d][%d][idx]  beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[idx]);
 	}
 
+	//int idx = (blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x);
+	//beta[idx] = 1.0;
+	//write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+
 	////__syncthreads(); //for sure
+	//write_mem_fence(CLK_GLOBAL_MEM_FENCE);
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 

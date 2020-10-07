@@ -20,7 +20,7 @@ New epoch of zero time  2457320.000000
 Wild guess for initial sphere size is 1.39517
 Suggested scaled a,b,c: 1.46554 1.39575 1.32596
 
-03:23:16 | Fraction done: 0.0001% (start signal)
+19:01:21 | Fraction done: 0.0001% (start signal)
 n_start: 1, id: 2, max_test_periods: 10
 n_start: 1, id: 8, max_test_periods: 10
 n_start: 1, id: 0, max_test_periods: 10
@@ -31,29 +31,36 @@ n_start: 1, id: 4, max_test_periods: 10
 n_start: 1, id: 3, max_test_periods: 10
 n_start: 1, id: 9, max_test_periods: 10
 n_start: 1, id: 5, max_test_periods: 10
-CUDA_LCC[6].freq = 0.093423
-CUDA_LCC[0].freq = 0.093481
-CUDA_LCC[4].freq = 0.093443
-CUDA_LCC[8].freq = 0.093404
 CUDA_LCC[2].freq = 0.093462
-CUDA_LCC[1].freq = 0.093471
-CUDA_LCC[3].freq = 0.093452
+CUDA_LCC[0].freq = 0.093481
 CUDA_LCC[7].freq = 0.093414
+CUDA_LCC[4].freq = 0.093443
+CUDA_LCC[3].freq = 0.093452
+CUDA_LCC[6].freq = 0.093423
+CUDA_LCC[1].freq = 0.093471
 CUDA_LCC[5].freq = 0.093433
 CUDA_LCC[9].freq = 0.093395
-[2] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[8] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[6] Ncoef = 49, Nphpar = 3, isInvalid = 0
+CUDA_LCC[8].freq = 0.093404
 [0] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[6] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[8] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[2] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [1] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [7] Ncoef = 49, Nphpar = 3, isInvalid = 0
-[9] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [3] Ncoef = 49, Nphpar = 3, isInvalid = 0
+[9] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [4] Ncoef = 49, Nphpar = 3, isInvalid = 0
 [5] Ncoef = 49, Nphpar = 3, isInvalid = 0
 Iter1Mrqcof1Matrix >>> isInvalid: 0
 Iter1Mrqcof1Matrix >>> isInvalid: 0, isNiter: 1, isAlamda: 1
-[0]  1
-[0]  2
-[2][0]  	lave:  513.766055
 mrqcof_curve1 >> [2][0]  	ave:  513.766055
+[6][0] np2: 156, trial_chisq:  11.450704781
+[0][0] np2: 156, trial_chisq:  11.290932200
+[7][0] np2: 156, trial_chisq:  11.234451131
+[1][0] np2: 156, trial_chisq:  11.676330945
+[8][0] np2: 156, trial_chisq:  11.470579133
+[2][0] np2: 156, trial_chisq:  11.337848674
+[4][0] np2: 156, trial_chisq:  11.333796906
+[3][0] np2: 156, trial_chisq:  11.616488056
+[9][0] np2: 156, trial_chisq:  11.114711878
+[5][0] np2: 156, trial_chisq:  11.445539522

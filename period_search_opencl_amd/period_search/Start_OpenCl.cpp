@@ -75,7 +75,8 @@ cl::Buffer CUDA_par;
 freq_result* CUDA_FR __attribute__((aligned(4)));
 FuncArrays* Fa __attribute__((aligned(4)));
 #else
-__declspec(align(4)) freq_result* CUDA_FR;
+__declspec(align(4)) freq_context2* pcc2;
+__declspec(align(4)) freq_result* pfr;
 __declspec(align(4)) FuncArrays* Fa;
 #endif
 
@@ -280,8 +281,9 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	double iter_diff_max;
 	freq_result* res;
 	//freq_context2* pcc2;
-	void* pcc2; // *pcc
-	void* pfr, * pbrightness, * psig;
+	//void* pcc2; // *pcc
+	//void* pfr,
+	void* pbrightness, * psig;
 
 	max_test_periods = 10;
 	sum_dark_facet = 0.0;
@@ -375,8 +377,8 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	m = lmfit + 1;
 	lmfit1 = m;
 	(*Fa).Lmfit1 = lmfit1;
-	//(*Fa).lastone = llastone;
-	//(*Fa).lastma = llastma;
+	(*Fa).lastone = llastone;
+	(*Fa).lastma = llastma;
 	//auto clMFit1 = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof m, &m, err);
 	//auto clLastMa = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastma, &llastma, err);
 	//auto clMLastOne = cl::Buffer(context, CL_MEM_READ_ONLY, sizeof llastone, &llastone, err);
@@ -394,15 +396,13 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	
 
 	auto pcc2Size = CUDA_Grid_dim_precalc * sizeof(freq_context2);
-	//pcc2 = static_cast<freq_context2*>(malloc(pcc2Size));
-	pcc2 = static_cast<freq_context2*>(malloc(CUDA_Grid_dim_precalc * sizeof(freq_context2)));
-	
-	auto CUDA_CC2 = cl::Buffer(context, CL_MEM_READ_WRITE, pcc2Size, pcc2, err);
+	pcc2 = static_cast<freq_context2*>(malloc(pcc2Size));
+	auto CUDA_CC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, pcc2Size, pcc2, err);
 	//queue.enqueueWriteBuffer(CUDA_CC2, CL_TRUE, 0, pcc2Size, pcc2);
 
 	auto frSize = CUDA_Grid_dim_precalc * sizeof(freq_result);
 	pfr = static_cast<freq_result*>(malloc(frSize));
-	auto CUDA_FR = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, frSize, &pfr, err);
+	auto CUDA_FR = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, frSize, pfr, err);
 	queue.enqueueWriteBuffer(CUDA_FR, CL_BLOCKING, 0, frSize, pfr);
 
 	m = (Numfac + 1) * (n_coef + 1);
@@ -489,11 +489,21 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 		std::fill_n(pt->cg, (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->dytemp, (POINTS_MAX + 1) * (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->Dg, (MAX_N_FAC + 1) * (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->ytemp, (POINTS_MAX + 1), 0.0);
+		std::fill_n(pt->alpha, (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->beta, (MAX_N_PAR + 1), 0.0);
 	}
-
-	
+		
 	queue.enqueueWriteBuffer(CUDA_CC2, CL_TRUE, 0, pcc2Size, pcc2);
-	//queue.enqueueWriteBuffer(CUDA_CC2, CL_BLOCKING, 0, pFaSize, pcc2);
+
+	double **alpha, **beta;
+	alpha = matrix_double(MAX_N_PAR + 1, CUDA_Grid_dim_precalc);
+	//std::fill_n(alpha, (MAX_N_PAR + 1) * CUDA_Grid_dim_precalc, 0.0);
+	beta = matrix_double(MAX_N_PAR + 1, CUDA_Grid_dim_precalc);
+	//std::fill_n(beta, (MAX_N_PAR + 1) * CUDA_Grid_dim_precalc, 0.0);
+	cl::Buffer clAlpha = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, CUDA_Grid_dim_precalc * (MAX_N_PAR + 1) * sizeof(double), &alpha, err);
+	cl::Buffer clBeta = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, CUDA_Grid_dim_precalc * (MAX_N_PAR + 1) * sizeof(double), &beta, err);
+	
 	// Allocate result space
 	res = (freq_result*)malloc(CUDA_Grid_dim_precalc * sizeof(freq_result));
 
@@ -650,6 +660,8 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 
 	kernelCalculateIter1Mrqcof1Start.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqcof1Start.setArg(1, clFa);
+	//kernelCalculateIter1Mrqcof1Start.setArg(2, clAlpha);
+	//kernelCalculateIter1Mrqcof1Start.setArg(3, clBeta);
 
 	kernelCalculateIter1Mrqcof1Matrix.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqcof1Matrix.setArg(1, clFa);
@@ -664,6 +676,8 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	
 	kernelCalculateIter1Mrqcof1Curve2.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqcof1Curve2.setArg(1, clFa);
+	//kernelCalculateIter1Mrqcof1Curve2.setArg(2, clAlpha);
+	//kernelCalculateIter1Mrqcof1Curve2.setArg(3, clBeta);
 	/*kernelCalculateIter1Mrqcof1Curve2.setArg(2, clTexSig);
 	kernelCalculateIter1Mrqcof1Curve2.setArg(3, clTexWeight);
 	kernelCalculateIter1Mrqcof1Curve2.setArg(4, clTexBrightness);*/
