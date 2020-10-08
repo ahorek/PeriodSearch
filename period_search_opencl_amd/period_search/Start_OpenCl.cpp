@@ -492,6 +492,8 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 		std::fill_n(pt->ytemp, (POINTS_MAX + 1), 0.0);
 		std::fill_n(pt->alpha, (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->beta, (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->dyda, (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->dave, (MAX_N_PAR + 1), 0.0);
 	}
 		
 	queue.enqueueWriteBuffer(CUDA_CC2, CL_TRUE, 0, pcc2Size, pcc2);
@@ -514,7 +516,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	std::ifstream intrinsicsFile("period_search/Intrinsics.cl");
 	std::ifstream curvFile("period_search/curv.cl");
 	std::ifstream brightFile("period_search/bright.cl");
-	//std::ifstream convFile("period_search/conv.cl");
+	std::ifstream convFile("period_search/conv.cl");
 	std::ifstream blmatrixFile("period_search/blmatrix.cl");
 	std::ifstream gauserrcFile("period_search/gauss_errc.cl");
 	std::ifstream mrqminFile("period_search/mrqmin.cl");
@@ -528,7 +530,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	st << intrinsicsFile.rdbuf();
 	st << curvFile.rdbuf();
 	st << brightFile.rdbuf();
-	//st << convFile.rdbuf();
+	st << convFile.rdbuf();
 	st << blmatrixFile.rdbuf();
 	st << gauserrcFile.rdbuf();
 	st << mrqminFile.rdbuf();
@@ -544,6 +546,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 	intrinsicsFile.close();
 	curvFile.close();
 	brightFile.close();
+	convFile.close();
 	blmatrixFile.close();
 	gauserrcFile.close();
 	mrqminFile.close();
@@ -839,6 +842,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Curve1Last, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
+				queue.enqueueBarrierWithWaitList();
 																// NOTE: CudaCalculateIter1Mrqcof1Curve2(in_rel[l_curves], l_points[l_curves]);		//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Curve2, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());

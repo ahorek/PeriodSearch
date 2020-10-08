@@ -385,101 +385,114 @@ void mrqcof_curve1(
 		(*CUDA_LCC).np = lnp + Lpoints;
 		(*CUDA_LCC).ave = lave;
 
-		if (blockIdx.x == 2)
-			printf("mrqcof_curve1 >> [%d][%d]  \tave: % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave);
+		//if (blockIdx.x == 2)
+		//	printf("mrqcof_curve1 >> [%d][%d]  \tave: % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave);
 	}
 }
 
-//void mrqcof_curve1_last(
-//	__global struct freq_context2* CUDA_LCC, 
-//	__global varholder* Fa, 
-//	__global int2* texArea, 
-//	__global int2* texDg, 
-//	double a[], 
-//	__global double alpha[], 
-//	double beta[], 
-//	int Inrel, 
-//	int Lpoints)
-//{
-//	int l, jp, lnp;
-//	double ymod, lave;
-//	int3 threadIdx;
-//	threadIdx.x = get_local_id(0);
-//
-//	lnp = (*CUDA_LCC).np;
-//	//
-//	if (threadIdx.x == 0)
-//	{
-//		if (Inrel == 1) /* is the LC relative? */
-//		{
-//			lave = 0;
-//			for (l = 1; l <= Fa->ma; l++)
-//			{
-//				(*CUDA_LCC).dave[l] = 0;
-//			}
-//		}
-//		else
-//		{
-//			lave = (*CUDA_LCC).ave;
-//		}
-//	}
-//	//precalc thread boundaries
-//	int tmph, tmpl;
-//	tmph = Fa->ma / BLOCK_DIM;
-//	if (Fa->ma % BLOCK_DIM) tmph++;
-//	tmpl = threadIdx.x * tmph;
-//	tmph = tmpl + tmph;
-//	if (tmph > Fa->ma) tmph = Fa->ma;
-//	tmpl++;
-//	//
-//	int brtmph, brtmpl;
-//	brtmph = Fa->Numfac / BLOCK_DIM;
-//	if (Fa->Numfac % BLOCK_DIM) brtmph++;
-//	brtmpl = threadIdx.x * brtmph;
-//	brtmph = brtmpl + brtmph;
-//	if (brtmph > Fa->Numfac) brtmph = Fa->Numfac;
-//	brtmpl++;
-//
-//	//__syncthreads();
-//	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-//
-//	for (jp = 1; jp <= Lpoints; jp++)
-//	{
-//		lnp++;
-//
-//		ymod = conv(CUDA_LCC, Fa, texArea, texDg, jp - 1, tmpl, tmph, brtmpl, brtmph);
-//
-//		if (threadIdx.x == 0)
-//		{
-//			(*CUDA_LCC).ytemp[jp] = ymod;
-//
-//			if (Inrel == 1)
-//			{
-//				lave = lave + ymod;
-//			}
-//		}
-//		for (l = tmpl; l <= tmph; l++)
-//		{
-//			(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
-//			if (Inrel == 1)
-//			{
-//				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
-//			}
-//		}
-//
-//		/* save lightcurves */
-//		//__syncthreads();
-//		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-//
-//		/*         if ((*CUDA_LCC).Lastcall == 1) always ==0
-//					 (*CUDA_LCC).Yout[np] = ymod;*/
-//
-//	} /* jp, lpoints */
-//
-//	if (threadIdx.x == 0)
-//	{
-//		(*CUDA_LCC).np = lnp;
-//		(*CUDA_LCC).ave = lave;
-//	}
-//}
+void mrqcof_curve1_last(
+	__global struct freq_context2* CUDA_LCC, 
+	__global varholder* Fa, 
+	//double a[], 
+	//__global double alpha[], 
+	//__global double beta[], 
+	int Inrel, 
+	int Lpoints)
+{
+	int l, jp, lnp;
+	double ymod, lave;
+	int3 threadIdx, blockIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+
+	lnp = (*CUDA_LCC).np;
+	//
+	if (threadIdx.x == 0)
+	{
+		if (Inrel == 1) /* is the LC relative? */
+		{
+			lave = 0;
+			for (l = 1; l <= Fa->ma; l++)
+			{
+				(*CUDA_LCC).dave[l] = 0;
+			}
+		}
+		else
+		{
+			lave = (*CUDA_LCC).ave;
+		}
+	}
+
+	//precalc thread boundaries
+	int tmph, tmpl;
+	tmph = Fa->ma / BLOCK_DIM;
+	if (Fa->ma % BLOCK_DIM) tmph++;
+	tmpl = threadIdx.x * tmph;
+	tmph = tmpl + tmph;
+	if (tmph > Fa->ma) tmph = Fa->ma;
+	tmpl++;
+	//
+	int brtmph, brtmpl;
+	brtmph = Fa->Numfac / BLOCK_DIM;
+	if (Fa->Numfac % BLOCK_DIM) brtmph++;
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > Fa->Numfac) brtmph = Fa->Numfac;
+	brtmpl++;
+
+	//__syncthreads();
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	for (jp = 1; jp <= Lpoints; jp++)
+	{
+		lnp++;
+
+		//ymod = conv(CUDA_LCC, Fa, texArea, texDg, jp - 1, tmpl, tmph, brtmpl, brtmph);
+		ymod = conv(CUDA_LCC, Fa, jp - 1, tmpl, tmph, brtmpl, brtmph);
+
+		if (threadIdx.x == 0)
+		{
+			(*CUDA_LCC).ytemp[jp] = ymod;
+			if (Inrel == 1)
+			{
+				lave = lave + ymod;
+			}
+
+			//if (blockIdx.x == 2)
+			//	printf("[%d][%d] ytemp[%d]: % .16f lave: % .16f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp], lave);
+		}
+
+		for (l = tmpl; l <= tmph; l++)
+		{
+			(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
+			if (Inrel == 1)
+			{
+				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
+			}
+
+			// NOTE: Here we get some tiny differences against CUDA calculations in 13 - 16 symbol after decimal place
+			//if (blockIdx.x == 2) {
+			//	int idx = jp + l * (Lpoints + 1);
+			//	printf("[%d][%d] dytemp[%d]: % .16f dave[%d]: % .16f\n", blockIdx.x, threadIdx.x, idx, (*CUDA_LCC).dytemp[idx], l, (*CUDA_LCC).dave[l]);
+			//}
+		}
+
+		/* save lightcurves */
+		//__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+		/*         if ((*CUDA_LCC).Lastcall == 1) always ==0
+					 (*CUDA_LCC).Yout[np] = ymod;*/
+
+	} /* jp, lpoints */
+
+	if (threadIdx.x == 0)
+	{
+		(*CUDA_LCC).np = lnp;
+		(*CUDA_LCC).ave = lave;
+
+		//if (blockIdx.x == 2)
+		//	printf("mrqcof_curve1_last >> [%d][%d] ave: % .6f, np: %5d\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).ave, (*CUDA_LCC).np);
+	}
+}
 
