@@ -166,21 +166,28 @@ void mrqcof_start(
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
-//double mrqcof_end(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, __global double* alpha)
-//{
-//	int j, k;
-//
-//	for (j = 2; j <= Fa->Lmfit; j++)
-//	{
-//		for (k = 1; k <= j - 1; k++)
-//		{
-//			alpha[k * Fa->Lmfit1 + j] = alpha[j * Fa->Lmfit1 + k];
-//		}
-//	}
-//
-//	// TODO: Check this insain return
-//	return (*CUDA_LCC).trial_chisq;
-//}
+double mrqcof_end(__global struct freq_context2* CUDA_LCC, 
+	__global varholder* Fa, 
+	__global double* alpha)
+{
+	int j, k;
+	int3 blockIdx;
+	blockIdx.x = get_global_id(0);
+
+	for (j = 2; j <= Fa->Lmfit; j++)
+	{
+		for (k = 1; k <= j - 1; k++)
+		{
+			alpha[k * Fa->Lmfit1 + j] = alpha[j * Fa->Lmfit1 + k];
+
+			//if(blockIdx.x == 0)
+			//	printf("[%d] alpha[%d]: % .9f\n", blockIdx.x, k * Fa->Lmfit1 + j, alpha[k * Fa->Lmfit1 + j]);
+		}
+	}
+
+	// TODO: Check this insain return
+	return (*CUDA_LCC).trial_chisq;
+}
 
 void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double a[], int Lpoints)
 {

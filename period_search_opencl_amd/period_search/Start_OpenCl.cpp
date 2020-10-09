@@ -485,15 +485,17 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 		//pt->isAlamda = 0;
 		//pt->isNiter = 0;
 				
+		std::fill_n(pt->Dg, (MAX_N_FAC + 1) * (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->covar, (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0);
+		std::fill_n(pt->dytemp, (POINTS_MAX + 1) * (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->ytemp, (POINTS_MAX + 1), 0.0);
 		std::fill_n(pt->Area, (MAX_N_FAC + 1), 0.0);
 		std::fill_n(pt->cg, (MAX_N_PAR + 1), 0.0);
-		std::fill_n(pt->dytemp, (POINTS_MAX + 1) * (MAX_N_PAR + 1), 0.0);
-		std::fill_n(pt->Dg, (MAX_N_FAC + 1) * (MAX_N_PAR + 1), 0.0);
-		std::fill_n(pt->ytemp, (POINTS_MAX + 1), 0.0);
 		std::fill_n(pt->alpha, (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->beta, (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->dyda, (MAX_N_PAR + 1), 0.0);
 		std::fill_n(pt->dave, (MAX_N_PAR + 1), 0.0);
+		std::fill_n(pt->ipiv, (MAX_N_PAR + 1), 0);
 	}
 		
 	queue.enqueueWriteBuffer(CUDA_CC2, CL_TRUE, 0, pcc2Size, pcc2);
@@ -694,7 +696,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 
 	kernelCalculateIter1Mrqmin1End.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqmin1End.setArg(1, clFa);
-	kernelCalculateIter1Mrqmin1End.setArg(2, CUDA_End);
+	//kernelCalculateIter1Mrqmin1End.setArg(2, CUDA_End);
 
 	kernelCalculateIter1Mrqcof1End.setArg(0, CUDA_CC2);
 	kernelCalculateIter1Mrqcof1End.setArg(1, clFa);
@@ -843,22 +845,27 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				clFinish(queue());
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
 				queue.enqueueBarrierWithWaitList();
+				
+				kernelCalculateIter1Mrqcof1Curve2.setArg(2, sizeof(in_rel[l_curves]), &(in_rel[l_curves]));
+				kernelCalculateIter1Mrqcof1Curve2.setArg(3, sizeof(l_points[l_curves]), &(l_points[l_curves]));
 																// NOTE: CudaCalculateIter1Mrqcof1Curve2(in_rel[l_curves], l_points[l_curves]);		//  << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1Curve2, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
+				queue.enqueueBarrierWithWaitList();
 																// NOTE: CudaCalculateIter1Mrqcof1End();	<< <CUDA_Grid_dim_precalc, 1 >> >
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof1End, cl::NDRange(), cl::NDRange(CUDA_Grid_dim_precalc), cl::NDRange(1));
 				clFinish(queue());
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
-
-																// NOTE: CudaCalculateIter1Mrqmin1End();   << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
-				queue.enqueueWriteBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
+				queue.enqueueBarrierWithWaitList();
+																				// NOTE: CudaCalculateIter1Mrqmin1End();   << <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
+				//queue.enqueueWriteBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqmin1End, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());
-				kernelCalculateIter1Mrqmin1End.getWorkGroupInfo(device, CL_KERNEL_LOCAL_MEM_SIZE, result);
-				kernelCalculateIter1Mrqmin1End.getWorkGroupInfo(device, CL_KERNEL_PRIVATE_MEM_SIZE, result);
+				//kernelCalculateIter1Mrqmin1End.getWorkGroupInfo(device, CL_KERNEL_LOCAL_MEM_SIZE, result);
+				//kernelCalculateIter1Mrqmin1End.getWorkGroupInfo(device, CL_KERNEL_PRIVATE_MEM_SIZE, result);
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
+				queue.enqueueBarrierWithWaitList();
 																// NOTE: CudaCalculateIter1Mrqcof2Start();  	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof2Start, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());

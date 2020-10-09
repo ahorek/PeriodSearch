@@ -404,8 +404,8 @@ __kernel void CLCalculateIter1Mrqcof1Curve2(
 	int lpoints)
 {
 	int3 blockIdx, threadIdx;
-	blockIdx.x = get_group_id(0);
 	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
 
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 

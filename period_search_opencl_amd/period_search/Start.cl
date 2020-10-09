@@ -248,8 +248,8 @@ __kernel void CLCalculateIter1Begin(
 	}
 
 	//printf("IsInvalid: %d\t", Fa->isInvalid[blockIdx.x]);
-	//if (blockIdx.x == 0 && threadIdx.x == 0)
-	//	printf("Iter1Mrqcof1Matrix >>> isInvalid: %d, isNiter: %d, isAlamda: %d\n", Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x], Fa->isAlamda[blockIdx.x]);
+	//if (blockIdx.x == 0) // && threadIdx.x == 0)
+	//	printf("Iter1Mrqcof1Matrix >>> isInvalid: %d, isNiter: %d, isAlamda: %d, Alamda: % .9f\n", Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x], Fa->isAlamda[blockIdx.x], (*CUDA_LCC).Alamda);
 }
 
 __kernel void CLCalculateIter1Mrqcof1Start(
@@ -426,104 +426,16 @@ __kernel void CLCalculateIter1Mrqcof1Curve1Last(
 
 	if (!Fa->isAlamda[blockIdx.x]) return;
 
-	//if(blockIdx.x == 2)
-	//	printf("[%d][%d]\n", blockIdx.x, threadIdx.x);
-
-	//int l, jp, lnp;
-	//double ymod, lave;
-
-	//lnp = (*CUDA_LCC).np;
-	////
-	//if (threadIdx.x == 0)
-	//{
-	//	if (inrel == 1) /* is the LC relative? */
-	//	{
-	//		lave = 0;
-	//		for (l = 1; l <= Fa->ma; l++)
-	//		{
-	//			(*CUDA_LCC).dave[l] = 0;
-	//		}
-	//	}
-	//	else
-	//	{
-	//		lave = (*CUDA_LCC).ave;
-	//	}
-	//}
-
-	////precalc thread boundaries
-	//__private int tmph, tmpl;
-	//tmph = Fa->ma / BLOCK_DIM;
-	//if (Fa->ma % BLOCK_DIM)
-	//{
-	//	tmph++;
-	//}
-	//tmpl = threadIdx.x * tmph;
-	//tmph = tmpl + tmph;
-	//if (tmph > Fa->ma)
-	//{
-	//	tmph = Fa->ma;
-	//}
-	//tmpl++;
-	////
-	//__private int brtmph, brtmpl;
-	//brtmph = Fa->Numfac / BLOCK_DIM;
-	//if (Fa->Numfac % BLOCK_DIM)
-	//{
-	//	brtmph++;
-	//}
-	//brtmpl = threadIdx.x * brtmph;
-	//brtmph = brtmpl + brtmph;
-	//if (brtmph > Fa->Numfac)
-	//{
-	//	brtmph = Fa->Numfac;
-	//}
-	//brtmpl++;
-
-	////__syncthreads();
-	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-
-	//double res[BLOCK_DIM]; // __local
-	//__private double tmp;
-	//__private int i, nc;
-
-	//for (jp = 1; jp <= lpoints; jp++)
-	//{
-	//	lnp++;
-	//	tmp = 0;
-	//	nc = jp - 1;
-	//	//j = blockIdx.x * (Fa->Numfac1) + brtmpl;
-	//	for (i = brtmpl; i <= brtmph; i++) //, j++)
-	//	{
-	//		//bfr = texArea[j];
-	//		//bfr = tex1Dfetch(texArea, j);
-	//		//tmp += HiLoint2double(bfr.y, bfr.x) * Fa->Nor[i][nc];
-
-	//		double bfr = (*CUDA_LCC).Area[i];
-	//		tmp += bfr * Fa->Nor[i][nc];
-	//		int glb = get_global_size(0);
-	//		//if (blockIdx.x == 1)
-	//			printf("[%d][%d] glb: %d, i: %3d, bfr: % .6f, Nor[%d][%d]: % .6f\n", blockIdx.x, threadIdx.x, glb, i, bfr, i, nc, Fa->Nor[i][nc]);
-	//	}
-
-	//	//res[threadIdx.x] = tmp;
-
-	//	//__syncthreads();
-	//	barrier(CLK_LOCAL_MEM_FENCE);
-
-	//	//ymod = conv(CUDA_LCC, Fa, res, jp - 1, tmpl, tmph, brtmpl, brtmph);
-	//}/* jp, lpoints */
-
 	//mrqcof_curve1_last(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 	mrqcof_curve1_last(CUDA_LCC, Fa, inrel, lpoints);
 }
 
 __kernel void CLCalculateIter1Mrqcof1End(
 	__global struct freq_context2* CUDA_CC,
-	__global struct FuncArrays* Fa)
-	//__global varholder* Fa)
+	__global varholder* Fa)
 {
 	int3 blockIdx;
-	blockIdx.x = get_global_id(0);
+	blockIdx.x = get_group_id(0);
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
 	if (Fa->isInvalid[blockIdx.x]) return;
@@ -532,39 +444,438 @@ __kernel void CLCalculateIter1Mrqcof1End(
 
 	if (!Fa->isAlamda[blockIdx.x]) return;
 
-	//(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).alpha);
+	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).alpha);
+
+	//printf("[%d] Ochisq: % .9f\n", blockIdx.x, (*CUDA_LCC).Ochisq);
 }
 
 
-int next2(int a, int b) {
-	return a + b;
+__kernel void CLCalculateIter1Mrqmin1End_(
+	__global struct freq_context2* CUDA_CC,
+	__global varholder* Fa)
+{
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	//printf("[%d][%d]\n", blockIdx.x, threadIdx.x);
+
+	//if(threadIdx.x == 0)
+	//	printf("[%d][%d] isInvalid: %d, isNiter: %d\n", blockIdx.x, threadIdx.x, Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x]);
+
+	if (Fa->isInvalid[blockIdx.x]) return;
+
+	if (!Fa->isNiter[blockIdx.x]) return;
+
+	//int block = CUDA_BLOCK_DIM;
+	//gauss_err=
+	//mrqmin_1_end(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x], threadIdx, blockIdx);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
+	mrqmin_1_end_old(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x]);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
 }
+
+void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
+	__global varholder* Fa)
+{
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+
+	//__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	/*if (Fa->isInvalid[blockIdx.x]) return;
+	if (!Fa->isNiter[blockIdx.x]) return;*/
+
+	//printf("[%d] Alamda: % .9f\n", blockIdx.x, (*CUDA_LCC).Alamda);
+
+	// ---------- Init -----------
+	__private int i, j, k, l, ll, err_code;
+	
+	/*precalc thread boundaries*/
+	__private int tmph, tmpl;
+	tmph = Fa->ma / BLOCK_DIM;
+	if (Fa->ma % BLOCK_DIM) tmph++;
+
+	tmpl = threadIdx.x * tmph;
+	tmph = tmpl + tmph;
+	if (tmph > Fa->ma) tmph = Fa->ma;
+	tmpl++;
+
+	int brtmph, brtmpl;
+	brtmph = Fa->Lmfit / BLOCK_DIM;
+	if (Fa->Lmfit % BLOCK_DIM) brtmph++;
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > Fa->Lmfit) brtmph = Fa->Lmfit;
+	brtmpl++;
+
+	if (Fa->isAlamda[blockIdx.x])
+	{
+		for (j = tmpl; j <= tmph; j++)
+		{
+			(*CUDA_LCC).atry[j] = (*CUDA_LCC).cg[j];
+
+			//if (blockIdx.x == 2)
+			 //  printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, j, (*CUDA_LCC).atry[j]);
+		}
+
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	}
+
+	//if(threadIdx.x == 0)
+	//	printf("[%d] Alamda: % .9f\n", blockIdx.x, (*CUDA_LCC).Alamda);
+
+	for (j = brtmpl; j <= brtmph; j++)
+	{
+		int ixx = j * Fa->Lmfit1 + 1;
+		for (k = 1; k <= Fa->Lmfit; k++, ixx++)
+		{
+			(*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
+			//if (ixx == 166)
+			//	printf("[%d][%d] covar[%d]: % .9f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
+		}
+
+		int idx = j * Fa->Lmfit1 + j;
+		(*CUDA_LCC).covar[idx] = (*CUDA_LCC).alpha[idx] * (1 + (*CUDA_LCC).Alamda);
+		(*CUDA_LCC).da[j] = (*CUDA_LCC).beta[j];
+
+		//if (blockIdx.x == 0)// && threadIdx.x == 5)
+		//	  printf("[%d][%d] covar[%d]: % .9f, alpha[%d]: % .9f, Alamda: % .9f\n", blockIdx.x, threadIdx.x, idx, (*CUDA_LCC).covar[idx], idx, (*CUDA_LCC).alpha[idx], (*CUDA_LCC).Alamda);
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	/* 
+		START of Gauss-Jordan Elimination (gauss_errc)
+	*/
+	__private int n = Fa->Lmfit;	// __private?
+	__private int ma = Fa->ma;		// __private?
+	__private double big, dum, temp;
+	__private int index;
+	__private int indxr;
+	__private int indxc;
+	__private int a;
+	__private int b;
+	__private double covar;
+	__private double tmpcov;
+	__private int irow = 0;
+	__private int licol = 0;
+	__private int colIdx;
+
+	__local int icol;
+	__local int ixx, jxx;
+	__local double pivinv;
+	__local int sh_icol[BLOCK_DIM];
+	__local int sh_irow[BLOCK_DIM];
+	__local double sh_big[BLOCK_DIM];
+	
+	if (threadIdx.x == 0)
+	{
+		for (j = 1; j <= n; j++)
+		{
+			(*CUDA_LCC).ipiv[j] = 0;
+			//printf("ipiv[%d][%d]: %d\n", blockIdx.x, j, (*CUDA_LCC).ipiv[j]);
+		}
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	
+
+	/*
+	*	Here we need every single thread (out of 128 in our case) to run it's own iteration of 'i' (e.g. 54).
+	*	
+	*   So: 128 x 54 = 6912 per block
+	*	    6912 x 10 = 69120 in total
+	*/
+	for (i = 1; i <= n; i++)
+	{
+		big = 0.0f;
+		irow = 0;
+		licol = 0;
+		for (j = brtmpl; j <= brtmph; j++)
+		{
+			if ((*CUDA_LCC).ipiv[j] != 1)
+			{
+				//err_code = gauss_errc_begin(CUDA_LCC, Fa, &big, &irow, &licol, brtmpl, brtmph, i, j);
+				//if (err_code) goto end;
+
+				ixx = j * Fa->Lmfit1 + 1;
+				for (k = 1; k <= n; k++, ixx++)
+				{
+					//if ((*CUDA_LCC).ipiv[k] > 1)
+					//	printf("ipiv[%d][%d]: %d\n", blockIdx.x, k, (*CUDA_LCC).ipiv[k]);
+					if ((*CUDA_LCC).ipiv[k] == 0)
+					{
+						covar = (*CUDA_LCC).covar[ixx];
+
+						//if (threadIdx.x == 2 && i == 2)
+						//	printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
+
+						tmpcov = fabs(covar);
+						if (tmpcov >= big)
+						{
+							big = tmpcov;
+							irow = j;
+							licol = k;
+						}
+					}
+					else if ((*CUDA_LCC).ipiv[k] > 1)
+					{
+						printf("-");
+						//if (blockIdx.x == 2)
+						//	printf("[%d][%d][%d] ipiv[%d]: %d\n", blockIdx.x, threadIdx.x, i, k, (*CUDA_LCC).ipiv[k]);
+						//__syncthreads();
+						barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+						goto end;
+					}
+				}
+
+				//int ixx = j * Fa->Lmfit1 + 1;
+				//for (k = 1; k <= Fa->Lmfit; k++, ixx++)
+				//{
+				//	if (threadIdx.x == 2 && i == 2)
+				//		printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
+				//}
+			}
+		}
+
+		sh_big[threadIdx.x] = big;
+		sh_irow[threadIdx.x] = irow;
+		sh_icol[threadIdx.x] = licol;
+
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+		//if (threadIdx.x == 2 && i == 2)
+		//	printf("[%d][%d] i[%d] big: % .9f, irow: %d, licol: %d\n", blockIdx.x, threadIdx.x, i, big, irow, licol);
+
+		if (blockIdx.x == 0 && threadIdx.x == 0)
+			printf("[%d][%d] i[%d] licol[0]: %d\n", blockIdx.x, threadIdx.x, i,  sh_icol[0]);
+		
+	//}
+		// <<<<<<<<<<<<<<<<<<<<<<  gauss_errc_mid >>>>>>>>>>>>>>>>>>>>>>>>>>
+	//for (i = 1; i <= n; i++)
+	//{
+		if (threadIdx.x == 0)
+		{
+			big = sh_big[0];
+			icol = sh_icol[0];
+			irow = sh_irow[0];
+			for (j = 1; j < BLOCK_DIM; j++)
+			{
+				if (sh_big[j] >= big)
+				{
+					big = sh_big[j];
+					irow = sh_irow[j];
+					icol = sh_icol[j];
+				}
+			}
+
+			++((*CUDA_LCC).ipiv[icol]);
+			//if(blockIdx.x == 0)
+			//	printf("ipiv[%d][%d]: %d\n", blockIdx.x, icol, (*CUDA_LCC).ipiv[icol]);
+			if (irow != icol)
+			{
+				index = irow * Fa->Lmfit1 + l;
+				for (l = 1; l <= n; l++)
+				{
+					swap(&((*CUDA_LCC).covar[index]), &((*CUDA_LCC).covar[index]));
+					//SWAP((*CUDA_LCC).covar[index], (*CUDA_LCC).covar[index])
+				}
+
+				swap(&((*CUDA_LCC).da[irow]), &((*CUDA_LCC).da[icol]));
+				//SWAP((*CUDA_LCC).da[irow], (*CUDA_LCC).da[icol])
+					//SWAP(b[irow],b[icol])
+			}
+
+			(*CUDA_LCC).indxr[i] = irow;
+			(*CUDA_LCC).indxc[i] = icol;
+			colIdx = icol * Fa->Lmfit1 + icol;
+			if ((*CUDA_LCC).covar[colIdx] == 0.0)
+			{
+				j = 0;
+				for (int l = 1; l <= ma; l++)
+				{
+					if (Fa->ia[l])
+					{
+						j++;
+						(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+					}
+				}
+				printf("+");
+
+				goto end;
+			}
+
+			pivinv = 1.0 / (*CUDA_LCC).covar[colIdx];
+			(*CUDA_LCC).covar[colIdx] = 1.0;
+			(*CUDA_LCC).da[icol] *= pivinv;
+			//b[icol] *= pivinv;
+		}
+
+		//__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+		for (l = brtmpl; l <= brtmph; l++)
+		{
+			(*CUDA_LCC).covar[icol * Fa->Lmfit1 + l] *= pivinv;
+		}
+
+		//__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+		for (ll = brtmpl; ll <= brtmph; ll++)
+		{
+			if (ll != icol)
+			{
+				ixx = ll * (Fa->Lmfit1);
+				jxx = icol * (Fa->Lmfit1);
+				dum = (*CUDA_LCC).covar[ixx + icol];
+				(*CUDA_LCC).covar[ixx + icol] = 0.0;
+
+				//if (threadIdx.x == 2 && i == 1)
+				//	printf("[%d][%d] covar[%d]: % .9f, dum: % .9f, irow: %d, icol: %d\n", blockIdx.x, threadIdx.x, ixx + icol, (*CUDA_LCC).covar[ixx + icol], dum, ixx, jxx);
+				ixx++;
+				jxx++;
+
+				for (l = 1; l <= n; l++, ixx++, jxx++)
+				{
+					(*CUDA_LCC).covar[ixx] -= (*CUDA_LCC).covar[jxx] * dum;
+				}
+
+				(*CUDA_LCC).da[ll] -= (*CUDA_LCC).da[icol] * dum;
+				//b[ll] -= b[icol]*dum;
+			}
+		}
+
+		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	} /* End 'i'  */
+
+	//return;
+	//goto end;
+	//if (threadIdx.x == 0)
+	//{
+	//	printf("[%d][%d] <<<<<< \n", blockIdx.x, threadIdx.x);
+	//	for (l = n; l >= 1; l--)
+	//	{
+	//		indxr = (*CUDA_LCC).indxr[l];
+	//		indxc = (*CUDA_LCC).indxc[l];
+	//		if (indxr != indxc)
+	//		{
+	//			for (k = 1; k <= n; k++)
+	//			{
+	//				a = k * Fa->Lmfit1 + indxr;
+	//				b = k * Fa->Lmfit1 + indxc;
+
+	//				swap(&((*CUDA_LCC).covar[a]), &((*CUDA_LCC).covar[b]));
+	//				//SWAP((*CUDA_LCC).covar[a], (*CUDA_LCC).covar[b]);
+	//			}
+	//		}
+	//	}
+	//}
+	////__syncthreads();
+	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	
+	//// TEST
+	/*for (i = 1; i <= n; i++)
+	{
+		for (j = brtmpl; j <= brtmph; j++)
+		{
+			int ixx = j * Fa->Lmfit1 + 1;
+			for (k = 1; k <= n; k++, ixx++)
+			{
+				if (threadIdx.x == 2 && i == 2)
+					printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
+			}
+		}
+	}*/
+	//// END TEST
+	/* ------ END GAUSS_ERRC ------  */
+
+end: ;
+	//if (threadIdx.x == 0)
+	//{
+
+	//	//		if (err_code != 0) return(err_code); bacha na sync threads
+
+	//	j = 0;
+	//	for (int l = 1; l <= ma; l++)
+	//	{
+	//		if (Fa->ia[l])
+	//		{
+	//			j++;
+	//			(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+	//		}
+	//	}
+	//}
+
+	////__syncthreads();
+	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+}
+
 
 __kernel void CLCalculateIter1Mrqmin1End(
 	__global struct freq_context2* CUDA_CC,
-	__global struct FuncArrays* Fa,
-	__global int* CUDA_End)
-	//__global varholder* Fa)
+	__global varholder* Fa)
 {
-	int3 blockIdx;
-	blockIdx.x = get_global_id(0);
-	//__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+	int l, j, k, indxr, indxc, a, b;
+	int n = Fa->Lmfit;
+	int ma = Fa->ma;
 
-	//printf("IsInvalid: %d\t", CUDA_CC[blockIdx.x].isInvalid);
-	//if (Fa->isInvalid[blockIdx.x])
-	//{
-	//	return;
-	//}
-	/*
-	if (!Fa->isNiter[blockIdx.x])
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	if (Fa->isInvalid[blockIdx.x]) return;
+	if (!Fa->isNiter[blockIdx.x]) return;
+	
+	CLCalculateIter1Mrqmin1End_01(CUDA_LCC, Fa);
+
+	if (threadIdx.x == 0)
 	{
-		return;
-	}*/
+		//printf("[%d][%d] <<<<<< \n", blockIdx.x, threadIdx.x);
+		for (l = n; l >= 1; l--)
+		{
+			indxr = (*CUDA_LCC).indxr[l];
+			indxc = (*CUDA_LCC).indxc[l];
+			if (indxr != indxc)
+			{
+				for (k = 1; k <= n; k++)
+				{
+					a = k * Fa->Lmfit1 + indxr;
+					b = k * Fa->Lmfit1 + indxc;
 
-	//gauss_err=
-	//mrqmin_1_end(CUDA_LCC, Fa);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
-	int ans = next2((*CUDA_End), blockIdx.x);
-	printf("> %d\n", ans);
+					swap(&((*CUDA_LCC).covar[a]), &((*CUDA_LCC).covar[b]));
+					//SWAP((*CUDA_LCC).covar[a], (*CUDA_LCC).covar[b]);
+				}
+			}
+		}
+	}
+	//__syncthreads();
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+	if (threadIdx.x == 0)
+	{
+
+		//		if (err_code != 0) return(err_code); bacha na sync threads
+
+		j = 0;
+		for (int l = 1; l <= ma; l++)
+		{
+			if (Fa->ia[l])
+			{
+				j++;
+				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+			}
+		}
+	}
+
+	//__syncthreads();
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 __kernel void CLCalculateIter1Mrqcof2Start(

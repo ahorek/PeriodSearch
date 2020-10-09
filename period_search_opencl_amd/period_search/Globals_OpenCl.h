@@ -73,6 +73,7 @@ struct freq_context2
 	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
 	double Dg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
 	double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
+	double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
 	double de[POINTS_MAX + 1][4][4];
 	double de0[POINTS_MAX + 1][4][4];
 	double e_1[POINTS_MAX + 1];
@@ -93,7 +94,6 @@ struct freq_context2
 	double dyda[MAX_N_PAR + 1];
 	double dave[MAX_N_PAR + 1];
 	double atry[MAX_N_PAR + 1];
-	double covar[MAX_N_PAR + 1];
 	double beta[MAX_N_PAR + 1];
 	/*double Blmat[4][4];
 	double Dblm[4][4][4];*/
