@@ -20,8 +20,8 @@ for (m = 1; m <= N_POLES; m++)
 		kernelCalculateIter1Mrqcof1Curve1Last	- OK 08.10.2020
 		kernelCalculateIter1Mrqcof1Curve2		- OK 08.10.2020
 		kernelCalculateIter1Mrqcof1End			- OK 08.10.2020
-		kernelCalculateIter1Mrqmin1End
-		kernelCalculateIter1Mrqcof2Start
+		kernelCalculateIter1Mrqmin1End			- OK 09.10.2020
+		kernelCalculateIter1Mrqcof2Start		- OK 09.10.2020
 	
 		for (iC = 1; iC < l_curves; iC++)
 		{

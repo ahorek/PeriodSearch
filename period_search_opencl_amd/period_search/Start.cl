@@ -310,8 +310,9 @@ __kernel void CLCalculateIter1Mrqcof1Start(
 	//mrqcof_start(Fa->isAlamda[blockIdx.x]);
 
 	//printf("groupId[%d], localId[%d], globalId[%d]\n", get_group_id(0), get_local_id(0), get_global_id(0));
-
-	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+	__local int mrqnum; // CLCalculateIter1Mrqcof2Start
+	if (threadIdx.x == 0) mrqnum = 0;
+	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, mrqnum);
 
 	//int idx = blockIdx.x * (MAX_N_PAR + 1);// +threadIdx.x;
 	//__global double* l_beta = &beta[idx];
@@ -834,8 +835,8 @@ __kernel void CLCalculateIter1Mrqmin1End(
 			{
 				j++;
 				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
-				if(blockIdx.x == 5)
-					printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, l, (*CUDA_LCC).atry[l]);
+				//if(blockIdx.x == 5)
+				//	printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, l, (*CUDA_LCC).atry[l]);
 			}
 		}
 	}
@@ -849,16 +850,24 @@ __kernel void CLCalculateIter1Mrqcof2Start(
 	__global varholder* Fa)
 	//__read_only int Numfac)
 {
-	int3 blockIdx;
-	blockIdx.x = get_global_id(0);
+	int3 threadIdx, blockIdx;
+	threadIdx.x = get_local_id(0);
+	blockIdx.x = get_group_id(0);
+
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	__local int mrqnum; // CLCalculateIter1Mrqcof2Start
+	if (threadIdx.x == 0) mrqnum = 1;
+	//if(threadIdx.x == 0)
+	//	printf("isInvalid: %d, isNiter: %d\n", Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x]);
 
 	if (Fa->isInvalid[blockIdx.x]) return;
 
 	if (!Fa->isNiter[blockIdx.x]) return;
 
 	//mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, Numfac, 0, 0);
-	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da);
+
+
+	mrqcof_start(CUDA_LCC, Fa, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, mrqnum);
 }
 
 __kernel void CLCalculateIter1Mrqcof2Matrix(

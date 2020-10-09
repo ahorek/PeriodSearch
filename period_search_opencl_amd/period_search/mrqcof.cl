@@ -18,7 +18,8 @@ void mrqcof_start(
 	__global struct FuncArrays* Fa,
 	__global double a[],
 	__global double* alpha,
-	__global double* beta)
+	__global double* beta,
+	int mrqnum)
 	//__read_only int Numfac,
 	//__read_only int Mmax,
 	//__read_only int Lmax)
@@ -52,7 +53,7 @@ void mrqcof_start(
 
 	if (threadIdx.x == 0)
 	{
-		/* blmatrix */
+		/* ---  blmatrix  --- */
 		double cb, sb, cl, sl, bet, lam;
 		bet = a[Fa->ma - 4 - Fa->Nphpar];
 		lam = a[Fa->ma - 3 - Fa->Nphpar];
@@ -95,7 +96,7 @@ void mrqcof_start(
 
 
 		//printf("blmatrix >>> [%d][%d]: cb: %.6f, cl: %.6f, sb: %.6f, Dblm[1][3][3]: % .6f\n", blockIdx.x, threadIdx.x, cb, cl, sb, Fa->Dblm[x][1][3][3]);
-
+		/*  ---- END blmatrix ---  */
 
 		//blmatrix(CUDA_LCC, a[Fa->ma - 4 - Fa->Nphpar], a[Fa->ma - 3 - Fa->Nphpar]);
 		

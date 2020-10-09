@@ -870,6 +870,7 @@ cl_int ClPrecalc(double freq_start, double freq_end, double freq_step, double st
 				queue.enqueueNDRangeKernel(kernelCalculateIter1Mrqcof2Start, cl::NDRange(), cl::NDRange(totalWorkItems), cl::NDRange(BLOCK_DIM));
 				clFinish(queue());
 				queue.enqueueReadBuffer(CUDA_End, CL_BLOCKING, 0, sizeof(int), &theEnd);
+				queue.enqueueBarrierWithWaitList();
 				for (iC = 1; iC < l_curves; iC++)
 				{
 					kernelCalculateIter1Mrqcof2Matrix.setArg(2, l_points[iC]);				// NOTE: CudaCalculateIter1Mrqcof2Matrix(l_points[iC]);	<< <CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM >> >
