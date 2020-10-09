@@ -610,7 +610,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 					{
 						covar = (*CUDA_LCC).covar[ixx];
 
-						//if (threadIdx.x == 2 && i == 2)
+						//if (blockIdx.x == 0 && threadIdx.x == 2 && i == 2)
 						//	printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
 
 						tmpcov = fabs(covar);
@@ -629,7 +629,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 						//__syncthreads();
 						barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
-						goto end;
+						return;
 					}
 				}
 
@@ -648,11 +648,11 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 
 		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
-		//if (threadIdx.x == 2 && i == 2)
+		//if (threadIdx.x == 12 && i == 2)
 		//	printf("[%d][%d] i[%d] big: % .9f, irow: %d, licol: %d\n", blockIdx.x, threadIdx.x, i, big, irow, licol);
 
-		if (blockIdx.x == 0 && threadIdx.x == 0)
-			printf("[%d][%d] i[%d] licol[0]: %d\n", blockIdx.x, threadIdx.x, i,  sh_icol[0]);
+		//if (blockIdx.x == 0 && threadIdx.x == 0)
+		//	printf("[%d][%d] i[%d] licol[0]: %d\n", blockIdx.x, threadIdx.x, i,  sh_icol[0]);
 		
 	//}
 		// <<<<<<<<<<<<<<<<<<<<<<  gauss_errc_mid >>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -706,7 +706,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 				}
 				printf("+");
 
-				goto end;
+				return;
 			}
 
 			pivinv = 1.0 / (*CUDA_LCC).covar[colIdx];
@@ -754,66 +754,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 
 	} /* End 'i'  */
 
-	//return;
-	//goto end;
-	//if (threadIdx.x == 0)
-	//{
-	//	printf("[%d][%d] <<<<<< \n", blockIdx.x, threadIdx.x);
-	//	for (l = n; l >= 1; l--)
-	//	{
-	//		indxr = (*CUDA_LCC).indxr[l];
-	//		indxc = (*CUDA_LCC).indxc[l];
-	//		if (indxr != indxc)
-	//		{
-	//			for (k = 1; k <= n; k++)
-	//			{
-	//				a = k * Fa->Lmfit1 + indxr;
-	//				b = k * Fa->Lmfit1 + indxc;
-
-	//				swap(&((*CUDA_LCC).covar[a]), &((*CUDA_LCC).covar[b]));
-	//				//SWAP((*CUDA_LCC).covar[a], (*CUDA_LCC).covar[b]);
-	//			}
-	//		}
-	//	}
-	//}
-	////__syncthreads();
-	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
-	
-	//// TEST
-	/*for (i = 1; i <= n; i++)
-	{
-		for (j = brtmpl; j <= brtmph; j++)
-		{
-			int ixx = j * Fa->Lmfit1 + 1;
-			for (k = 1; k <= n; k++, ixx++)
-			{
-				if (threadIdx.x == 2 && i == 2)
-					printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
-			}
-		}
-	}*/
-	//// END TEST
 	/* ------ END GAUSS_ERRC ------  */
-
-end: ;
-	//if (threadIdx.x == 0)
-	//{
-
-	//	//		if (err_code != 0) return(err_code); bacha na sync threads
-
-	//	j = 0;
-	//	for (int l = 1; l <= ma; l++)
-	//	{
-	//		if (Fa->ia[l])
-	//		{
-	//			j++;
-	//			(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
-	//		}
-	//	}
-	//}
-
-	////__syncthreads();
-	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 
@@ -858,11 +799,34 @@ __kernel void CLCalculateIter1Mrqmin1End(
 	//__syncthreads();
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
+	/* TEST - OK */ 
+
+	/*int brtmph, brtmpl;
+	brtmph = Fa->Lmfit / BLOCK_DIM;
+	if (Fa->Lmfit % BLOCK_DIM) brtmph++;
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > Fa->Lmfit) brtmph = Fa->Lmfit;
+	brtmpl++;
+
+	for (int i = 1; i <= n; i++)
+	{
+		for (j = brtmpl; j <= brtmph; j++)
+		{
+			int ixx = j * Fa->Lmfit1 + 1;
+			for (k = 1; k <= n; k++, ixx++)
+			{
+				if (blockIdx.x == 5 && threadIdx.x == 2 && i == 2)
+					printf("[%d][%d] j[%d], i[%d], k[%d], covar[%d][%d]: % .9f\n", blockIdx.x, threadIdx.x, j, i, k, blockIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
+			}
+		}
+	}*/
+	/* END TEST */
+
 	if (threadIdx.x == 0)
 	{
-
-		//		if (err_code != 0) return(err_code); bacha na sync threads
-
+		//		if (err_code != 0) return(err_code); bacha na sync threads (cz)/ watch the sync threads
 		j = 0;
 		for (int l = 1; l <= ma; l++)
 		{
@@ -870,6 +834,8 @@ __kernel void CLCalculateIter1Mrqmin1End(
 			{
 				j++;
 				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+				if(blockIdx.x == 5)
+					printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, l, (*CUDA_LCC).atry[l]);
 			}
 		}
 	}
