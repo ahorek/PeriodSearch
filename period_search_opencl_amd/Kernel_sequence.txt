@@ -27,10 +27,10 @@ for (m = 1; m <= N_POLES; m++)
 		{
 			kernelCalculateIter1Mrqcof2Matrix	- OK 09.10.2020
 			kernelCalculateIter1Mrqcof2Curve1	- OK 10.10.2020
-			kernelCalculateIter1Mrqcof2Curve2	-
+			kernelCalculateIter1Mrqcof2Curve2	- OK 10.10.2020
 		}
 	
-		kernelCalculateIter1Mrqcof2Curve1Last
+		kernelCalculateIter1Mrqcof2Curve1Last	-
 		kernelCalculateIter1Mrqcof2Curve2
 		kernelCalculateIter1Mrqcof2End
 		kernelCalculateIter1Mrqmin2End

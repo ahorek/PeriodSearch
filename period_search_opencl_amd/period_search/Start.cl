@@ -116,7 +116,7 @@ __kernel void CLCalculatePreparePole(
 
 	int localId = get_local_id(0);
 	//if ( blockIdx.x == 0)
-	printf("[%d] Ncoef = %d, Nphpar = %d, isInvalid = %d\n", blockIdx.x, Fa->Ncoef, Fa->Nphpar, Fa->isInvalid[blockIdx.x]);
+	//printf("[%d] Ncoef = %d, Nphpar = %d, isInvalid = %d\n", blockIdx.x, Fa->Ncoef, Fa->Nphpar, Fa->isInvalid[blockIdx.x]);
 
 
 	if (Fa->isInvalid[blockIdx.x])
@@ -982,14 +982,15 @@ __kernel void CLCalculateIter1Mrqcof2Curve1Last(
 	const int lpoints)
 {
 	int3 blockIdx;
-	blockIdx.x = get_global_id(0);
-	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	blockIdx.x = get_group_id(0);
 
 	if (Fa->isInvalid[blockIdx.x]) return;
-
 	if (!Fa->isNiter[blockIdx.x]) return;
 
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
 	//mrqcof_curve1_last(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
+	mrqcof_curve1_last(CUDA_LCC, Fa, inrel, lpoints);
 }
 
 __kernel void CLCalculateIter1Mrqcof2End(
@@ -997,14 +998,14 @@ __kernel void CLCalculateIter1Mrqcof2End(
 	__global varholder* Fa)
 {
 	int3 blockIdx;
-	blockIdx.x = get_global_id(0);
-	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	blockIdx.x = get_group_id(0);
 
 	if (Fa->isInvalid[blockIdx.x]) return;
-
 	if (!Fa->isNiter[blockIdx.x]) return;
 
-	//(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).covar);
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+
+	(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).covar);
 }
 
 __kernel void CLCalculateIter1Mrqmin2End(

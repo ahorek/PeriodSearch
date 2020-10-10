@@ -4,9 +4,10 @@ inline void MrqcofCurve2(
 	__global struct freq_context2* CUDA_LCC,
 	__global varholder* Fa,
 	__global double* alpha, 
-	__global double* _beta, 
+	__global double* beta, 
 	int inrel, 
-	int lpoints)
+	int lpoints,
+	int num)
 {
 	int l, jp, j, k, m, lnp1, lnp2, Lpoints1 = lpoints + 1;
 	double dy, sig2i, wt, ymod, coef1, coef, wght, ltrial_chisq;
@@ -17,12 +18,12 @@ inline void MrqcofCurve2(
 
 	//__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	//if (blockIdx.x == 2)
+	//if (blockIdx.x == 2 && num == 1)
 	//{
 	//	//int idx = blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x;
 	//	int idx = threadIdx.x;
 
-	//	printf("[%2d][%2d]  l_beta[%d]: % .6f, addr: %d\n", blockIdx.x, threadIdx.x, idx, _beta[idx], &_beta[idx]);
+	//	printf("[%2d][%2d]  lbeta[%d]: % .6f, addr: %d\n", blockIdx.x, threadIdx.x, idx, beta[idx], &beta[idx]);
 	//	//printf("[%2d][%2d]  alpha[%d]: % .6f, addr: %d, Fa->Lmfit1: %d\n", blockIdx.x, threadIdx.x, idx, alpha[idx], &alpha[idx], Fa->Lmfit1);
 	//}
 
@@ -165,7 +166,7 @@ inline void MrqcofCurve2(
 				barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 				if (threadIdx.x == 0)
 				{
-					_beta[j] = _beta[j] + dy * wt;
+					beta[j] = beta[j] + dy * wt;
 					printf("*\n");
 					//printf("[%d][%d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[j]);
 				}
@@ -203,7 +204,7 @@ inline void MrqcofCurve2(
 							}
 						} /* m */
 
-						_beta[j] = _beta[j] + dy * wt;
+						beta[j] = beta[j] + dy * wt;
 						printf("*\n");
 						//printf("[%d][%d]  \tbeta[%d]: % .6f\n", blockIdx.x, threadIdx.x, j, beta[j]);
 					}
@@ -270,12 +271,12 @@ inline void MrqcofCurve2(
 			//if(blockIdx.x == 0)
 			//	printf("l: %d, lastone: %d\n", l, Fa->lastone);
 
-			//if (blockIdx.x == 2) 
-			//{
-			//	int idx = blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x;
-			//
-			//	printf("[%2d][%2d]  beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, idx, beta[idx]);
-			//}
+			if (blockIdx.x == 2) 
+			{
+				int idx = blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x;
+			
+				printf("[%2d][%2d]  beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, idx, beta[idx]);
+			}
 
 
 			for (l = 2; l <= Fa->lastone; l++)
@@ -296,15 +297,16 @@ inline void MrqcofCurve2(
 				tmpl++;
 				//m==1
 				if (tmpl == 1) tmpl++;
-				//
+				
 				for (m = tmpl; m <= tmph; m++)
 				{
 					//					  k++;
-					//if (blockIdx.x == 2 && jp == 1)
-					//	printf("[%2d][%2d][%3d][%3d] alpha[%d] % .6f addr: %d\n", \
-					//		blockIdx.x, threadIdx.x, j, m, j * (Fa->Lmfit1) + m - 1, alpha[j * (Fa->Lmfit1) + m - 1], &alpha[j * (Fa->Lmfit1) + m - 1]);
 					
 					alpha[j * (Fa->Lmfit1) + m - 1] = alpha[j * (Fa->Lmfit1) + m - 1] + wt * (*CUDA_LCC).dyda[m];
+
+					if (num == 1 && jp == 1 && threadIdx.x == 0 && l == 2)
+						printf("[%2d][%2d] j: %d, m: %d, tmpl: %d, tmph: %d, alpha[%d] % .6f, wt: % .6f, dyda[%d]: % .6f\n", \
+							blockIdx.x, threadIdx.x, j, m,  tmpl, tmph,  j * (Fa->Lmfit1) + m - 1, alpha[j * (Fa->Lmfit1) + m - 1], wt, m, (*CUDA_LCC).dyda[m]);
 				} /* m */
 
 				//__syncthreads();
@@ -315,16 +317,11 @@ inline void MrqcofCurve2(
 					//double beta_tmp = beta[j] + dy * wt;
 					//beta[j] = beta[j] + dy * wt;
 					double res = dy * wt;
-					_beta[j] = _beta[j] + res;
+					beta[j] = beta[j] + res;
 
 					//if (blockIdx.x == 9 && jp == 5)
 					//	printf("[%2d][%2d][%3d]  wt: % .6f, dy: % .6f, (wt * dy): % .6f, beta[%d]: % .9f\n", \
-					//		blockIdx.x, threadIdx.x, jp, wt, dy, res, j, _beta[j]);
-
-					//read_mem_fence(CLK_GLOBAL_MEM_FENCE);
-					//write_mem_fence(CLK_GLOBAL_MEM_FENCE);
-					
-					//beta[j] = beta_tmp;
+					//		blockIdx.x, threadIdx.x, jp, wt, dy, res, j, beta[j]);
 				}
 
 				//__syncthreads();
@@ -347,6 +344,10 @@ inline void MrqcofCurve2(
 					{
 						//k++;
 						alpha[j * (Fa->Lmfit1) + m - 1] = alpha[j * (Fa->Lmfit1) + m - 1] + wt * (*CUDA_LCC).dyda[m];
+
+						if (num == 1 && jp == 1 && threadIdx.x == 0 && l == 2)
+							printf("[%2d][%2d] j: %d, m: %d, tmpl: %d, tmph: %d, alpha[%d] % .6f, wt: % .6f, dyda[%d]: % .6f\n", \
+								blockIdx.x, threadIdx.x, j, m, tmpl, tmph, j * (Fa->Lmfit1) + m - 1, alpha[j * (Fa->Lmfit1) + m - 1], wt, m, (*CUDA_LCC).dyda[m]);
 					} /* m */
 
 					//__syncthreads();
@@ -365,10 +366,10 @@ inline void MrqcofCurve2(
 						} /* m */
 
 						double res = dy * wt;
-						_beta[j] = _beta[j] + res;
+						beta[j] = beta[j] + res;
 
 /*						if (blockIdx.x == 0 && jp == 1)
-							printf("*[%2d][%2d][%3d]  wt: % .6f, dy: % .6f, (wt * dy): % .6f, beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, wt, dy, (wt * dy), j, _beta[j]);*/						
+							printf("*[%2d][%2d][%3d]  wt: % .6f, dy: % .6f, (wt * dy): % .6f, beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, wt, dy, (wt * dy), j, beta[j]);*/						
 					}
 
 					//__syncthreads();
@@ -407,7 +408,6 @@ __kernel void CLCalculateIter1Mrqcof1Curve2(
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
-	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
 	//if (blockIdx.x == 0 && threadIdx.x == 0)
 	//	printf("Iter1Mrqcof1Start >>> isInvalid: %d, isNiter: %d, isAlamda: %d\n", Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x], Fa->isAlamda[blockIdx.x]);
@@ -418,16 +418,20 @@ __kernel void CLCalculateIter1Mrqcof1Curve2(
 
 	if (!Fa->isAlamda[blockIdx.x]) return;
 
-	int idx = blockIdx.x * (MAX_N_PAR + 1);// +threadIdx.x;
-	//__global double* l_beta = &beta[idx];
+	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+	__local int num;
+	if (threadIdx.x == 0)
+		num = 0;
+	//int idx = blockIdx.x * (MAX_N_PAR + 1);// +threadIdx.x;
+	//__global double* lbeta = &beta[idx];
 
 	//if (blockIdx.x == 2)
-	//	printf("curv2 >>> [%d][%d]  l_beta[%d]: % .6f, addr: %d, beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, l_beta[threadIdx.x], &l_beta[threadIdx.x], idx + threadIdx.x, beta[idx + threadIdx.x]);
+	//	printf("curv2 >>> [%d][%d]  lbeta[%d]: % .6f, addr: %d, beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, lbeta[threadIdx.x], &lbeta[threadIdx.x], idx + threadIdx.x, beta[idx + threadIdx.x]);
 
 	//MrqcofCurve2(CUDA_LCC, Fa, texsig, texWeight, texbrightness, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 	
-	MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
-	//MrqcofCurve2(CUDA_LCC, Fa, alpha, l_beta, inrel, lpoints);
+	MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints, num);
+	//MrqcofCurve2(CUDA_LCC, Fa, alpha, lbeta, inrel, lpoints);
 
 }
 
@@ -442,13 +446,20 @@ __kernel void CLCalculateIter1Mrqcof2Curve2(
 {
 	int3 blockIdx;
 	blockIdx.x = get_group_id(0);
+
+	//if (blockIdx.x == 0 && threadIdx.x == 0)
+	//	printf("Iter1Mrqcof1Start >>> isInvalid: %d, isNiter: %d\n", Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x]);
+
+	if (Fa->isInvalid[blockIdx.x]) return;
+
+	if (!Fa->isNiter[blockIdx.x]) return;
+
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
-
-	if (Fa->isInvalid) return;
-
-	if (!Fa->isNiter) return;
+	__local int num;
+	if (get_local_id(0) == 0)
+		num = 1;
 
 	//MrqcofCurve2(CUDA_LCC, Fa, texsig, texWeight, texbrightness, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
 	
-	//MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
+	MrqcofCurve2(CUDA_LCC, Fa, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints, num);
 }
