@@ -229,7 +229,7 @@ void mrqcof_matrix(__global struct freq_context2* CUDA_LCC, __global varholder* 
 
 	printf("mrqcof_matrix >>>\n");
 
-	matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
+	//matrix_neo(CUDA_LCC, Fa, a, (*CUDA_LCC).np, Lpoints);
 	//matrix_neo(CUDA_LCC, Fa, a, Np, Lpoints);
 }
 
@@ -244,7 +244,8 @@ void mrqcof_curve1(
 	int brtmpl,
 	int brtmph, 
 	int Inrel,
-	int Lpoints)
+	int Lpoints, 
+	int mrq1curv1)
 {
 	int3 threadIdx, blockIdx;
 	threadIdx.x = get_local_id(0);

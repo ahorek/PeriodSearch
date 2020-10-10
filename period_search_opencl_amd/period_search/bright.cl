@@ -10,7 +10,7 @@
 //#include "globals.h"
 //#include "declarations_OpenCl.h"
 
-inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double cg[], const int lnp1, int Lpoints)
+inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double cg[], const int lnp1, int Lpoints, int mrqmatnum)
 {
 	double f, cf, sf, pom, pom0, alpha;
 	double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
@@ -74,8 +74,11 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		(*CUDA_LCC).jp_dphp_2[jp] = cg[Fa->Ncoef0 + 1] * f * alpha / (cg[Fa->Ncoef0 + 2] * cg[Fa->Ncoef0 + 2]);
 		(*CUDA_LCC).jp_dphp_3[jp] = alpha;
 
+		//if(mrqmatnum == 1)
+		//	printf("%d | [%d][%d][%d]: %.6f %.6f\n", mrqmatnum, 0, threadIdx.x, jp, cg[Fa->Ncoef0 + 1], (*CUDA_LCC).jp_Scale[jp]);
+
 		//if(blockIdx.x == 1)
-		//	printf("[%d][%d][%d]: %.6f %.6f\n", blockIdx.x, threadIdx.x, jp, cg[Fa->Ncoef0 + 1], (*CUDA_LCC).jp_Scale[jp]);
+		//	printf("[%d]: %.6f\n", jp, (*CUDA_LCC).jp_Scale[jp]);
 
 		//  matrix start
 		f = cg[Fa->Ncoef0] * t + Fa->Phi_0;
@@ -100,6 +103,8 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		(*CUDA_LCC).e_1[jp] = pom + tmat * ee_3;
 		(*CUDA_LCC).e0_1[jp] = pom0 + tmat * ee0_3;
 
+
+		// TODO: There are some differenced compared to the result from CUDA app
 		//if (blockIdx.x == 2)
 		//	printf("[%d][%d]: \t% .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).e_1[jp], (*CUDA_LCC).e0_1[jp]);
 
@@ -186,8 +191,8 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		(*CUDA_LCC).de[jp][2][3] = pom + tmat * ee_3;
 		(*CUDA_LCC).de0[jp][2][3] = pom0 + tmat * ee0_3;
 
-		//if (blockIdx.x == 2)
-		//	printf("[%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, pom, tmat, ee_3);
+		//if (blockIdx.x == 2 && mrqmatnum == 1)
+		//	printf("[%d][%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, jp, pom, tmat, ee_3);
 
 		//tmat = 0 * Fa->Dblm[x][1][1][1] + 0 * Fa->Dblm[x][1][2][1] + 1 * Fa->Dblm[x][1][3][1];
 		tmat = Fa->Dblm[x][1][3][1];
@@ -220,17 +225,17 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		(*CUDA_LCC).de[jp][3][2] = pom + tmat * ee_3;
 		(*CUDA_LCC).de0[jp][3][2] = pom0 + tmat * ee0_3;
 
-		/*tmat = 0 * Fa->Blmat[x][1][1] + 0 * Fa->Blmat[x][2][1] + 0 * Fa->Blmat[x][3][1];
+		tmat = 0 * Fa->Blmat[x][1][1]; // +0 * Fa->Blmat[x][2][1] + 0 * Fa->Blmat[x][3][1];
 		pom = tmat * ee_1;
 		pom0 = tmat * ee0_1;
-		tmat = 0 * Fa->Blmat[x][1][2] + 0 * Fa->Blmat[x][2][2] + 0 * Fa->Blmat[x][3][2];
+		tmat = 0 * Fa->Blmat[x][1][2]; // +0 * Fa->Blmat[x][2][2] + 0 * Fa->Blmat[x][3][2];
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
-		tmat = 0 * Fa->Blmat[x][1][3] + 0 * Fa->Blmat[x][2][3] + 0 * Fa->Blmat[x][3][3];*/
-		//(*CUDA_LCC).de[jp][3][3] = pom + tmat * ee_3;
-		(*CUDA_LCC).de[jp][3][3] = 0.0f;
-		//(*CUDA_LCC).de0[jp][3][3] = pom0 + tmat * ee0_3;
-		(*CUDA_LCC).de0[jp][3][3] = 0.0f;
+		tmat = 0 * Fa->Blmat[x][1][3]; // +0 * Fa->Blmat[x][2][3] + 0 * Fa->Blmat[x][3][3];
+		(*CUDA_LCC).de[jp][3][3] = pom + tmat * ee_3;
+		//(*CUDA_LCC).de[jp][3][3] = 0.0f;
+		(*CUDA_LCC).de0[jp][3][3] = pom0 + tmat * ee0_3;
+		//(*CUDA_LCC).de0[jp][3][3] = 0.0f;
 
 		//if (blockIdx.x == 1 && jp == brtmpl)
 		//{
@@ -284,9 +289,11 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	//const int brtmph, 
 	//const int brtmpl,
 	int Lpoints1,
-	int Inrel)
+	int Inrel,
+	//int j,
+	int mrq1curv1)
 {
-	int ncoef0, ncoef, i, j, incl_count = 0;// , jp;
+	int ncoef0, ncoef, i, incl_count = 0;// j, jp;
 	double cl, cls, dnom, s, Scale;
 	double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
 
@@ -360,22 +367,22 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	tmp4 = 0;
 	tmp5 = 0;
 
-	j = blockIdx.x * (Fa->Numfac1) + 1;
+	int j = blockIdx.x * (Fa->Numfac1) + 1;
 	//j = blockIdx.x;
 	//if (blockIdx.x == 1 && threadIdx.x == 0)
 	//	printf("Fa->Numfac: %d, Fa->Numfac1: %d\n", Fa->Numfac, Fa->Numfac1);
 
-	/*if (blockIdx.x == 1) {
-		printf("[%d][%d]  \tNumfac: %d\t jp: %d\n", blockIdx.x, threadIdx.x, Fa->Numfac, jp);
-	}*/
+	//if (mrq1curv1 == 1) {
+	//	printf("[%d]  \tNumfac: %d\t jp: %d\n",  threadIdx.x, Fa->Numfac, jp);
+	//}
 	for (i = 1; i <= Fa->Numfac; i++, j++)
 	{
 		//j++;
 		lmu = e_1 * Fa->Nor[i][0] + e_2 * Fa->Nor[i][1] + e_3 * Fa->Nor[i][2];
-		//if (blockIdx.x == 9 && i == 5) {
-		//	//	printf("[%d][%d]  \ti: %d\n", blockIdx.x, threadIdx.x, i);
+		//if (mrq1curv1 == 1 && blockIdx.x == 9 && i == 1) {
+		//	//printf("[%d][%d]  \ti: %d\n", blockIdx.x, threadIdx.x, i);
 		//	//	printf("[%d][%d]  \te_1[%d]: % .6f\tNor[%d][0]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).e_1[jp], i, Fa->Nor[i][0]);
-		//	printf("[%d][%d]  \tlmu: %d\n", blockIdx.x, threadIdx.x, lmu);
+		//	printf("%d | [%d][%d]  \tlmu: % .9f\n", mrq1curv1, blockIdx.x, threadIdx.x, lmu);
 		//}
 		lmu0 = e0_1 * Fa->Nor[i][0] + e0_2 * Fa->Nor[i][1] + e0_3 * Fa->Nor[i][2];
 		if ((lmu > TINY) && (lmu0 > TINY))
@@ -434,9 +441,9 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	/* Ders. of brightness w.r.t. rotation parameters */
 	(*CUDA_LCC).dytemp[i] = Scale * tmp1;
 
-	//if(blockIdx.x == 2)
-	//	printf("bright >>> [%d][%d] jp_Scale[%d]: % .6f, tmp1: % .6f, dytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).jp_Scale[jp], tmp1, i, (*CUDA_LCC).dytemp[i]);
-		//printf("bright >>> [%d][%d] \tbr: % .6f\tjp_Scale[%d]: % .6f\n", blockIdx.x, threadIdx.x, br, jp, Scale);
+	//if(mrq1curv1 == 1 && blockIdx.x == 2)
+	//	printf("bright >>> [%d][%d] jp_Scale[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, Scale);
+		//printf("bright >>> [%d][%d] jp_Scale[%d]: % .6f, tmp1: % .6f, dytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).jp_Scale[jp], tmp1, i, (*CUDA_LCC).dytemp[i]);
 		//printf("bright >>> [%d][%d] \tdytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, (*CUDA_LCC).dytemp[i]);
 
 
