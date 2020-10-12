@@ -245,7 +245,7 @@ void mrqcof_curve1(
 	int brtmph, 
 	int Inrel,
 	int Lpoints, 
-	int mrq1curv1)
+	int num)
 {
 	int3 threadIdx, blockIdx;
 	threadIdx.x = get_local_id(0);
@@ -337,7 +337,7 @@ void mrqcof_curve1(
 			//  2/49  dytemp[7851]:  0.198331
 			//  2/50  dytemp[8008]: -1.785283
 //  
-			//if (blockIdx.x == 9)
+			//if (blockIdx.x == 9 && num == 1)
 			//	printf("%2d/%2d  dytemp[%3d]: % .6f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).dytemp[ixx]);
 
 			//jp>=2
@@ -354,17 +354,18 @@ void mrqcof_curve1(
 		{
 			tmave[threadIdx.x] += (*CUDA_LCC).ytemp[jp];
 			
-			//if (blockIdx.x == 2)
+			//if (blockIdx.x == 2 && num == 1)
 			//	printf("[%d][%d]  \tytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
 				//printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
 		}
 		
-		//if (blockIdx.x == 2) {
-		//	printf("[%d][%d]  \ttmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
-		//}
 
 		//__syncthreads();
 		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+		
+		//if (blockIdx.x == 2 && num == 1) {
+		//	printf("[%2d][%3d] tmave[%d]: % .6f\n", blockIdx.x, threadIdx.x, threadIdx.x, tmave[threadIdx.x]);
+		//}
 
 		//parallel reduction
 		k = BLOCK_DIM >> 1;
@@ -382,7 +383,7 @@ void mrqcof_curve1(
 		if (threadIdx.x == 0)
 		{
 			lave = tmave[0] + tmave[1];
-			//if (blockIdx.x == 2)
+			//if (blockIdx.x == 2 && num == 1)
 			//	printf("[%d][%d]  \tlave: % .6f\n", blockIdx.x, threadIdx.x, lave);
 		}
 		//parallel reduction end

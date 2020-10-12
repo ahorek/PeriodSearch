@@ -10,7 +10,7 @@
 //#include "globals.h"
 //#include "declarations_OpenCl.h"
 
-inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double cg[], const int lnp1, int Lpoints, int mrqmatnum)
+inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double cg[], const int lnp1, int Lpoints, int num)
 {
 	double f, cf, sf, pom, pom0, alpha;
 	double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
@@ -86,10 +86,10 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		cf = cos(f);
 		sf = sin(f);
 
-		/*if (blockIdx.x == 0 && jp == brtmpl)
-		{
-			printf("[%d][%d]: \tf: % .6f, cosF: % .6f, sinF: % .6f\n", blockIdx.x, threadIdx.x, f, cf, sf);
-		}*/
+		//if (num == 1 && blockIdx.x == 0 && jp == brtmpl)
+		//{
+		//	printf("[%d][%d]: \tf: % .6f, cosF: % .6f, sinF: % .6f\n", blockIdx.x, threadIdx.x, f, cf, sf);
+		//}
 
 		///* rotation matrix, Z axis, angle f */
 
@@ -105,7 +105,7 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 
 
 		// TODO: There are some differenced compared to the result from CUDA app
-		//if (blockIdx.x == 2)
+		//if (num == 1 && blockIdx.x == 2)
 		//	printf("[%d][%d]: \t% .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).e_1[jp], (*CUDA_LCC).e0_1[jp]);
 
 		tmat = (-sf) * Fa->Blmat[x][1][1] + cf * Fa->Blmat[x][2][1]; // +0 * Fa->Blmat[x][3][1];
@@ -291,11 +291,11 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	int Lpoints1,
 	int Inrel,
 	//int j,
-	int mrq1curv1)
+	int num)
 {
 	int ncoef0, ncoef, i, incl_count = 0;// j, jp;
 	double cl, cls, dnom, s, Scale;
-	double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
+	__private double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
 
 	int3 blockIdx, threadIdx;
 	threadIdx.x = get_local_id(0);
@@ -341,7 +341,8 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	de0[3][2] = (*CUDA_LCC).de0[jp][3][2];
 	de0[3][3] = (*CUDA_LCC).de0[jp][3][3];
 
-	//if (blockIdx.x == 2)
+	//if (num == 1 && blockIdx.x == 1)
+	//	printf("[%d][%d] jp: %3d, e_1: %.6f, e_2: %.6f, e_3: %.6f\n", blockIdx.x, threadIdx.x, jp, e_1, e_2, e_3);
 	//	printf("[%d][%d]: %.6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).de[1][3][1]);
 
 	/* Directions (and ders.) in the rotating system */
@@ -368,22 +369,24 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	tmp5 = 0;
 
 	int j = blockIdx.x * (Fa->Numfac1) + 1;
-	//j = blockIdx.x;
-	//if (blockIdx.x == 1 && threadIdx.x == 0)
-	//	printf("Fa->Numfac: %d, Fa->Numfac1: %d\n", Fa->Numfac, Fa->Numfac1);
+	//int j = (Fa->Numfac1) + 1;
+	//if(num == 1 && blockIdx.x == 9 && threadIdx.x == 0)
+	//	printf("Fa->Numfac: %d, Fa->Numfac1: %d\n", j, Fa->Numfac1);
 
 	//if (mrq1curv1 == 1) {
 	//	printf("[%d]  \tNumfac: %d\t jp: %d\n",  threadIdx.x, Fa->Numfac, jp);
 	//}
-	for (i = 1; i <= Fa->Numfac; i++, j++)
+	for (i = 1; i <= Fa->Numfac; i++)
 	{
-		//j++;
 		lmu = e_1 * Fa->Nor[i][0] + e_2 * Fa->Nor[i][1] + e_3 * Fa->Nor[i][2];
-		//if (mrq1curv1 == 1 && blockIdx.x == 9 && i == 1) {
-		//	//printf("[%d][%d]  \ti: %d\n", blockIdx.x, threadIdx.x, i);
+
+		//if (num == 1 && blockIdx.x == 9 && i == 1) {
+		//	//printf("%d | [%d][%d]  \tlmu: % .9f\n", num, blockIdx.x, threadIdx.x, lmu);
+		//	//printf("[%d][%d] e_1: %.6f, e_2: %.6f, e_3: %.6f\n", blockIdx.x, threadIdx.x, e_1, e_2, e_3);
 		//	//	printf("[%d][%d]  \te_1[%d]: % .6f\tNor[%d][0]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).e_1[jp], i, Fa->Nor[i][0]);
-		//	printf("%d | [%d][%d]  \tlmu: % .9f\n", mrq1curv1, blockIdx.x, threadIdx.x, lmu);
 		//}
+		//continue;
+
 		lmu0 = e0_1 * Fa->Nor[i][0] + e0_2 * Fa->Nor[i][1] + e0_3 * Fa->Nor[i][2];
 		if ((lmu > TINY) && (lmu0 > TINY))
 		{
@@ -395,11 +398,11 @@ void bright(__global struct freq_context2* CUDA_LCC,
 			//bfr.y = double2hiint((*CUDA_LCC).Area[j]);
 			//bfr = tex1Dfetch(texArea, j);
 			//ar = HiLoint2double(bfr.y, bfr.x);
-			ar = (*CUDA_LCC).Area[i];
+			ar = (*CUDA_LCC).Area[j];
 
 			br += ar * s;
-			//if (blockIdx.x == 2 && threadIdx.x == 0)
-			//	printf("bright >>> [%d][%d] \tArea[%d]: % .16f\tbr: % .6f\n", blockIdx.x, threadIdx.x, j, ar, br);
+			if (num == 1 && blockIdx.x == 9 && threadIdx.x == 0)
+				printf("bright >>> [%d][%d] s: % .9f, Area[%d]: % .16f\n", blockIdx.x, threadIdx.x, s, j, ar);
 			//	//printf("bright >>> [%d][%d] \tArea[%d]: % .16f\n", blockIdx.x, threadIdx.x, j, ar);
 			//	//printf("bright >>> [%d][%d] \tArea[%d]: % .16f\tbfr.y: %d\t bfr.x: %d\n", blockIdx.x, threadIdx.x, j + 289, ar, bfr.y, bfr.x);
 
@@ -434,6 +437,7 @@ void bright(__global struct freq_context2* CUDA_LCC,
 			tmp4 += lmu * lmu0 * ar;
 			tmp5 += ar * lmu * lmu0 / (lmu + lmu0);
 		}
+		j++;
 	}
 
 	Scale = (*CUDA_LCC).jp_Scale[jp];
@@ -441,10 +445,10 @@ void bright(__global struct freq_context2* CUDA_LCC,
 	/* Ders. of brightness w.r.t. rotation parameters */
 	(*CUDA_LCC).dytemp[i] = Scale * tmp1;
 
-	//if(mrq1curv1 == 1 && blockIdx.x == 2)
-	//	printf("bright >>> [%d][%d] jp_Scale[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, Scale);
+	//if(num == 1 && blockIdx.x == 2)
+	//	printf("bright >>> [%3d][%3d] jp_Scale[%3d]: % .6f, tmp1: % .9f\n", blockIdx.x, threadIdx.x, jp, Scale, tmp1);
+		//printf("bright >>> [%2d][%3d] \tdytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, (*CUDA_LCC).dytemp[i]);
 		//printf("bright >>> [%d][%d] jp_Scale[%d]: % .6f, tmp1: % .6f, dytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).jp_Scale[jp], tmp1, i, (*CUDA_LCC).dytemp[i]);
-		//printf("bright >>> [%d][%d] \tdytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, i, (*CUDA_LCC).dytemp[i]);
 
 
 	i += Lpoints1;

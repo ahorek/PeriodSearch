@@ -74,6 +74,9 @@ inline void MrqcofCurve2(
 			coef = Fa->Sig[lnp1] * lpoints / (*CUDA_LCC).ave;
 
 			double yytmp = (*CUDA_LCC).ytemp[jp];
+
+			//if (blockIdx.x == 2 && threadIdx.x == 0 && num == 1)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] ytemp[%d]: % .9f, ave: % .9f, Fa-Sig[%d]: % .16f\n", blockIdx.x, threadIdx.x, jp, lnp1, jp, yytmp, (*CUDA_LCC).ave, lnp1, Fa->Sig[lnp1]);
 			coef1 = yytmp / (*CUDA_LCC).ave;
 			(*CUDA_LCC).ytemp[jp] = coef * yytmp;
 
@@ -223,6 +226,9 @@ inline void MrqcofCurve2(
 		{
 			ymod = (*CUDA_LCC).ytemp[jp];
 
+			//if (blockIdx.x == 2 && threadIdx.x == 0 && num == 1)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] ymod: % .16f\n", blockIdx.x, threadIdx.x, jp, lnp2, ymod);
+
 			int ixx = jp + matmpl * Lpoints1;
 			for (l = matmpl; l <= matmph; l++, ixx += Lpoints1)
 			{
@@ -260,8 +266,8 @@ inline void MrqcofCurve2(
 			bfr = Fa->Brightness[lnp2];
 			dy = bfr - ymod;
 
-			//if (blockIdx.x == 2 && threadIdx.x == 0)
-			//	printf("bright >>> [%3d][%3d][%3d][%3d] bfr: % .16f, ymod: % .16f\n", blockIdx.x, threadIdx.x, jp, lnp2, bfr, ymod);
+			//if (blockIdx.x == 2 && threadIdx.x == 0 && num == 1)
+			//	printf("bright >>> [%3d][%3d][%3d][%3d] bfr: % .16f, ymod: % .16f\n", blockIdx.x, threadIdx.x, jp, lnp2, ymod);
 
 			j = 0;
 			//
@@ -275,7 +281,7 @@ inline void MrqcofCurve2(
 			{
 				int idx = blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x;
 			
-				printf("[%2d][%2d]  beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, idx, beta[idx]);
+				//printf("[%2d][%2d]  beta[%d]: % .6f\n", blockIdx.x, threadIdx.x, idx, beta[idx]);
 			}
 
 

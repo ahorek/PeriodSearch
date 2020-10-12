@@ -60,8 +60,8 @@ __kernel void CLCalculatePrepare(
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[threadIdx.x];
 	__global struct freq_result* CUDA_LFR = &CUDA_FR[threadIdx.x];
 
-	if (blockIdx.x == 0)
-		printf("n_start: %d, id: %d, max_test_periods: %d\n", n_start, threadIdx.x, max_test_periods);
+	//if (blockIdx.x == 0)
+	//	printf("n_start: %d, id: %d, max_test_periods: %d\n", n_start, threadIdx.x, max_test_periods);
 
 	int n = n_start + threadIdx.x;
 
@@ -80,7 +80,7 @@ __kernel void CLCalculatePrepare(
 	}
 
 	(*CUDA_LCC).freq = freq_start - (n - 1) * freq_step;
-	printf("CUDA_LCC[%d].freq = %.6f\n", threadIdx.x, (*CUDA_LCC).freq);
+	//printf("CUDA_LCC[%d].freq = %.6f\n", threadIdx.x, (*CUDA_LCC).freq);
 
 	/* initial poles */
 	(*CUDA_FR).per_best = 0;
@@ -948,8 +948,8 @@ __kernel void CLCalculateIter1Mrqcof2Curve1(
 	
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 	
-	__local int mrq2curv1;
-	if (threadIdx.x == 0) mrq2curv1 = 1;
+	__local int num;
+	if (threadIdx.x == 0) num = 1;
 
 	int brtmph, brtmpl;
 	brtmph = lpoints / BLOCK_DIM;
@@ -959,17 +959,19 @@ __kernel void CLCalculateIter1Mrqcof2Curve1(
 	if (brtmph > lpoints) brtmph = lpoints;
 	brtmpl++;
 
-	//if(blockIdx.x == 0)
+	//if(blockIdx.x == 2 && num == 1)
 	//	printf("[%d][%d] brtmpl: %d, brtmph: %d\n", blockIdx.x, threadIdx.x, brtmpl, brtmph);
 
 	for (int jp = brtmpl; jp <= brtmph; jp++) {
-		//printf("[%d][%d] jp: %d\n", blockIdx.x, threadIdx.x, jp);
-		bright(CUDA_LCC, Fa, (*CUDA_LCC).atry, jp, lpoints + 1, inrel, mrq2curv1);
+		//if(blockIdx.x == 2)
+		//	printf("[%d][%d] jp: %d\n", blockIdx.x, threadIdx.x, jp);
+		
+		bright(CUDA_LCC, Fa, (*CUDA_LCC).atry, jp, lpoints + 1, inrel, num);
 	}
 	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 	//mrqcof_curve1(CUDA_LCC, Fa, texArea, texDg, (*CUDA_LCC).atry, (*CUDA_LCC).da, inrel, lpoints); // (*CUDA_LCC).covar,
-	mrqcof_curve1(CUDA_LCC, Fa, (*CUDA_LCC).atry, brtmpl, brtmph, inrel, lpoints, mrq2curv1);
+	mrqcof_curve1(CUDA_LCC, Fa, (*CUDA_LCC).atry, brtmpl, brtmph, inrel, lpoints, num);
 }
 
 __kernel void CLCalculateIter1Mrqcof2Curve1Last(
