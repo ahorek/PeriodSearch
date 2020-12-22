@@ -183,8 +183,8 @@ typedef struct FuncArrays
 	int isAlamda[MAX_N_ITER];
 	int isReported[MAX_N_ITER];
 	double tim[MAX_N_OBS + 1];
-	double ee[MAX_N_OBS + 1][3];
-	double ee0[MAX_N_OBS + 1][3];
+	double ee[(MAX_N_OBS + 1) * 3];
+	double ee0[(MAX_N_OBS + 1) * 3];
 	double Darea[MAX_N_FAC + 1];
 	double Nor[MAX_N_FAC + 1][3];
 	double Fc[MAX_N_FAC + 1][MAX_LM + 1];

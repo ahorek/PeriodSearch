@@ -23,8 +23,8 @@ inline void MrqcofCurve2(
 	//	//int idx = blockIdx.x * (MAX_N_PAR + 1) + threadIdx.x;
 	//	int idx = threadIdx.x;
 
-	//	printf("[%2d][%2d]  lbeta[%d]: % .6f, addr: %d\n", blockIdx.x, threadIdx.x, idx, beta[idx], &beta[idx]);
-	//	//printf("[%2d][%2d]  alpha[%d]: % .6f, addr: %d, Fa->Lmfit1: %d\n", blockIdx.x, threadIdx.x, idx, alpha[idx], &alpha[idx], Fa->Lmfit1);
+	//	//printf("[%2d][%2d]  lbeta[%d]: % .6f, addr: %d\n", blockIdx.x, threadIdx.x, idx, beta[idx], &beta[idx]);
+	//	printf("[%2d][%2d]  alpha[%d]: % .6f, addr: %d, Fa->Lmfit1: %d\n", blockIdx.x, threadIdx.x, idx, alpha[idx], &alpha[idx], Fa->Lmfit1);
 	//}
 
 	//precalc thread boundaries
@@ -235,7 +235,7 @@ inline void MrqcofCurve2(
 				(*CUDA_LCC).dyda[l] = (*CUDA_LCC).dytemp[ixx];
 
 				//if (blockIdx.x == 9 && threadIdx.x == 5)
-				//	printf("[%2d][%2d][%3d]  \tdyda[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, l, (*CUDA_LCC).dyda[l]);
+				//	printf("[%2d][%2d][%3d] dytemp[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
 			}
 
 			//__syncthreads();
@@ -291,7 +291,7 @@ inline void MrqcofCurve2(
 				wt = (*CUDA_LCC).dyda[l] * sig2iwght;
 
 				//if (blockIdx.x == 2 && threadIdx.x == 2)
-				//	printf("[%2d][%2d][%3d][%3d]  \tdyda[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, j, l, (*CUDA_LCC).dyda[l]);
+				//	printf("[%2d][%2d][%3d][%3d] dyda[%d]: % .6f\n", blockIdx.x, threadIdx.x, jp, j, l, (*CUDA_LCC).dyda[l]);
 
 				//				   k = 0;
 				//precalc thread boundaries
@@ -310,9 +310,9 @@ inline void MrqcofCurve2(
 					
 					alpha[j * (Fa->Lmfit1) + m - 1] = alpha[j * (Fa->Lmfit1) + m - 1] + wt * (*CUDA_LCC).dyda[m];
 
-					if (num == 1 && jp == 1 && threadIdx.x == 0 && l == 2)
-						printf("[%2d][%2d] j: %d, m: %d, tmpl: %d, tmph: %d, alpha[%d] % .6f, wt: % .6f, dyda[%d]: % .6f\n", \
-							blockIdx.x, threadIdx.x, j, m,  tmpl, tmph,  j * (Fa->Lmfit1) + m - 1, alpha[j * (Fa->Lmfit1) + m - 1], wt, m, (*CUDA_LCC).dyda[m]);
+					//if (num == 1 && blockIdx.x == 0 && m == 2)
+					//	printf("[%2d][%2d] j: %d, m: %d, alpha[%d] % .6f, wt: % .6f, dyda[%d]: % .6f\n", \
+					//		blockIdx.x, threadIdx.x, j, m, j * (Fa->Lmfit1) + m - 1, alpha[j * (Fa->Lmfit1) + m - 1], wt, m, (*CUDA_LCC).dyda[m]);
 				} /* m */
 
 				//__syncthreads();

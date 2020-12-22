@@ -208,7 +208,7 @@ cl_int ClPrepare(int deviceId, double* beta_pole, double* lambda_pole, double* p
 		//auto pee = malloc((MAX_N_OBS + 1) * 3 * sizeof(double));
 		//memcpy(pee, &ee, (MAX_N_OBS + 1) * 3 * sizeof(double));
 
-		memcpy((*Fa).ee, &ee[0], (MAX_N_OBS + 1) * sizeof(double)); 
+		memcpy((*Fa).ee, &ee[0], (MAX_N_OBS + 1) * 3 * sizeof(double)); 
 		//memcpy((*Fa).ee, &ee[0], (ndata + 3 + 1) * sizeof(double)); // (MAX_N_OBS + 1) * 3 * sizeof(double));
 		memcpy((*Fa).ee0, &ee0[0], (MAX_N_OBS + 1) * 3 * sizeof(double));
 		//memcpy((*Fa).ee0, &ee0[0], (ndata + 3 + 1) * sizeof(double));

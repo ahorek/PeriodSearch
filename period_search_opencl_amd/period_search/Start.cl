@@ -346,11 +346,31 @@ __kernel void CLCalculateIter1Mrqcof1Matrix(
 
 	if (!Fa->isAlamda[blockIdx.x]) return;
 
-	__local int mrqmatnum;
-	if (threadIdx.x == 0) mrqmatnum = 0;
+	__local int num;
+	if (threadIdx.x == 0) num = 0;
+
+	int brtmph, brtmpl;
+	brtmph = lpoints / BLOCK_DIM;
+	if (lpoints % BLOCK_DIM) {
+		brtmph++;
+	}
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > lpoints) {
+		brtmph = lpoints;
+	}
+	brtmpl++;
+
+	for (int jp = brtmpl; jp <= brtmph; jp++)
+	{
+		
+		matrix_neo(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).np, lpoints, jp, brtmpl, num);
+	}
+
+	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 
 	//mrqcof_matrix(CUDA_LCC, Fa, (*CUDA_LCC).cg, lpoints);
-	matrix_neo(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).np, lpoints, mrqmatnum);
 }
 
 __kernel void CLCalculateIter1Mrqcof1Curve1(
@@ -449,8 +469,10 @@ __kernel void CLCalculateIter1Mrqcof1End(
 	__global struct freq_context2* CUDA_CC,
 	__global varholder* Fa)
 {
-	int3 blockIdx;
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
+
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
 	if (Fa->isInvalid[blockIdx.x]) return;
@@ -459,36 +481,39 @@ __kernel void CLCalculateIter1Mrqcof1End(
 
 	if (!Fa->isAlamda[blockIdx.x]) return;
 
-	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).alpha);
+	__local int num;
+	if (threadIdx.x == 0) num = 0;
+
+	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).alpha, num);
 
 	//printf("[%d] Ochisq: % .9f\n", blockIdx.x, (*CUDA_LCC).Ochisq);
 }
 
 
-__kernel void CLCalculateIter1Mrqmin1End_(
-	__global struct freq_context2* CUDA_CC,
-	__global varholder* Fa)
-{
-	int3 blockIdx, threadIdx;
-	threadIdx.x = get_local_id(0);
-	blockIdx.x = get_group_id(0);
-
-	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
-
-	//printf("[%d][%d]\n", blockIdx.x, threadIdx.x);
-
-	//if(threadIdx.x == 0)
-	//	printf("[%d][%d] isInvalid: %d, isNiter: %d\n", blockIdx.x, threadIdx.x, Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x]);
-
-	if (Fa->isInvalid[blockIdx.x]) return;
-
-	if (!Fa->isNiter[blockIdx.x]) return;
-
-	//int block = CUDA_BLOCK_DIM;
-	//gauss_err=
-	//mrqmin_1_end(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x], threadIdx, blockIdx);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
-	mrqmin_1_end_old(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x]);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
-}
+//__kernel void CLCalculateIter1Mrqmin1End_(
+//	__global struct freq_context2* CUDA_CC,
+//	__global varholder* Fa)
+//{
+//	int3 blockIdx, threadIdx;
+//	threadIdx.x = get_local_id(0);
+//	blockIdx.x = get_group_id(0);
+//
+//	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
+//
+//	//printf("[%d][%d]\n", blockIdx.x, threadIdx.x);
+//
+//	//if(threadIdx.x == 0)
+//	//	printf("[%d][%d] isInvalid: %d, isNiter: %d\n", blockIdx.x, threadIdx.x, Fa->isInvalid[blockIdx.x], Fa->isNiter[blockIdx.x]);
+//
+//	if (Fa->isInvalid[blockIdx.x]) return;
+//
+//	if (!Fa->isNiter[blockIdx.x]) return;
+//
+//	//int block = CUDA_BLOCK_DIM;
+//	//gauss_err=
+//	//mrqmin_1_end(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x], threadIdx, blockIdx);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
+//	mrqmin_1_end_old(CUDA_LCC, Fa, Fa->isAlamda[blockIdx.x]);  //CUDA_ma, CUDA_mfit, CUDA_mfit1, blockDim);
+//}
 
 void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 	__global varholder* Fa)
@@ -533,7 +558,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 			(*CUDA_LCC).atry[j] = (*CUDA_LCC).cg[j];
 
 			//if (blockIdx.x == 2)
-			 //  printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, j, (*CUDA_LCC).atry[j]);
+			//   printf("[%d][%d] atry[%d]: % .9f\n", blockIdx.x, threadIdx.x, j, (*CUDA_LCC).atry[j]);
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
@@ -548,7 +573,7 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 		for (k = 1; k <= Fa->Lmfit; k++, ixx++)
 		{
 			(*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
-			//if (ixx == 166)
+			//if (blockIdx.x == 0 && threadIdx.x == 0)
 			//	printf("[%d][%d] covar[%d]: % .9f\n", blockIdx.x, threadIdx.x, ixx, (*CUDA_LCC).covar[ixx]);
 		}
 
@@ -708,6 +733,9 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 			(*CUDA_LCC).indxr[i] = irow;
 			(*CUDA_LCC).indxc[i] = icol;
 			colIdx = icol * Fa->Lmfit1 + icol;
+			//if (blockIdx.x == 0)
+			//	printf("[%2d] atry[%3d]: %.6f\n", blockIdx.x, colIdx, (*CUDA_LCC).covar[colIdx]);
+
 			if ((*CUDA_LCC).covar[colIdx] == 0.0)
 			{
 				j = 0;
@@ -717,9 +745,12 @@ void CLCalculateIter1Mrqmin1End_01(__global struct freq_context2* CUDA_LCC,
 					{
 						j++;
 						(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+
+						//if(blockIdx.x == 0)
+						//	printf("[%2d] atry[%3d]: %.6f\n", blockIdx.x, (*CUDA_LCC).atry[l]);
 					}
 				}
-				printf("+");
+				//printf("+");
 
 				return;
 			}
@@ -899,13 +930,30 @@ __kernel void CLCalculateIter1Mrqcof2Matrix(
 
 	if (!Fa->isNiter[blockIdx.x]) return;
 
-	__local int mrqmatnum;
-	if (threadIdx.x == 0) mrqmatnum = 1;
+	__local int num;
+	if (threadIdx.x == 0) num = 1;
 
 	//mrqcof_matrix(CUDA_LCC, Fa, (*CUDA_LCC).atry, lpoints);
 	//matrix_neo(CUDA_LCC, Fa, (*CUDA_LCC).cg, (*CUDA_LCC).np, lpoints);
+
+	int brtmph, brtmpl;
+	brtmph = lpoints / BLOCK_DIM;
+	if (lpoints % BLOCK_DIM) {
+		brtmph++;
+	}
+
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > lpoints) {
+		brtmph = lpoints;
+	}
+	brtmpl++;
 	
-	matrix_neo(CUDA_LCC, Fa, (*CUDA_LCC).atry, (*CUDA_LCC).np, lpoints, mrqmatnum);
+	for (int jp = brtmpl; jp <= brtmph; jp++)
+	{
+
+		matrix_neo(CUDA_LCC, Fa, (*CUDA_LCC).atry, (*CUDA_LCC).np, lpoints, jp, brtmpl, num);
+	}
 
 	/*    TEST    */
 	//int brtmph, brtmpl;
@@ -999,7 +1047,8 @@ __kernel void CLCalculateIter1Mrqcof2End(
 	__global struct freq_context2* CUDA_CC,
 	__global varholder* Fa)
 {
-	int3 blockIdx;
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
 	if (Fa->isInvalid[blockIdx.x]) return;
@@ -1007,7 +1056,10 @@ __kernel void CLCalculateIter1Mrqcof2End(
 
 	__global struct freq_context2* CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).covar);
+	__local int num;
+	if (threadIdx.x == 0) num = 1;
+
+	(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, Fa, (*CUDA_LCC).covar, num);
 }
 
 __kernel void CLCalculateIter1Mrqmin2End(

@@ -169,10 +169,12 @@ void mrqcof_start(
 
 double mrqcof_end(__global struct freq_context2* CUDA_LCC, 
 	__global varholder* Fa, 
-	__global double* alpha)
+	__global double* alpha,
+	int num)
 {
 	int j, k;
-	int3 blockIdx;
+	int3 blockIdx, threadIdx;
+	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_global_id(0);
 
 	for (j = 2; j <= Fa->Lmfit; j++)
@@ -181,8 +183,8 @@ double mrqcof_end(__global struct freq_context2* CUDA_LCC,
 		{
 			alpha[k * Fa->Lmfit1 + j] = alpha[j * Fa->Lmfit1 + k];
 
-			//if(blockIdx.x == 0)
-			//	printf("[%d] alpha[%d]: % .9f\n", blockIdx.x, k * Fa->Lmfit1 + j, alpha[k * Fa->Lmfit1 + j]);
+			if(num == 1 && blockIdx.x == 0 && threadIdx.x == 0)
+				printf("[%d] alpha[%d]: % .9f\n", blockIdx.x, k * Fa->Lmfit1 + j, alpha[k * Fa->Lmfit1 + j]);
 		}
 	}
 
@@ -481,10 +483,10 @@ void mrqcof_curve1_last(
 			}
 
 			// NOTE: Here we get some tiny differences against CUDA calculations in 13 - 16 symbol after decimal place
-			//if (blockIdx.x == 2) {
-			//	int idx = jp + l * (Lpoints + 1);
-			//	printf("[%d][%d] dytemp[%d]: % .16f dave[%d]: % .16f\n", blockIdx.x, threadIdx.x, idx, (*CUDA_LCC).dytemp[idx], l, (*CUDA_LCC).dave[l]);
-			//}
+			if (blockIdx.x == 2) {
+				int idx = jp + l * (Lpoints + 1);
+				printf("[%d][%d] dytemp[%d]: % .16f dave[%d]: % .16f\n", blockIdx.x, threadIdx.x, idx, (*CUDA_LCC).dytemp[idx], l, (*CUDA_LCC).dave[l]);
+			}
 		}
 
 		/* save lightcurves */

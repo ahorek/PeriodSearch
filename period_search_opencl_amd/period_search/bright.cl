@@ -10,7 +10,14 @@
 //#include "globals.h"
 //#include "declarations_OpenCl.h"
 
-inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varholder* Fa, double cg[], const int lnp1, int Lpoints, int num)
+inline void matrix_neo(__global struct freq_context2* CUDA_LCC, 
+	__global varholder* Fa, 
+	double cg[], 
+	const int lnp1, 
+	int Lpoints, 
+	int jp, 
+	int brtmpl,
+	int num)
 {
 	double f, cf, sf, pom, pom0, alpha;
 	double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
@@ -19,7 +26,7 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
-	int brtmph, brtmpl;
+	/*int brtmph, brtmpl;
 	brtmph = Lpoints / BLOCK_DIM;
 	if (Lpoints % BLOCK_DIM) {
 		brtmph++;
@@ -30,7 +37,7 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 	if (brtmph > Lpoints) {
 		brtmph = Lpoints;
 	}
-	brtmpl++;
+	brtmpl++;*/
 
 	//if (blockIdx.x == 0)
 	//{
@@ -38,17 +45,18 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 	//}
 
 	// TODO: Check this out. May be it needs to run against __local vars and only for get_group_id(0) == 0 ?
+
 	lnp = lnp1 + brtmpl - 1;
 	int x = blockIdx.x;
-	for (int jp = brtmpl; jp <= brtmph; jp++)
-	{
+	//for (int jp = brtmpl; jp <= brtmph; jp++)
+	//{
 		lnp++;
-		ee_1 = Fa->ee[lnp][0];// position vectors
-		ee0_1 = Fa->ee0[lnp][0];
-		ee_2 = Fa->ee[lnp][1];
-		ee0_2 = Fa->ee0[lnp][1];
-		ee_3 = Fa->ee[lnp][2];
-		ee0_3 = Fa->ee0[lnp][2];
+		ee_1 = Fa->ee[lnp * 3 + 0];// position vectors
+		ee0_1 = Fa->ee0[lnp * 3 +0];
+		ee_2 = Fa->ee[lnp * 3 + 1];
+		ee0_2 = Fa->ee0[lnp * 3 + 1];
+		ee_3 = Fa->ee[lnp * 3 + 2];
+		ee0_3 = Fa->ee0[lnp * 3 + 2];
 		t = Fa->tim[lnp];
 
 		//if (get_group_id(0) == 0) {
@@ -59,15 +67,18 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 
 		alpha = acos(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3);
 
-		//if (blockIdx.x == 0)
+		//if (num == 1 && blockIdx.x == 0 && jp == brtmpl)
 		//{
 		//	//double ff = (alpha * -1) / cg[Fa->Ncoef0 + 2];
-		//	printf("matrix_neo >>> alpha[%d]: %.6f\n", jp, alpha);
+		//	printf("matrix_neo >>> alpha[%3d]: %.6f\n", jp, alpha);
 
 		//}
 
 		/* Exp-lin model (const.term=1.) */
 		f = exp((alpha * -1.0) / cg[Fa->Ncoef0 + 2]);	//f is temp here
+
+		//if (num == 1 && blockIdx.x == 1 && jp == brtmpl)
+		//	printf("[%2d][%3d][%3d] %.6f, %.6f\n", blockIdx.x, threadIdx.x, jp, alpha, cg[Fa->Ncoef0 + 2]);
 
 		(*CUDA_LCC).jp_Scale[jp] = 1 + cg[Fa->Ncoef0 + 1] * f + cg[Fa->Ncoef0 + 3] * alpha;
 		(*CUDA_LCC).jp_dphp_1[jp] = f;
@@ -77,7 +88,7 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		//if(mrqmatnum == 1)
 		//	printf("%d | [%d][%d][%d]: %.6f %.6f\n", mrqmatnum, 0, threadIdx.x, jp, cg[Fa->Ncoef0 + 1], (*CUDA_LCC).jp_Scale[jp]);
 
-		//if(blockIdx.x == 1)
+		//if(num == 1 && blockIdx.x == 1 && jp == brtmpl)
 		//	printf("[%d]: %.6f\n", jp, (*CUDA_LCC).jp_Scale[jp]);
 
 		//  matrix start
@@ -88,7 +99,7 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 
 		//if (num == 1 && blockIdx.x == 0 && jp == brtmpl)
 		//{
-		//	printf("[%d][%d]: \tf: % .6f, cosF: % .6f, sinF: % .6f\n", blockIdx.x, threadIdx.x, f, cf, sf);
+		//	printf("[%2d][%3d][%3d] f: % .6f, cosF: % .6f, sinF: % .6f\n", blockIdx.x, threadIdx.x, jp, f, cf, sf);
 		//}
 
 		///* rotation matrix, Z axis, angle f */
@@ -242,10 +253,10 @@ inline void matrix_neo(__global struct freq_context2* CUDA_LCC, __global varhold
 		//	printf("matrix_neo >>> [%d][%d]: \t% .6f, % .6f, % .6f\n", blockIdx.x, threadIdx.x, Fa->Blmat[x][3][1], Fa->Blmat[x][3][1], Fa->Blmat[x][3][1]);
 		//	//printf("[%d][%d]: \t% .6f, % .6f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).de[jp][3][3], (*CUDA_LCC).de0[jp][3][3]);
 		//}
-	}
+	//}
 
 	//__syncthreads();
-	barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+	//barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
 }
 
 
