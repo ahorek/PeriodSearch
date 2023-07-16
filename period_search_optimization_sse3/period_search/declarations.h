@@ -15,7 +15,7 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 	      double **alpha, double beta[], int mfit, int lastone, int lastma);
 void curv(double cg[]);
 void blmatrix(double bet, double lam);
-double conv(int nc, double dres[], int ma);
+double conv(int nc, double dres[], int ma) noexcept;
 void gauss_1(double **aa, int n, double b[]);
 void covsrt(double **covar, int ma, int ia[], int mfit);
 void phasec(double dcdp[], double alpha, double p[]);
@@ -28,13 +28,24 @@ double *vector_double(int length);
 int *vector_int(int length);
 double **matrix_double(int rows, int columns);
 double **aligned_matrix_double(int rows, int columns);
+
+//template <class type_info> inline type_info* vector(int length);
+//
+//template <class type_info> inline type_info** aligned_matrix(int rows, int colums);
+//template <class type_info> inline void aligned_deallocate_matrix(type_info** p_x, int rows);
+
+//type_info* vector(int length);
+//
+//type_info** aligned_matrix(int rows, int colums);
+//void aligned_deallocate_matrix(type_info** p_x, int rows);
+
 int **matrix_int(int rows, int columns);
 double ***matrix_3_double(int n_1, int n_2, int n_3);
 void deallocate_vector(void *p_x);
 void deallocate_matrix_double(double **p_x, int rows);
 void aligned_deallocate_matrix_double(double **p_x, int rows);
 void deallocate_matrix_int(int **p_x, int rows);
-void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
+//void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
 
 double dot_product(double a[], double b[]);
 double hapke(double mi0, double mi, double alfa, double sc_param[]);

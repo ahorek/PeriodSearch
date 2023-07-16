@@ -582,8 +582,8 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
 #else
 		std::cerr << "Application: " << argv[0] << std::endl;
-#endif
 		getSystemInfo();
+#endif
 	}
 
 	while ((new_conw != 1) && ((conw_r * escl * escl) < 10.0))

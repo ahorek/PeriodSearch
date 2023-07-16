@@ -33,8 +33,21 @@ int gauss_errc(double **a, int n, double b[])
 
     __m128i avx_zeros=_mm_setzero_si128(); 
 
-	for (j=0;j<n;j++) ipiv[j]=0;
-	for (j=n;j<ipivsize;j++) ipiv[j]=1;
+	for (j = 0; j < n; j++)
+	{
+		ipiv[j] = 0;
+	}
+	
+	for (j = n; j <= ipivsize; j++)
+	{
+		// To escape from Warning C6386: Warning C6386 - https://learn.microsoft.com/en-us/cpp/code-quality/c6386?view=msvc-170
+		if (j-1 < n)
+		{
+			continue;
+		}
+
+		ipiv[j-1] = 1;
+	}
 
 	for (i=1;i<=n;i++) {
 		big=0.0;
@@ -141,7 +154,12 @@ int gauss_errc(double **a, int n, double b[])
 					       }
 				}*/
 			}
-		++(ipiv[icol]);
+
+			// To escape from Warning C6385: Invalid data - https://learn.microsoft.com/en-us/cpp/code-quality/c6385?view=msvc-170
+			if (icol < ipivsize) {
+				++(ipiv[icol]);
+			}
+
 		if (irow != icol) {
 			for (l=0;l<n;l++) SWAP(a[irow][l],a[icol][l])
 			SWAP(b[irow],b[icol])

@@ -1,8 +1,9 @@
 #include <Windows.h>
 #include <tchar.h>
+#include <string>
 
 bool GetVersionInfo(
-    LPCTSTR filename,
+    std::string filename,
     int& major,
     int& minor,
     int& build,
@@ -12,11 +13,11 @@ bool GetVersionInfo(
     char verBuffer[2048];
 
     //  Get the size of the version info block in the file
-    verBufferSize = GetFileVersionInfoSize(filename, NULL);
-    if (verBufferSize > 0 && verBufferSize <= sizeof(verBuffer))
+    verBufferSize = GetFileVersionInfoSize(const_cast<char*>(filename.c_str()), NULL);
+    if ( verBufferSize > 0 )
     {
         //  get the version block from the file
-        if (TRUE == GetFileVersionInfo(filename, NULL, verBufferSize, verBuffer))
+        if (TRUE == GetFileVersionInfo(const_cast<char*>(filename.c_str()), NULL, verBufferSize, verBuffer))
         {
             UINT length;
             VS_FIXEDFILEINFO* verInfo = NULL;

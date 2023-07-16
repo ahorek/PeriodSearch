@@ -14,7 +14,8 @@
  #include <pmmintrin.h>
 #endif
 
-double conv(int nc, double dres[], int ma)
+
+double conv(int nc, double dres[], int ma) noexcept
 {
    int i, j;
 
@@ -22,7 +23,10 @@ double conv(int nc, double dres[], int ma)
 
    res = 0;
    for (j = 1; j <= ma; j++)
+   {
       dres[j] = 0;
+   }
+
    for (i = 0; i < Numfac; i++)
    {
       res += Area[i] * Nor[nc-1][i];

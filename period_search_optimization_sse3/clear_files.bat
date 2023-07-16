@@ -3,3 +3,4 @@ del boinc_lockfile
 del period_search_out
 del period_search_state
 del boinc_temporary_exit
+del stderr.txt

@@ -5,12 +5,11 @@
 #include <fstream>
 #include <thread>
 #include "systeminfo.h"
-#include <unistd.h>
 #include <bitset>
 
 #ifdef _WIN32
 #include <windows.h>
-#elseif
+#else
 #include <unistd.h>
 #endif
 
@@ -123,7 +122,12 @@ void getCpuInfoByArch(ifstream& cpuinfo) {
 }
 #endif // _WIN32
 
-void getSystemInfo() {
+void getSystemInfo() 
+{
+#if defined(_WIN32)
+	return;
+#endif
+
 	auto cpuinfo = getIfstream("/proc/cpuinfo");
 	getCpuInfoByArch(cpuinfo);
 

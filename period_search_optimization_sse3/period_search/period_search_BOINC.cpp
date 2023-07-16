@@ -79,6 +79,27 @@
 UC_SHMEM* shmem;
 #endif
 
+//#include <intrin.h>
+#ifdef NO_SSE3
+#include <emmintrin.h>
+#else
+#include <pmmintrin.h>
+#endif
+
+#include <cstdint>
+#include <float.h>
+//#include <iosfwd>
+#include <iostream>
+#include <fstream>
+//#include <stdio.h>
+
+
+#if INTPTR_MAX == INT32_MAX
+#define ENV32BIT
+#elif INTPTR_MAX == INT64_MAX
+#define ENV64BIT
+#endif
+
 using std::string;
 
 constexpr auto checkpoint_file = "period_search_state";
@@ -132,7 +153,8 @@ void update_shmem() {
 /* global parameters */
 int Lmax, Mmax, Niter, Lastcall,
 Ncoef, Numfac, Lcurves, Nphpar,
-Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
+//Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
+* Lpoints, * Inrel,
 Deallocate, n_iter;
 
 double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
@@ -144,48 +166,75 @@ Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
 Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4],
+//*Weight;
 Weight[MAX_N_OBS + 1];
 
 #ifdef __GNUC__
-double Nor[3][MAX_N_FAC + 2] __attribute__((aligned(16))),
-Area[MAX_N_FAC + 2] __attribute__((aligned(16))),
-Darea[MAX_N_FAC + 2] __attribute__((aligned(16))),
-Dg[MAX_N_FAC + 4][MAX_N_PAR + 10] __attribute__((aligned(16)));
+double Nor[3][MAX_N_FAC + 2] __attribute__((aligned(16)))
+// Area[MAX_N_FAC + 2] __attribute__((aligned(16)));
+// Darea[MAX_N_FAC + 2] __attribute__((aligned(16))),
+// Dg[MAX_N_FAC + 4][MAX_N_PAR + 10] __attribute__((aligned(16)));
 #else
 __declspec(align(16)) double Nor[3][MAX_N_FAC + 2], Area[MAX_N_FAC + 2], Darea[MAX_N_FAC + 2], Dg[MAX_N_FAC + 4][MAX_N_PAR + 10]; //Nor,Dg ARE ZERO INDEXED
 #endif
 
-int main(int argc, char **argv) {
+// warning C6262: Function uses '99376' bytes of stack.  Consider moving some data to heap.
+//double** Dg, * Darea, * Area;
+
+// Use to print stdout to file
+// #define DBGPRNOUT
+
+int main(int argc, char** argv) {
+
+#ifdef ENV32BIT
+	_controlfp(_PC_64, _MCW_PC);
+#endif
+
 	int /*c,*/ /*nchars = 0,*/ retval, nlines, ntestperiods, checkpoint_exists, n_start_from;
 	//    double fsize, fd;
-	char input_path[512], output_path[512], chkpt_path[512], buf[256];
+	//char input_path[512], output_path[512], chkpt_path[512], buf[256];
+
+	std::string input_path, output_path, chkpt_path; // , buf;
 	MFILE out;
-	FILE* state, *infile;
+	//FILE* state, * infile;
+	FILE* state = new FILE();
+	FILE* infile = new FILE();
+
+#if defined DBGPRNOUT
+	std::ofstream myout;
+	myout.open("stdout.txt");
+#endif
 
 	int i, j, l, m, k, n, nrows, ndata, k2, ndir, i_temp, onlyrel,
 		n_iter_max, n_iter_min,
-		*ia, ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl, //ia is zero indexed
+		* ia, ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl, //ia is zero indexed
 		lc_number,
-		**ifp, new_conw, max_test_periods;
+		** ifp, new_conw, max_test_periods;
 
-	double per_start, per_step_coef, per_end,
-		freq, freq_start, freq_step, freq_end, jd_min, jd_max,
-		dev_old, dev_new, iter_diff, iter_diff_max, stop_condition,
-		totarea, sum, dark, dev_best, per_best, dark_best, la_tmp, be_tmp, la_best, be_best, //fraction_done,
-		*t, *f, *at, *af, sum_dark_facet, ave_dark_facet;
+	double // per_start, per_step_coef,  per_end,
+		// freq,  freq_start,  freq_step,  freq_end,  jd_min,  jd_max,
+		// dev_old,  dev_new,  iter_diff,  iter_diff_max,  stop_condition,
+		// totarea,  sum, dark,   dev_best,   per_best,  dark_best,  la_tmp,  be_tmp,  la_best,  be_best, //fraction_done,
+		// sum_dark_facet,  ave_dark_facet;
+		* t, * f, * at, * af;
+
+	Data* data = new Data();
 
 	double jd_0, jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95, a, b, c_axis,
 		prd, cl, al0, al0_abs, ave, e0len, elen, cos_alpha,
 		dth, dph, rfit, escl,
-		*brightness, e[4], e0[4], **ee,
-		**ee0, *cg, *cg_first, **covar,
-		**aalpha, *sig, chck[4],
-		*tim, *al,
-		beta_pole[N_POLES + 1], lambda_pole[N_POLES + 1], par[4], rchisq, *weight_lc;
+		* brightness, //e[4], e0[4], 
+		* e, * e0, ** ee,
+		** ee0, * cg, * cg_first, ** covar,
+		** aalpha, * sig, //chck[4],
+		* chck,
+		* tim, * al,
+		beta_pole[N_POLES + 1], lambda_pole[N_POLES + 1], par[4], rchisq, * weight_lc;
 
-	char *str_temp;
+	char* str_temp, * buf;
 
-	str_temp = (char *)malloc(MAX_LINE_LENGTH);
+	str_temp = (char*)malloc(MAX_LINE_LENGTH);
+	buf = (char*)malloc(256);
 
 	ee = matrix_double(MAX_N_OBS, 3);
 	ee0 = matrix_double(MAX_N_OBS, 3);
@@ -204,6 +253,20 @@ int main(int argc, char **argv) {
 	af = vector_double(MAX_N_FAC);
 
 	ia = vector_int(MAX_N_PAR);
+	/*auto& type128 = typeid(__m128d);*/
+	//Dg = aligned_matrix_double(MAX_N_FAC + 4, MAX_N_PAR + 10); //aligned_matrix<double>(MAX_N_FAC + 4, MAX_N_PAR + 10);
+	//Darea = vector_double(MAX_N_FAC + 2);
+	//Area = vector_double(MAX_N_FAC + 2);
+
+	//Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
+	Lpoints = vector_int(MAX_LC + 1);
+	Inrel = vector_int(MAX_LC + 1);
+	//Weight = vector_double(MAX_N_OBS + 1);
+	chck = vector_double(4);
+	e = vector_double(4);
+	e0 = vector_double(4);
+
+	//infile = (FILE*)malloc(1024 * 1024 * 10);
 
 	lambda_pole[1] = 0;    beta_pole[1] = 0;
 	lambda_pole[2] = 90;   beta_pole[2] = 0;
@@ -227,45 +290,48 @@ int main(int argc, char **argv) {
 
 	// open the input file (resolve logical name first)
 	//
-	boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
-	infile = boinc_fopen(input_path, "r");
+	//boinc_resolve_filename(input_filename, ((char*)input_path), sizeof(input_path));
+	boinc_resolve_filename_s(input_filename, input_path);
+	//infile = boinc_fopen(input_path, "r");
+	infile = boinc_fopen(input_path.c_str(), "r");
 	if (!infile) {
 		fprintf(stderr,
 			"%s Couldn't find input file, resolved name %s.\n",
-			boinc_msg_prefix(buf, sizeof(buf)), input_path
-		);
+			boinc_msg_prefix(buf, sizeof(buf)), input_path.c_str());
 		exit(-1);
 	}
 
 	// output file
-	boinc_resolve_filename(output_filename, output_path, sizeof(output_path));
+	//boinc_resolve_filename(output_filename, output_path, sizeof(output_path));
+	boinc_resolve_filename_s(output_filename, output_path);
 	//    out.open(output_path, "w");
 
 		// See if there's a valid checkpoint file.
 		// If so seek input file and truncate output file
 		//
-	boinc_resolve_filename(checkpoint_file, chkpt_path, sizeof(chkpt_path));
-	state = boinc_fopen(chkpt_path, "r");
+	//boinc_resolve_filename(checkpoint_file, chkpt_path, sizeof(chkpt_path));
+	boinc_resolve_filename_s(checkpoint_file, chkpt_path);
+	state = boinc_fopen(chkpt_path.c_str(), "r");
 	if (state) {
-		n = fscanf(state, "%d %d %lf %lf %d", &nlines, &new_conw, &conw_r, &sum_dark_facet, &ntestperiods);
+		n = fscanf(state, "%d %d %lf %lf %d", &nlines, &new_conw, &conw_r, &data->sum_dark_facet, &ntestperiods);
 		fclose(state);
 	}
 	if (state && n == 5) {
 		checkpoint_exists = 1;
 		n_start_from = nlines + 1;
-		retval = out.open(output_path, "a");
+		retval = out.open(output_path.c_str(), "a");
 	}
 	else {
 		checkpoint_exists = 0;
 		n_start_from = 1;
-		retval = out.open(output_path, "w");
+		retval = out.open(output_path.c_str(), "w");
 	}
 	if (retval) {
 		fprintf(stderr, "%s APP: period_search output open failed:\n",
 			boinc_msg_prefix(buf, sizeof(buf))
 		);
 		fprintf(stderr, "%s resolved name %s, retval %d\n",
-			boinc_msg_prefix(buf, sizeof(buf)), output_path, retval
+			boinc_msg_prefix(buf, sizeof(buf)), output_path.c_str(), retval
 		);
 		perror("open");
 		exit(1);
@@ -286,7 +352,7 @@ int main(int argc, char **argv) {
 
 
 	/* period interval (hrs) fixed or free */
-	fscanf(infile, "%lf %lf %lf %d", &per_start, &per_step_coef, &per_end, &ia_prd);          fgets(str_temp, MAX_LINE_LENGTH, infile);
+	fscanf(infile, "%lf %lf %lf %d", &data->per_start, &data->per_step_coef, &data->per_end, &ia_prd);          fgets(str_temp, MAX_LINE_LENGTH, infile);
 	/* epoch of zero time t0 */
 	fscanf(infile, "%lf", &jd_00);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
 	/* initial fixed rotation angle fi0 */
@@ -305,8 +371,8 @@ int main(int argc, char **argv) {
 	fscanf(infile, "%lf %d", &cl, &ia_cl);                        fgets(str_temp, MAX_LINE_LENGTH, infile);
 	/* maximum number of iterations (when > 1) or
 	   minimum difference in dev to stop (when < 1) */
-	fscanf(infile, "%lf", &stop_condition);                       fgets(str_temp, MAX_LINE_LENGTH, infile);
-	/* minimum number of iterations when stop_condition < 1 */
+	fscanf(infile, "%lf", &data->stop_condition);                       fgets(str_temp, MAX_LINE_LENGTH, infile);
+	/* minimum number of iterations when data->stop_condition < 1 */
 	fscanf(infile, "%d", &n_iter_min);                            fgets(str_temp, MAX_LINE_LENGTH, infile);
 	/* multiplicative factor for Alamda */
 	fscanf(infile, "%lf", &Alamda_incr);                          fgets(str_temp, MAX_LINE_LENGTH, infile);
@@ -315,7 +381,7 @@ int main(int argc, char **argv) {
 
 	if (boinc_is_standalone())
 	{
-		printf("\n%g  %g  %g  period start/step/stop (%d)\n", per_start, per_step_coef, per_end, ia_prd);
+		printf("\n%g  %g  %g  period start/step/stop (%d)\n", data->per_start, data->per_step_coef, data->per_end, ia_prd);
 		printf("%g epoch of zero time t0\n", jd_00);
 		printf("%g  initial fixed rotation angle fi0\n", Phi_0);
 		printf("%g  the weight factor for conv. reg.\n", conw);
@@ -323,7 +389,7 @@ int main(int argc, char **argv) {
 		printf("%d  nr. of triangulation rows per octant\n", nrows);
 		printf("%g %g %g  initial guesses for phase funct. params. (%d,%d,%d)\n", par[1], par[2], par[3], ia_par[1], ia_par[2], ia_par[3]);
 		printf("%g  initial Lambert coeff. (L-S=1) (%d)\n", cl, ia_cl);
-		printf("%g  stop condition\n", stop_condition);
+		printf("%g  stop condition\n", data->stop_condition);
 		printf("%d  minimum number of iterations\n", n_iter_min);
 		printf("%g  Alamda multiplicative factor\n", Alamda_incr);
 		printf("%g  initial Alamda \n\n", Alamda_start);
@@ -346,8 +412,8 @@ int main(int argc, char **argv) {
 	k2 = 0;   /* index */
 	al0 = al0_abs = PI; /* the smallest solar phase angle */
 	ial0 = ial0_abs = -1; /* initialization, index of al0 */
-	jd_min = 1e20; /* initial minimum and minimum JD */
-	jd_max = -1e40;
+	data->jd_min = 1e20; /* initial minimum and minimum JD */
+	data->jd_max = -1e40;
 	onlyrel = 1;
 	jd_0 = jd_00;
 	a = a0; b = b0; c_axis = c0;
@@ -377,7 +443,7 @@ int main(int argc, char **argv) {
 				fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
 			}
 
-			auto min_double = std::numeric_limits<double>::min();
+			constexpr double min_double = std::numeric_limits<double>::min();
 			fscanf(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); /* JD, brightness */
 			if (tim[ndata] < min_double)
 			{
@@ -391,27 +457,47 @@ int main(int argc, char **argv) {
 			fscanf(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]); /* ecliptic astr_tempocentric coord. of the Sun in AU */
 			fscanf(infile, "%lf %lf %lf", &e[1], &e[2], &e[3]); /* ecliptic astrocentric coord. of the Earth in AU */
 
-		/* selects the minimum and maximum JD */
-			if (tim[ndata] < jd_min) jd_min = tim[ndata];
-			if (tim[ndata] > jd_max) jd_max = tim[ndata];
+			/* selects the minimum and maximum JD */
+			if (tim[ndata] < data->jd_min) data->jd_min = tim[ndata];
+			if (tim[ndata] > data->jd_max) data->jd_max = tim[ndata];
 
 			/* normals of distance vectors */
-			e0len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
-			elen = sqrt(e[1] * e[1] + e[2] * e[2] + e[3] * e[3]);
+			//e0len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
+			e0len = sqrt(dot_product(e0, e0));
+			//elen = sqrt(e[1] * e[1] + e[2] * e[2] + e[3] * e[3]);
+			elen = sqrt(dot_product(e, e));
+
 
 			ave += brightness[ndata];
+
+#if defined DBGPRNOUT
+			myout << "elen, e0len" << std::endl;
+			myout << elen << "\t" << e0len << std::endl;
+			myout << "ee[ndata][k], ee0[ndata][k]" << std::endl;
+#endif
 
 			/* normalization of distance vectors */
 			for (k = 1; k <= 3; k++)
 			{
 				ee[ndata][k] = e[k] / elen;
 				ee0[ndata][k] = e0[k] / e0len;
+
+#if defined DBGPRNOUT
+				myout << ndata << "\t" << k << "\t" << ee[ndata][k] << "\t" << ee0[ndata][k] << std::endl;
+#endif
 			}
+
 
 			if (j == 1)
 			{
 				cos_alpha = dot_product(e, e0) / (elen * e0len);
 				al[i] = acos(cos_alpha); /* solar phase angle */
+
+#if defined DBGPRNOUT
+				myout << "a[i] solar phase angle" << std::endl;
+				myout << i << "\t" << al[i] << std::endl;
+#endif
+
 				/* Find the smallest solar phase al0 (not important, just for info) */
 				if (al[i] < al0)
 				{
@@ -446,7 +532,7 @@ int main(int argc, char **argv) {
 
 	/* reads weights */
 	auto scanResult = 0;
-	while(true)
+	while (true)
 	{
 		scanResult = fscanf(infile, "%d", &lc_number);
 		if (scanResult <= 0) break;
@@ -462,7 +548,7 @@ int main(int argc, char **argv) {
 	   lowest JD in the data */
 	if (jd_0 <= 0)
 	{
-		jd_0 = (int)jd_min;
+		jd_0 = (int)data->jd_min;
 		if (boinc_is_standalone())
 			printf("\nNew epoch of zero time  %f\n", jd_0);
 	}
@@ -529,10 +615,12 @@ int main(int argc, char **argv) {
 		int major, minor, build, revision;
 		TCHAR filepath[MAX_PATH]; // = getenv("_");
 		GetModuleFileName(nullptr, filepath, MAX_PATH);
-		auto filename = PathFindFileName(filepath);
+		std::string filename = PathFindFileName(filepath);
 		GetVersionInfo(filename, major, minor, build, revision);
-		fprintf(stderr, "Application: %s\n", filename);
-		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
+		//fprintf(stderr, "Application: %s\n", filename.c_str());
+		std::cerr << "Application: " << filename << std::endl;
+		//fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
+		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
 #endif
 	}
 
@@ -556,13 +644,13 @@ int main(int argc, char **argv) {
 
 		/*  Fix the directions of the triangle vertices of the Gaussian image sphere
 			t = theta angle, f = phi angle */
-		dth = PI / (2 * nrows); /* step in theta */
+		dth = PI / (2.0 * (double)nrows); /* step in theta */
 		k = 1;
 		t[1] = 0;
 		f[1] = 0;
 		for (i = 1; i <= nrows; i++)
 		{
-			dph = PI / (2 * i); /* step in phi */
+			dph = PI / (2.0 * (double)i); /* step in phi */
 			for (j = 0; j <= 4 * i - 1; j++)
 			{
 				k++;
@@ -574,7 +662,7 @@ int main(int argc, char **argv) {
 		/* go to south pole (in the same rot. order, not a mirror image) */
 		for (i = nrows - 1; i >= 1; i--)
 		{
-			dph = PI / (2 * i);
+			dph = PI / (2.0 * (double)i);
 			for (j = 0; j <= 4 * i - 1; j++)
 			{
 				k++;
@@ -603,9 +691,9 @@ int main(int argc, char **argv) {
 
 		ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
 
-		freq_start = 1 / per_start;
-		freq_end = 1 / per_end;
-		freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+		data->freq_start = 1 / data->per_start;
+		data->freq_end = 1 / data->per_end;
+		data->freq_step = 0.5 / (data->jd_max - data->jd_min) / 24 * data->per_step_coef;
 
 		/* Give ia the value 0/1 if it's fixed/free */
 		ia[Ncoef + 1 - 1] = ia_beta_pole;
@@ -629,8 +717,8 @@ int main(int argc, char **argv) {
 		}
 
 		max_test_periods = 10;
-		ave_dark_facet = 0.0;
-		n_iter = (int)((freq_start - freq_end) / freq_step) + 1;
+		data->ave_dark_facet = 0.0;
+		n_iter = (int)((data->freq_start - data->freq_end) / data->freq_step) + 1;
 		if (n_iter < max_test_periods)
 			max_test_periods = n_iter;
 
@@ -641,7 +729,7 @@ int main(int argc, char **argv) {
 		}
 		else
 		{
-			sum_dark_facet = 0.0;
+			data->sum_dark_facet = 0.0;
 			n = 1;
 		}
 
@@ -649,14 +737,14 @@ int main(int argc, char **argv) {
 		{
 			boinc_fraction_done(n / 10000.0 / max_test_periods);
 
-			freq = freq_start - (n - 1) * freq_step;
+			data->freq = data->freq_start - ((double)n - 1.0) * data->freq_step;
 
 			/* initial poles */
-			per_best = dark_best = la_best = be_best = 0;
-			dev_best = 1e40;
+			data->per_best = data->dark_best = data->la_best = data->be_best = 0;
+			data->dev_best = 1e40;
 			for (m = 1; m <= N_POLES; m++)
 			{
-				prd = 1 / freq;
+				prd = 1 / data->freq;
 
 				/* starts from the initial ellipsoid */
 				for (i = 1; i <= Ncoef; i++)
@@ -672,7 +760,7 @@ int main(int argc, char **argv) {
 				cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
 
 				/* Use omega instead of period */
-				cg[Ncoef + 3] = 24 * 2 * PI / prd;
+				cg[Ncoef + 3] = 24.0 * 2.0 * PI / prd;
 
 				for (i = 1; i <= Nphpar; i++)
 				{
@@ -686,27 +774,27 @@ int main(int argc, char **argv) {
 
 				/* Levenberg-Marquardt loop */
 				n_iter_max = 0;
-				iter_diff_max = -1;
+				data->iter_diff_max = -1;
 				rchisq = -1;
-				if (stop_condition > 1)
+				if (data->stop_condition > 1)
 				{
-					n_iter_max = (int)stop_condition;
-					iter_diff_max = 0;
+					n_iter_max = (int)data->stop_condition;
+					data->iter_diff_max = 0;
 					n_iter_min = 0; /* to not overwrite the n_iter_max value */
 				}
-				if (stop_condition < 1)
+				if (data->stop_condition < 1)
 				{
 					n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-					iter_diff_max = stop_condition;
+					data->iter_diff_max = data->stop_condition;
 				}
 				Alamda = -1;
 				Niter = 0;
-				iter_diff = 1e40;
-				dev_old = 1e30;
-				dev_new = 0;
+				data->iter_diff = 1e40;
+				data->dev_old = 1e30;
+				data->dev_new = 0;
 				Lastcall = 0;
 
-				while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
+				while (((Niter < n_iter_max) && (data->iter_diff > data->iter_diff_max)) || (Niter < n_iter_min))
 				{
 					mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
 					Niter++;
@@ -719,17 +807,20 @@ int main(int argc, char **argv) {
 						{
 							chck[i] = 0;
 							for (j = 1; j <= Numfac; j++)
+							{
 								chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
+							}
 						}
 						rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 					}
-					dev_new = sqrt(rchisq / (ndata - 3));
+
+					data->dev_new = sqrt(rchisq / ((double)ndata - 3.0));
 					/* only if this step is better than the previous,
 					   1e-10 is for numeric errors */
-					if (dev_old - dev_new > 1e-10)
+					if (data->dev_old - data->dev_new > 1e-10)
 					{
-						iter_diff = dev_old - dev_new;
-						dev_old = dev_new;
+						data->iter_diff = data->dev_old - data->dev_new;
+						data->dev_old = data->dev_new;
 					}
 				}
 
@@ -738,44 +829,49 @@ int main(int argc, char **argv) {
 				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
 				Deallocate = 0;
 
-				totarea = 0;
+				data->totarea = 0;
 				for (i = 1; i <= Numfac; i++)
-					totarea = totarea + Area[i - 1];
-				sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-				dark = sqrt(sum);
+				{
+					data->totarea = data->totarea + Area[i - 1];
+				}
+
+				data->sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
+				data->dark = sqrt(data->sum);
 
 				/* period solution */
-				prd = 2 * PI / cg[Ncoef + 3];
+				prd = 2.0 * PI / cg[Ncoef + 3];
 
 				/* pole solution */
-				la_tmp = RAD2DEG * cg[Ncoef + 2];
-				be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
+				data->la_tmp = RAD2DEG * cg[Ncoef + 2];
+				data->be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
 
-				if (dev_new < dev_best)
+				if (data->dev_new < data->dev_best)
 				{
-					dev_best = dev_new;
-					per_best = prd;
-					dark_best = dark / totarea * 100;
-					la_best = la_tmp;
-					be_best = be_tmp;
+					data->dev_best = data->dev_new;
+					data->per_best = prd;
+					data->dark_best = data->dark / data->totarea * 100;
+					data->la_best = data->la_tmp;
+					data->be_best = data->be_tmp;
 				}
 			} /* pole loop */
 
-			if (la_best < 0)
-				la_best += 360;
+			if (data->la_best < 0)
+			{
+				data->la_best += 360;
+			}
 
 #ifdef __GNUC__
-			if (std::isnan(dark_best) == 1)
-				dark_best = 1.0;
+			if (std::isnan(data->dark_best) == 1)
+				data->dark_best = 1.0;
 #else
-			if (_isnan(dark_best) == 1)
-				dark_best = 1.0;
+			if (_isnan(data->dark_best) == 1)
+				data->dark_best = 1.0;
 #endif
 
-			sum_dark_facet = sum_dark_facet + dark_best;
+			data->sum_dark_facet = data->sum_dark_facet + data->dark_best;
 
 			if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
-				retval = DoCheckpoint(out, 0, new_conw, conw_r, sum_dark_facet, n); //zero lines
+				retval = DoCheckpoint(out, 0, new_conw, conw_r, data->sum_dark_facet, n); //zero lines
 				if (retval)
 				{
 					fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); exit(retval);
@@ -786,11 +882,11 @@ int main(int argc, char **argv) {
 
 		} /* period loop */
 
-		ave_dark_facet = sum_dark_facet / max_test_periods;
+		data->ave_dark_facet = data->sum_dark_facet / max_test_periods;
 
-		if (ave_dark_facet < 1.0)
+		if (data->ave_dark_facet < 1.0)
 			new_conw = 1; /* new correct conwexity weight */
-		if (ave_dark_facet >= 1.0)
+		if (data->ave_dark_facet >= 1.0)
 			conw_r = conw_r * 2; /* still not good */
 		ndata = ndata - 3;
 
@@ -819,21 +915,24 @@ int main(int argc, char **argv) {
 	/* the ordering of the coeffs. of the Laplace series */
 	Ncoef = 0; /* number of coeffs. */
 	for (m = 0; m <= Mmax; m++)
+	{
 		for (l = m; l <= Lmax; l++)
 		{
 			Ncoef++;
 			if (m != 0) Ncoef++;
 		}
+	}
 
 	/*  Fix the directions of the triangle vertices of the Gaussian image sphere
 		t = theta angle, f = phi angle */
-	dth = PI / (2 * nrows); /* step in theta */
+	dth = PI / (2.0 * (double)nrows); /* step in theta */
 	k = 1;
 	t[1] = 0;
 	f[1] = 0;
+
 	for (i = 1; i <= nrows; i++)
 	{
-		dph = PI / (2 * i); /* step in phi */
+		dph = PI / (2.0 * (double)i); /* step in phi */
 		for (j = 0; j <= 4 * i - 1; j++)
 		{
 			k++;
@@ -845,7 +944,7 @@ int main(int argc, char **argv) {
 	/* go to south pole (in the same rot. order, not a mirror image) */
 	for (i = nrows - 1; i >= 1; i--)
 	{
-		dph = PI / (2 * i);
+		dph = PI / (2.0 * (double)i);
 		for (j = 0; j <= 4 * i - 1; j++)
 		{
 			k++;
@@ -874,9 +973,9 @@ int main(int argc, char **argv) {
 
 	ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
 
-	freq_start = 1 / per_start;
-	freq_end = 1 / per_end;
-	freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+	data->freq_start = 1 / data->per_start;
+	data->freq_end = 1 / data->per_end;
+	data->freq_step = 0.5 / (data->jd_max - data->jd_min) / 24 * data->per_step_coef;
 
 	/* Give ia the value 0/1 if it's fixed/free */
 	ia[Ncoef + 1 - 1] = ia_beta_pole;
@@ -899,9 +998,9 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
 	}
 
-	for (n = n_start_from; n <= (int)((freq_start - freq_end) / freq_step) + 1; n++)
+	for (n = n_start_from; n <= (int)((data->freq_start - data->freq_end) / data->freq_step) + 1; n++)
 	{
-		auto fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
+		auto fraction_done = n / (((data->freq_start - data->freq_end) / data->freq_step) + 1);
 		boinc_fraction_done(fraction_done);
 
 #ifdef _DEBUG
@@ -913,14 +1012,14 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
 #endif
 
-		freq = freq_start - (n - 1) * freq_step;
+		data->freq = data->freq_start - ((double)n - 1.0) * data->freq_step;
 
 		/* initial poles */
-		per_best = dark_best = la_best = be_best = 0;
-		dev_best = 1e40;
+		data->per_best = data->dark_best = data->la_best = data->be_best = 0;
+		data->dev_best = 1e40;
 		for (m = 1; m <= N_POLES; m++)
 		{
-			prd = 1 / freq;
+			prd = 1 / data->freq;
 			/* starts from the initial ellipsoid */
 			for (i = 1; i <= Ncoef; i++)
 				cg[i] = cg_first[i];
@@ -935,7 +1034,7 @@ int main(int argc, char **argv) {
 			cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
 
 			/* Use omega instead of period */
-			cg[Ncoef + 3] = 24 * 2 * PI / prd;
+			cg[Ncoef + 3] = 24.0 * 2.0 * PI / prd;
 
 			for (i = 1; i <= Nphpar; i++)
 			{
@@ -949,27 +1048,27 @@ int main(int argc, char **argv) {
 
 			/* Levenberg-Marquardt loop */
 			n_iter_max = 0;
-			iter_diff_max = -1;
+			data->iter_diff_max = -1;
 			rchisq = -1;
-			if (stop_condition > 1)
+			if (data->stop_condition > 1)
 			{
-				n_iter_max = (int)stop_condition;
-				iter_diff_max = 0;
+				n_iter_max = (int)data->stop_condition;
+				data->iter_diff_max = 0;
 				n_iter_min = 0; /* to not overwrite the n_iter_max value */
 			}
-			if (stop_condition < 1)
+			if (data->stop_condition < 1)
 			{
 				n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-				iter_diff_max = stop_condition;
+				data->iter_diff_max = data->stop_condition;
 			}
 			Alamda = -1;
 			Niter = 0;
-			iter_diff = 1e40;
-			dev_old = 1e30;
-			dev_new = 0;
+			data->iter_diff = 1e40;
+			data->dev_old = 1e30;
+			data->dev_new = 0;
 			Lastcall = 0;
 
-			while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
+			while (((Niter < n_iter_max) && (data->iter_diff > data->iter_diff_max)) || (Niter < n_iter_min))
 			{
 				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
 				Niter++;
@@ -986,13 +1085,13 @@ int main(int argc, char **argv) {
 					}
 					rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 				}
-				dev_new = sqrt(rchisq / (ndata - 3));
+				data->dev_new = sqrt(rchisq / ((double)ndata - 3.0));
 				/* only if this step is better than the previous,
 				   1e-10 is for numeric errors */
-				if (dev_old - dev_new > 1e-10)
+				if (data->dev_old - data->dev_new > 1e-10)
 				{
-					iter_diff = dev_old - dev_new;
-					dev_old = dev_new;
+					data->iter_diff = data->dev_old - data->dev_new;
+					data->dev_old = data->dev_new;
 				}
 			}
 
@@ -1001,48 +1100,48 @@ int main(int argc, char **argv) {
 			mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
 			Deallocate = 0;
 
-			totarea = 0;
+			data->totarea = 0;
 			for (i = 1; i <= Numfac; i++)
-				totarea = totarea + Area[i - 1];
-			sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-			dark = sqrt(sum);
+				data->totarea = data->totarea + Area[i - 1];
+			data->sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
+			data->dark = sqrt(data->sum);
 
 			/* period solution */
-			prd = 2 * PI / cg[Ncoef + 3];
+			prd = 2.0 * PI / cg[Ncoef + 3];
 
 			/* pole solution */
-			la_tmp = RAD2DEG * cg[Ncoef + 2];
-			be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
+			data->la_tmp = RAD2DEG * cg[Ncoef + 2];
+			data->be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
 
-			if (dev_new < dev_best)
+			if (data->dev_new < data->dev_best)
 			{
-				dev_best = dev_new;
-				per_best = prd;
-				dark_best = dark / totarea * 100;
-				la_best = la_tmp;
-				be_best = be_tmp;
+				data->dev_best = data->dev_new;
+				data->per_best = prd;
+				data->dark_best = data->dark / data->totarea * 100;
+				data->la_best = data->la_tmp;
+				data->be_best = data->be_tmp;
 			}
 		} /* pole loop */
 
-		if (la_best < 0)
-			la_best += 360;
+		if (data->la_best < 0)
+			data->la_best += 360;
 
 #ifdef __GNUC__
-		if (std::isnan(dark_best) == 1)
-			dark_best = 1.0;
+		if (std::isnan(data->dark_best) == 1)
+			data->dark_best = 1.0;
 #else
-		if (_isnan(dark_best) == 1)
-			dark_best = 1.0;
+		if (_isnan(data->dark_best) == 1)
+			data->dark_best = 1.0;
 #endif
 
 		/* output file */
 		if (n == 1)
 		{
-			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
+			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * data->per_best, data->dev_best, data->dev_best * data->dev_best * ((double)ndata - 3.0), conw_r * escl * escl, round(data->la_best), round(data->be_best));
 		}
 		else
 		{
-			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
+			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * data->per_best, data->dev_best, data->dev_best * data->dev_best * ((double)ndata - 3.0), data->dark_best, round(data->la_best), round(data->be_best));
 		}
 
 		if (boinc_time_to_checkpoint() || boinc_is_standalone())
@@ -1058,6 +1157,10 @@ int main(int argc, char **argv) {
 	} /* period loop */
 
 	out.close();
+
+#if defined DBGPRNOUT
+	myout.close();
+#endif
 
 	deallocate_matrix_double(ee, MAX_N_OBS);
 	deallocate_matrix_double(ee0, MAX_N_OBS);
@@ -1077,7 +1180,15 @@ int main(int argc, char **argv) {
 	deallocate_vector(ia);
 	deallocate_vector(al);
 	deallocate_vector(weight_lc);
+
+	//aligned_deallocate_matrix_double(Dg, MAX_N_PAR + 10);
+	/*deallocate_vector(Darea);
+	deallocate_vector(Area);*/
+	//deallocate_vector(Weight);
+	deallocate_vector(chck);
+
 	free(str_temp);
+	free(buf);
 
 	boinc_fraction_done(1);
 #ifdef APP_GRAPHICS
@@ -1087,7 +1198,7 @@ int main(int argc, char **argv) {
 }
 
 #ifdef _WIN32
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR Args, int WinMode) {
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd) {
 	LPSTR command_line;
 	char* argv[100];
 	int argc;

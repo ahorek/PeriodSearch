@@ -17,3 +17,4 @@
 
 #define DEG2RAD      (PI / 180)
 #define RAD2DEG      (180 / PI)
+#define MAX_FILE_SIZE 104857600				/* max input file size 100MB */

@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
+
 #ifdef NO_SSE3
  #include <emmintrin.h>
 #else

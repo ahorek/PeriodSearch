@@ -2,7 +2,7 @@
 #include <Windows.h>
 
 bool GetVersionInfo(
-    LPCTSTR filename,
+    std::string filename,
     int& major,
     int& minor,
     int& build,

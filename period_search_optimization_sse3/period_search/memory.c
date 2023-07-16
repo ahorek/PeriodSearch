@@ -9,6 +9,12 @@
 #include <stdio.h>
 #include <malloc.h>
 
+#if defined (NO_SSE3)
+#include <emmintrin.h>
+#else
+#include <pmmintrin.h>
+#endif
+
 double *vector_double(int length)
 {
    double *p_x;
@@ -19,6 +25,31 @@ double *vector_double(int length)
       fflush(stderr);
    }
    return (p_x);
+}
+
+//template<class type_info>
+//type_info* aligned_vector(int length)
+//{
+//    type_info* p_x;
+//
+//    if ((p_x = (type_info*)malloc((length + 1) * sizeof(type_info))) == NULL)
+//    {
+//        fprintf(stderr, "failure in 'vector_double()' \n");
+//        fflush(stderr);
+//    }
+//    return (p_x);
+//}
+
+__m128d* aligned_vector_m128d(int length)
+{
+    __m128d* p_x;
+
+    if ((p_x = (__m128d*)malloc((length + 1) * sizeof(__m128d))) == NULL)
+    {
+        fprintf(stderr, "failure in 'vector_double()' \n");
+        fflush(stderr);
+    }
+    return (p_x);
 }
   
 int *vector_int(int length)
@@ -69,6 +100,29 @@ double **aligned_matrix_double(int rows, int columns)
       fflush(stderr);
    }
    return (p_x);
+}
+
+template <class type_info>
+inline type_info **aligned_matrix(int rows, int columns)
+{
+    type_info** p_x;
+    int i;
+
+#ifdef __GNUC__
+    p_x = (type_info**)memalign(16, (rows + 1) * sizeof(type_info*));
+    for (i = 0; (i <= rows) && (!i || p_x[i - 1]); i++)
+        p_x[i] = (type_info*)memalign(16, (columns + 1) * sizeof(type_info));
+#else
+    p_x = (type_info**)_aligned_malloc((rows + 1) * sizeof(type_info*), 16);
+    for (i = 0; (i <= rows) && (!i || p_x[i - 1]); i++)
+        p_x[i] = (type_info*)_aligned_malloc((columns + 1) * sizeof(type_info), 16);
+#endif
+    if (i < rows)
+    {
+        fprintf(stderr, "failure in 'matrix_double()' \n");
+        fflush(stderr);
+    }
+    return (p_x);
 }
 
 int **matrix_int(int rows, int columns)
@@ -139,6 +193,20 @@ void aligned_deallocate_matrix_double(double **p_x, int rows)
 #endif
 }
 
+template <class type_info>
+inline void aligned_deallocate_matrix(type_info** p_x, int rows)
+{
+    int i;
+
+#ifdef __GNUC__
+    for (i = 0; i <= rows; i++) free(p_x[i]);
+    free(p_x);
+#else
+    for (i = 0; i <= rows; i++) _aligned_free(p_x[i]);
+    _aligned_free(p_x);
+#endif
+}
+
 void deallocate_matrix_int(int **p_x, int rows)
 {
    int i;
@@ -148,7 +216,7 @@ void deallocate_matrix_int(int **p_x, int rows)
 }
 
 
-/*void deallocate_matrix_3(void ***p_x, int n_1, int n_2)
+void deallocate_matrix_3(double ***p_x, int n_1, int n_2)
 {
    int i, j;
     
@@ -164,4 +232,4 @@ void deallocate_matrix_int(int **p_x, int rows)
    }
    free(p_x);
 }
-*/
+
