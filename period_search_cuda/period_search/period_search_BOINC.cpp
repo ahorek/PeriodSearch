@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <ctime>
+#include <limits>
 #include <cstring>
 #include <cstdlib>
 #include "cc_config.h"
@@ -94,6 +95,8 @@ constexpr auto checkpoint_file = "period_search_state";
 constexpr auto input_filename = "period_search_in";
 constexpr auto output_filename = "period_search_out";
 
+int Nfactor = 2;
+
 int DoCheckpoint(MFILE& mf, const int nlines, const int newConw, const double conwr) {
 	string resolvedName;
 
@@ -144,14 +147,16 @@ n_coef, num_fac, l_curves, n_ph_par,
 l_points[MAX_LC + 1], in_rel[MAX_LC + 1],
 deallocate, max_l_points; // n_iter,
 
-double o_chi_square, chi_square, a_lambda, a_lamda_incr, a_lamda_start, phi_0, scale,
+double o_chi_square, chi_square, a_lambda, a_lamda_incr, a_lamda_incrr, a_lamda_start, phi_0, scale,
 d_area[MAX_N_FAC + 1], sclnw[MAX_LC + 1], /*Area[MAX_N_FAC+1],*/
 y_out[MAX_N_OBS + 1],
-f_c[MAX_N_FAC + 1][MAX_LM + 1], f_s[MAX_N_FAC + 1][MAX_LM + 1],
+f_c[MAX_LM + 1][MAX_N_FAC + 1],
+f_s[MAX_LM + 1][MAX_N_FAC + 1],
 t_c[MAX_N_FAC + 1][MAX_LM + 1], t_s[MAX_N_FAC + 1][MAX_LM + 1],
-d_sphere[MAX_N_FAC + 1][MAX_N_PAR + 1], d_g[MAX_N_FAC + 1][MAX_N_PAR + 1],
-normal[MAX_N_FAC + 1][3], bl_matrix[4][4],
-pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
+d_sphere[MAX_N_PAR + 1][MAX_N_FAC + 1],
+d_g[MAX_N_FAC + 1][MAX_N_PAR + 1],
+normal[3][MAX_N_FAC + 1], bl_matrix[4][4],
+pleg[MAX_LM + 1][MAX_LM + 1][MAX_N_FAC + 1],
 d_bl_matrix[3][4][4],
 weight[MAX_N_OBS + 1];
 

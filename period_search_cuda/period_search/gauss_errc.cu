@@ -1,4 +1,8 @@
 #define SWAP(a,b) {temp=(a);(a)=(b);(b)=temp;}
+#define SWAP4(a,b) {double x[4],y[4];for(int t1=0;t1<4;t1++) x[t1]=(a)[t1];for(int r1=0;r1<4;r1++) y[r1]=(b)[r1];for(int t2=0;t2<4;t2++)(b)[t2]=(x)[t2];for(int t3=0;t3<4;t3++)(a)[t3]=y[t3];}
+#define SWAP8(a,b) {double x[8];for(int t1=0;t1<8;t1++) x[t1]=(a)[t1];for(int t2=0;t2<8;t2++)(a)[t2]=(b)[t2];for(int t3=0;t3<8;t3++)(b)[t3]=x[t3];}
+#define SWAP4n(a,b,n) {double x[4],y[4];for(int t1=0;t1<4;t1++)x[t1]=(a)[t1*n];for(int r1=0;r1<4;r1++)y[r1]=(b)[r1*n];for(int t2=0;t2<4;t2++)(b)[t2*n]=x[t2];for(int t3=0;t3<4;t3++)(a)[t3*n]=y[t3];}
+#define SWAP8n(a,b,n) {double x[8];for(int t1=0;t1<8;t1++)x[t1]=(a)[t1*n];for(int t2=0;t2<8;t2++)(a)[t2*n]=(b)[t2*n];for(int t3=0;t3<8;t3++)(b)[t3*n]=x[t3];}
 
 #include <math.h>
 #include <stdio.h>
@@ -8,160 +12,239 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
-//__device__ int gauss_errc(freq_context *CUDA_LCC,int n, double b[])
-__device__ int gauss_errc(freq_context* CUDA_LCC, const int ma)
+__device__ int __forceinline__ gauss_errc(freq_context * __restrict__ CUDA_LCC, int ma)
 {
-	__shared__ int icol;
-	__shared__ double pivinv;
-	__shared__ int sh_icol[CUDA_BLOCK_DIM];
-	__shared__ int sh_irow[CUDA_BLOCK_DIM];
-	__shared__ double sh_big[CUDA_BLOCK_DIM];
+  __shared__ int16_t sh_icol[N80]; //[CUDA_BLOCK_DIM];
+  __shared__ int16_t sh_irow[N80]; //[CUDA_BLOCK_DIM];
+  __shared__ double sh_big[N80]; //[CUDA_BLOCK_DIM];
+  __shared__ double pivinv;
+  __shared__ int icol;
 
-	//	__shared__ int indxc[MAX_N_PAR+1],indxr[MAX_N_PAR+1],ipiv[MAX_N_PAR+1];
-	int i, licol = 0, irow = 0, j, k, l, ll;
-	double big, dum, temp;
-	int n = CUDA_mfit;
+  __shared__ int16_t indxr[MAX_N_PAR + 1];
+  __shared__ int16_t indxc[MAX_N_PAR + 1];
+  __shared__ int16_t ipiv[MAX_N_PAR + 1];
 
-	int brtmph, brtmpl;
-	brtmph = n / CUDA_BLOCK_DIM;
-	if (n % CUDA_BLOCK_DIM) brtmph++;
-	brtmpl = threadIdx.x * brtmph;
-	brtmph = brtmpl + brtmph;
-	if (brtmph > n) brtmph = n;
-	brtmpl++;
+  int mf1 = CUDA_mfit1;
+  int i, licol = 0, irow = 0, j, k, l, ll;
+  double big, dum, temp;
+  int mf = CUDA_mfit;
+  
+  j = threadIdx.x + 1;
 
-	/*        indxc=vector_int(n+1);
-		indxr=vector_int(n+1);
-		ipiv=vector_int(n+1);*/
+#pragma unroll 9
+  while(j <= mf)
+    {
+      ipiv[j] = 0;
+      j += CUDA_BLOCK_DIM;
+    }
 
-	if (threadIdx.x == 0)
+  __syncwarp();
+
+  double * __restrict__ covarp = CUDA_LCC->covar;
+
+#pragma unroll 1
+  for(i = 1; i <= mf; i++)
+    {
+      big = 0.0;
+      irow = 0;
+      licol = 0;
+      j = threadIdx.x + 1;
+
+#pragma unroll 2
+      while(j <= mf)
 	{
-		for (j = 1; j <= n; j++) (*CUDA_LCC).ipiv[j] = 0;
+	  if(ipiv[j] != 1)
+	    {
+	      int ixx = j * mf1 + 1;
+#pragma unroll 4
+	      for(k = 1; k <= mf; k++, ixx++)
+		{
+		  int ii = ipiv[k];
+		  if(ii == 0)
+		    {
+		      double tmpcov = fabs(__ldg(&covarp[ixx]));
+		      if(tmpcov >= big)
+			{
+			  irow = j;
+			  licol = k;
+			  big = tmpcov;
+			}
+		    }
+		  else if(ii > 1)
+		    {
+		      return(1);
+		    }
+		}
+	    }
+	  j += CUDA_BLOCK_DIM;
 	}
-	__syncthreads();
-
-	for (i = 1; i <= n; i++)
+      //      sh_big[threadIdx.x] = big;
+      //      sh_irow[threadIdx.x] = irow;
+      //      sh_icol[threadIdx.x] = licol;
+      j = threadIdx.x;
+      while(j <= mf)
+	{      
+	  sh_big[j] = big;
+	  sh_irow[j] = irow;
+	  sh_icol[j] = licol;
+	  j += CUDA_BLOCK_DIM;
+	}
+      
+      __syncwarp();
+      
+      if(threadIdx.x == 0)
 	{
-		big = 0.0;
-		irow = 0;
-		licol = 0;
-		for (j = brtmpl; j <= brtmph; j++)
-			if ((*CUDA_LCC).ipiv[j] != 1)
-			{
-				int ixx = j * (CUDA_mfit1)+1;
-				for (k = 1; k <= n; k++, ixx++)
-				{
-					if ((*CUDA_LCC).ipiv[k] == 0)
-					{
-						double tmpcov = fabs((*CUDA_LCC).covar[ixx]);
-						if (tmpcov >= big)
-						{
-							big = tmpcov;
-							irow = j;
-							licol = k;
-						}
-					}
-					else if ((*CUDA_LCC).ipiv[k] > 1)
-					{
-						//printf("-");
-						__syncthreads();
-						/*					        deallocate_vector((void *) ipiv);
-												deallocate_vector((void *) indxc);
-												deallocate_vector((void *) indxr);*/
-						return(1);
-					}
-				}
-			}
-		sh_big[threadIdx.x] = big;
-		sh_irow[threadIdx.x] = irow;
-		sh_icol[threadIdx.x] = licol;
-		__syncthreads();
-		if (threadIdx.x == 0)
+	  big = sh_big[0];
+	  icol = sh_icol[0];
+	  irow = sh_irow[0];
+#pragma unroll 2
+	  for(j = 1; j <= mf; j++)
+	    {
+	      if(sh_big[j] >= big)
 		{
-			big = sh_big[0];
-			icol = sh_icol[0];
-			irow = sh_irow[0];
-			for (j = 1; j < CUDA_BLOCK_DIM; j++)
-			{
-				if (sh_big[j] >= big)
-				{
-					big = sh_big[j];
-					irow = sh_irow[j];
-					icol = sh_icol[j];
-				}
-			}
-			++((*CUDA_LCC).ipiv[icol]);
-			if (irow != icol)
-			{
-				for (l = 1; l <= n; l++)
-				{
-					SWAP((*CUDA_LCC).covar[irow * (CUDA_mfit1)+l], (*CUDA_LCC).covar[icol * (CUDA_mfit1)+l])
-				}
-
-				SWAP((*CUDA_LCC).da[irow], (*CUDA_LCC).da[icol])
-					//SWAP(b[irow],b[icol])
-			}
-			(*CUDA_LCC).indxr[i] = irow;
-			(*CUDA_LCC).indxc[i] = icol;
-			if ((*CUDA_LCC).covar[icol * (CUDA_mfit1)+icol] == 0.0)
-			{
-				j = 0;
-				for (int l = 1; l <= ma; l++)
-				{
-					if (CUDA_ia[l])
-					{
-						j++;
-						(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
-					}
-				}
-				//printf("+");
-				/*					    deallocate_vector((void *) ipiv);
-												deallocate_vector((void *) indxc);
-												deallocate_vector((void *) indxr);*/
-				return(2);
-			}
-			pivinv = 1.0 / (*CUDA_LCC).covar[icol * (CUDA_mfit1)+icol];
-			(*CUDA_LCC).covar[icol * (CUDA_mfit1)+icol] = 1.0;
-			(*CUDA_LCC).da[icol] *= pivinv;
-			//b[icol] *= pivinv;
+		  big = sh_big[j];
+		  irow = sh_irow[j];
+		  icol = sh_icol[j];
 		}
-		__syncthreads();
+	    }
+	  ++(ipiv[icol]);
 
-		for (l = brtmpl; l <= brtmph; l++)
+	  double * __restrict__ dapp = CUDA_LCC->da;
+
+	  if(irow != icol)
+	    {
+	      double * __restrict__ cvrp = covarp + irow * mf1; 
+	      double * __restrict__ cvcp = covarp + icol * mf1; 
+#pragma unroll 4
+	      for(l = 1; l <= mf - 3; l += 4)
 		{
-			(*CUDA_LCC).covar[icol * (CUDA_mfit1)+l] *= pivinv;
+		  SWAP4(cvrp, cvcp);
+		  cvrp += 4;
+		  cvcp += 4;
 		}
-		__syncthreads();
-
-		for (ll = brtmpl; ll <= brtmph; ll++)
-			if (ll != icol)
-			{
-				int ixx = ll * (CUDA_mfit1), jxx = icol * (CUDA_mfit1);
-				dum = (*CUDA_LCC).covar[ixx + icol];
-				(*CUDA_LCC).covar[ixx + icol] = 0.0;
-				ixx++;
-				jxx++;
-				for (l = 1; l <= n; l++, ixx++, jxx++) (*CUDA_LCC).covar[ixx] -= (*CUDA_LCC).covar[jxx] * dum;
-				(*CUDA_LCC).da[ll] -= (*CUDA_LCC).da[icol] * dum;
-				//b[ll] -= b[icol]*dum;
-			}
-		__syncthreads();
+	      
+#pragma unroll 3
+	      for(; l <= mf; l++)
+		{
+		  SWAP(cvrp[0], cvcp[0]);
+		  cvrp++;
+		  cvcp++;
+		}
+	      
+	      SWAP(dapp[irow], dapp[icol]);
+	      //SWAP(b[irow],b[icol])
+	    }
+	  //CUDA_LCC->indxr[i] = irow;
+	  indxr[i] = irow;
+	  //CUDA_LCC->indxc[i] = icol;
+	  indxc[i] = icol;
+	  double cov = covarp[icol * mf1 + icol];
+	  if(cov == 0.0) 
+	    {
+	      int bid = blockIdx();
+	      j = 0;
+	      
+	      int    const * __restrict__ iap = CUDA_ia + 1;
+	      double * __restrict__ atp = atry[bid] + 1; //CUDA_LCC->atry + 1;
+	      double * __restrict__ cgp = CUDA_LCC->cg + 1;
+	      double * __restrict__ dap = dapp;
+#pragma unroll 4
+	      for(int l = 1; l <= ma; l++)
+		{
+		  if(*iap)
+		    {
+		      dap++;
+		      __stwb(atp,  *cgp + *dap);
+		    }
+		  iap++;
+		  atp++;
+		  cgp++;
+		}
+	      
+	      return(2);
+	    }
+	  pivinv = ___drcp_rn(cov);
+	  covarp[icol * mf1 + icol] = 1.0;
+	  dapp[icol] *= pivinv;
 	}
-	if (threadIdx.x == 0)
+      
+      __syncwarp();
+      
+      int x = threadIdx.x + 1;
+      double * __restrict__ p = &covarp[icol * mf1];
+#pragma unroll 2
+      while(x <= mf)
 	{
-		for (l = n; l >= 1; l--)
-		{
-			if ((*CUDA_LCC).indxr[l] != (*CUDA_LCC).indxc[l])
-				for (k = 1; k <= n; k++)
-					SWAP((*CUDA_LCC).covar[k * (CUDA_mfit1)+(*CUDA_LCC).indxr[l]], (*CUDA_LCC).covar[k * (CUDA_mfit1)+(*CUDA_LCC).indxc[l]]);
-		}
+	  //if(x != 0)
+	  __stwb(&p[x], __ldg(&p[x]) * pivinv);
+	  x += CUDA_BLOCK_DIM;
 	}
-	__syncthreads();
-	/*        deallocate_vector((void *) ipiv);
-		deallocate_vector((void *) indxc);
-		deallocate_vector((void *) indxr);*/
+      
+      __syncwarp();
+      
+#pragma unroll 2
+      for(ll = 1; ll <= mf; ll++)
+	if(ll != icol)
+	  {
+	    int ixx = ll * mf1, jxx = icol * mf1;
+	    dum = __ldg(&covarp[ixx + icol]);
+	    covarp[ixx + icol] = 0.0;
+	    ixx++;
+	    jxx++;
+	    ixx += threadIdx.x;
+	    jxx += threadIdx.x;
+	    l = threadIdx.x + 1;
+#pragma unroll 2
+	    while(l <= mf)
+	      {
+		__stwb(&covarp[ixx],  __ldg(&covarp[ixx]) - __ldg(&covarp[jxx]) * dum);
+		l += CUDA_BLOCK_DIM;
+		ixx += CUDA_BLOCK_DIM;
+		jxx += CUDA_BLOCK_DIM;
+	      }
+	    double *dapp = CUDA_LCC->da;
+	    __stwb(&dapp[ll], __ldg(&dapp[ll]) - __ldg(&dapp[icol]) * dum);
+	  }
+      
+      __syncwarp();
+    }
 
-	return(0);
+  l = mf - threadIdx.x;
+
+  while(l >= 1)
+    {
+      //int r = CUDA_LCC->indxr[l];
+      int r = indxr[l];
+      //int c = CUDA_LCC->indxc[l];
+      int c = indxc[l];
+      if(r != c)
+	{
+	  double * __restrict__ cvp1 = &(covarp[0]), * __restrict__ cvp2;
+	  cvp2 = cvp1;
+	  int i1 = mf1 + r;
+	  int i2 = mf1 + c;
+	  cvp1 = cvp1 + i1;
+	  cvp2 = cvp2 + i2;
+#pragma unroll 4
+	  for(k = 1; k <= mf - 3; k += 4)
+	    {
+	      SWAP4n(cvp1, cvp2, mf1);
+	      cvp1 += mf1 * 4;
+	      cvp2 += mf1 * 4;
+	    }
+#pragma unroll 3
+	  for(; k <= mf; k++)
+	    {
+	      SWAP(cvp1[0], cvp2[0]);
+	      cvp1 += mf1;
+	      cvp2 += mf1;
+	    }
+	}
+      l -= CUDA_BLOCK_DIM;
+    }
+
+  __syncwarp();
+
+  return(0);
 }
 #undef SWAP
-/* from Numerical Recipes */
