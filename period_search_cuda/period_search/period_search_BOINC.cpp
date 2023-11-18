@@ -196,9 +196,9 @@ int main(int argc, char** argv)
 
 	double jd0, jd00, conw, conwR, a0 = 1.05, b0 = 1.00, c0 = 0.95, a, b, cAxis,
 		cl, al0, al0Abs, ave, e0Len, elen, cosAlpha, dth, dph, rfit, escl,
-		ee[MAX_N_OBS + 1][3], // e[4], e0[4],
-		ee0[MAX_N_OBS + 1][3], * cg, * cgFirst, * sig, * al, // *tim, *brightness,
-		betaPole[N_POLES + 1], lambdaPole[N_POLES + 1], par[4], * weightLc;
+		ee[3][MAX_N_OBS + 1], // e[4], e0[4],
+		ee0[3][MAX_N_OBS + 1], *cg, *cgFirst, *sig, *al, // *tim, *brightness,
+		betaPole[N_POLES + 1], lambdaPole[N_POLES + 1], par[4], *weightLc;
 
 	char* stringTemp;
 
@@ -286,9 +286,10 @@ int main(int argc, char** argv)
 	boinc_resolve_filename(output_filename, outputPath, sizeof(outputPath));
 	//    out.open(output_path, "w");
 
-		// See if there's a valid checkpoint file.
+		// DO NOT See if there's a valid checkpoint file.
 		// If so seek input file and truncate output file
 		//
+	/*
 	boinc_resolve_filename(checkpoint_file, chkptPath, sizeof(chkptPath));
 	state = boinc_fopen(chkptPath, "r");
 	if (state) {
@@ -301,10 +302,11 @@ int main(int argc, char** argv)
 		retval = out.open(outputPath, "a");
 	}
 	else {
+	*/
 		checkpointExists = 0;
 		nStartFrom = 1;
 		retval = out.open(outputPath, "w");
-	}
+	//}
 	if (retval) {
 		fprintf(stderr, "%s APP: period_search output open failed:\n",
 			boinc_msg_prefix(buf, sizeof(buf))
@@ -369,6 +371,11 @@ int main(int argc, char** argv)
 	// NOTE: Multiplicative factor for Alamda
 	fscanf(infile, "%lf", &a_lamda_incr);                       fgets(stringTemp, MAX_LINE_LENGTH, infile);
 
+	if (a_lamda_incr != 0.0)
+      a_lamda_incrr = 1.0 / a_lamda_incr;
+    else
+      a_lamda_incrr = std::numeric_limits<double>::max();
+
 	// NOTE: Alamda initial value
 	fscanf(infile, "%lf", &a_lamda_start);                      fgets(stringTemp, MAX_LINE_LENGTH, infile);
 
@@ -400,7 +407,7 @@ int main(int argc, char** argv)
 
 	if (l_curves > MAX_LC)
 	{
-		fprintf(stderr, "\nError: Number of lcs  is greater than MAX_LC = %d\n", MAX_LC); fflush(stderr); exit(2);
+		fprintf(stderr, "\nError: Number of lcs %d is greater than MAX_LC = %d\n", l_curves, MAX_LC); fflush(stderr); exit(2);
 	}
 
 	al = vector_double(l_curves);
@@ -426,6 +433,7 @@ int main(int argc, char** argv)
 		{
 			printf("%d points in light curve[%d]\n", l_points[i], i);
 		}
+		usleep(1);
 		fgets(stringTemp, MAX_LINE_LENGTH, infile);
 		in_rel[i] = 1 - iTemp;
 		if (in_rel[i] == 0)
@@ -435,17 +443,18 @@ int main(int argc, char** argv)
 
 		if (l_points[i] > POINTS_MAX)
 		{
-			fprintf(stderr, "\nError: Number of lc points is greater than POINTS_MAX = %d\n", POINTS_MAX); fflush(stderr); exit(2);
+			fprintf(stderr, "\nError: Number of lc points %d is greater than POINTS_MAX = %d\n", l_points[i], POINTS_MAX); fflush(stderr); exit(2);
 		}
 
 		// NOTE: loop over one light curve
 		for (j = 1; j <= l_points[i]; j++)
 		{
 			ndata++;
+			usleep(1);
 
 			if (ndata > MAX_N_OBS)
 			{
-				fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
+				fprintf(stderr, "\nError: Number of data %d is greater than MAX_N_OBS = %d\n", ndata, MAX_N_OBS); fflush(stderr); exit(2);
 			}
 
 			fscanf(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); // NOTE: JD, brightness
@@ -466,8 +475,8 @@ int main(int argc, char** argv)
 			// NOTE: normalization of distance vectors
 			for (k = 1; k <= 3; k++)
 			{
-				ee[ndata][k - 1] = e[k] / elen;
-				ee0[ndata][k - 1] = e0[k] / e0Len;
+				ee[k - 1][ndata] = e[k] / elen;
+				ee0[k - 1][ndata] = e0[k] / e0Len;
 			}
 
 			if (j == 1)
@@ -582,23 +591,31 @@ int main(int argc, char** argv)
 	// Some hosts have multiple GPUs. The BOINC client tells your application which instance to use.
 	// Call boinc_get_init_data() to get an APP_INIT_DATA structure; the device number (0, 1, ...) is in the gpu_device_num field. Old (pre-7.0.12) clients pass the device number via a command-line argument, --device N.
 	// In this case API_INIT_DATA::gpu_device_num will be -1, and your application must check its command-line args.
-	if (aid.gpu_device_num >= 0)
-	{
-		cuda_device = aid.gpu_device_num;
-	}
-	else
-	{
-		for (auto ii = 0; ii < argc; ii++) {
-			if (cuda_device < 0 && strcmp(argv[ii], "--device") == 0 && ii + 1 < argc)
-				cuda_device = atoi(argv[++ii]);
-		}
-	}
+    if (aid.gpu_device_num >= 0)
+    {
+      cuda_device = aid.gpu_device_num;
+    }
+    else
+    {
+      for (auto ii = 0; ii < argc; ii++) {
+	    if (cuda_device < 0 && strcmp(argv[ii], "--device") == 0 && ii + 1 < argc)
+	      cuda_device = atoi(argv[++ii]);
+	    if(strcmp(argv[ii], "--N") == 0 && ii + 1 < argc)
+	      Nfactor = atoi(argv[++ii]);
+      }
+    }
 
-	if (cuda_device < 0) cuda_device = 0;
-	if (!checkpointExists)
-	{
-		fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
-		fprintf(stderr, "BOINC GPU type '%s', deviceId=%d, slot=%d\n", aid.gpu_type, cuda_device, aid.slot);
+    if(cuda_device < 0) cuda_device = 0;
+  
+    if(!checkpointExists)
+    {
+        APP_INIT_DATA aid;
+        boinc_get_init_data_p( &aid );
+        int tasks_per_gpu = (int)(0.5 + 1.0/aid.gpu_usage);
+        fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
+        fprintf(stderr, "BOINC GPU type '%s', deviceId=%d, slot=%d\n", aid.gpu_type, cuda_device, aid.slot);
+        if(tasks_per_gpu >= 0)
+	      fprintf(stderr, "\nRunning %d clients per GPU\n", tasks_per_gpu);
 
 		int major, minor, build, revision;
 #if defined __GNUC__
@@ -614,12 +631,14 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
 	}
 
-	retval = CUDAPrepare(cuda_device, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
+  	usleep(1);
+  	retval = CUDAPrepare(cuda_device, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, a_lamda_incrr, ee, ee0, tim, phi_0, checkpointExists, ndata);
 	if (!retval)
 	{
 		fflush(stderr);
 		exit(2);
 	}
+    usleep(1);
 
 	/* optimization of the convexity weight **************************************************************/
 	if (!checkpointExists)
@@ -692,7 +711,7 @@ int main(int argc, char** argv)
 
 		if (num_fac > MAX_N_FAC)
 		{
-			fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); exit(2);
+			fprintf(stderr, "\nError: Number of facets %d is greater than MAX_N_FAC %d!\n", num_fac, MAX_N_FAC); fflush(stderr); exit(2);
 		}
 
 		/* makes indices to triangle vertices */
@@ -726,7 +745,7 @@ int main(int argc, char** argv)
 
 		if ((n_coef + 3 + n_ph_par + 1) > MAX_N_PAR)
 		{
-			fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
+			fprintf(stderr, "\nError: Number of parameters %d is greater than MAX_N_PAR = %d\n", (n_coef + 3 + n_ph_par + 2), MAX_N_PAR); fflush(stderr); exit(2);
 		}
 
 		CUDAPrecalc(cuda_device, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, brightness);
@@ -799,7 +818,7 @@ int main(int argc, char** argv)
 
 	if (num_fac > MAX_N_FAC)
 	{
-		fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); exit(2);
+		fprintf(stderr, "\nError: Number of facets %d is greater than MAX_N_FAC %d!\n", num_fac, MAX_N_FAC); fflush(stderr); exit(2);
 	}
 
 	/* makes indices to triangle vertices */
@@ -833,13 +852,14 @@ int main(int argc, char** argv)
 
 	if ((n_coef + 3 + n_ph_par + 1) > MAX_N_PAR)
 	{
-		fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
+		fprintf(stderr, "\nError: Number of parameters %d is greater than MAX_N_PAR = %d\n", (n_coef + 3 + n_ph_par + 1), MAX_N_PAR); fflush(stderr); exit(2);
 	}
 
 	CUDAStart(cuda_device, nStartFrom, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, conwR, ndata, ia, ia_par, cgFirst, out, escl, sig, num_fac, brightness);
 
 	out.close();
 
+	boinc_fraction_done(0.99999);
 	CUDAUnprepare();
 
 	//  deallocate_matrix_double(ee,MAX_N_OBS);
