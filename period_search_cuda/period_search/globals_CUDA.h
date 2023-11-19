@@ -220,3 +220,9 @@ __device__ int CUDA_Is_Precalc;
 __device__ freq_context *CUDA_CC;
 
 #define UNRL 4
+#define blockIdx() (blockIdx.x + gridDim.x * threadIdx.y)
+
+#define BLOCKX4 4
+#define BLOCKX8 8
+#define BLOCKX16 16
+#define BLOCKX32 32
