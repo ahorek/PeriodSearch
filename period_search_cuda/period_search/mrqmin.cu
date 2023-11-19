@@ -10,7 +10,7 @@
 #include <device_launch_parameters.h>
 #include <stdio.h>
 
-__device__ int __forceinline__ mrqmin_1_end(freq_context *__restrict__ CUDA_LCC, int ma, int mfit, int mfit1, const int block)
+__device__ int __forceinline__ mrqmin_1_end(freq_context * __restrict__ CUDA_LCC, int ma, int mfit, int mfit1, const int block)
 {
 	int bid = blockIdx();
 
@@ -135,7 +135,7 @@ __device__ int __forceinline__ mrqmin_1_end(freq_context *__restrict__ CUDA_LCC,
 
 // clean pointers and []'s
 // threadify loops
-__device__ void __forceinline__ mrqmin_2_end(freq_context *__restrict__ CUDA_LCC, int ma, int bid)
+__device__ void __forceinline__ mrqmin_2_end(freq_context * __restrict__ CUDA_LCC, int ma, int bid)
 {
 	int j, k, l; //, bid = blockIdx();
 	int mf = CUDA_mfit, mf1 = CUDA_mfit1;
