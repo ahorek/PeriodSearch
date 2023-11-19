@@ -184,44 +184,9 @@ __device__ double dytemp[POINTS_MAX + 1][40][N_BLOCKS];
 
 #define CUDA_Nphpar 3
 
-//global to all freq
-__constant__ int CUDA_Ncoef, CUDA_Numfac, CUDA_Numfac1, CUDA_Dg_block;
-__constant__ int CUDA_ma, CUDA_mfit, CUDA_mfit1, CUDA_lastone, CUDA_lastma, CUDA_ncoef0;
-__constant__ double CUDA_cg_first[MAX_N_PAR + 1];
-__constant__ int CUDA_n_iter_max, CUDA_n_iter_min, CUDA_ndata;
-__constant__ double CUDA_iter_diff_max;
-__constant__ double CUDA_conw_r;
-__constant__ int CUDA_Lmax, CUDA_Mmax;
-__constant__ double CUDA_lcl, CUDA_Alamda_start, CUDA_Alamda_incr;  //, CUDA_Alamda_incrr;
-__constant__ double CUDA_Phi_0;
-__constant__ double CUDA_beta_pole[N_POLES + 1];
-__constant__ double CUDA_lambda_pole[N_POLES + 1];
-
-__device__ double CUDA_par[4];
-__device__ int CUDA_ia[MAX_N_PAR + 1];
-__device__ double CUDA_Nor[3][MAX_N_FAC + 1];
-__device__ double CUDA_Fc[MAX_LM+1][MAX_N_FAC + 1];
-__device__ double CUDA_Fs[MAX_LM+1][MAX_N_FAC + 1];
-__device__ double CUDA_Pleg[MAX_LM + 1][MAX_LM + 1][MAX_N_FAC + 1];
-__device__ double CUDA_Darea[MAX_N_FAC + 1];
-__device__ double CUDA_Dsph[MAX_N_PAR + 1][MAX_N_FAC + 1];
-__device__ double CUDA_ee[3][MAX_N_OBS + 1]; //[3][MAX_N_OBS+1];
-__device__ double CUDA_ee0[3][MAX_N_OBS+1];
-__device__ double CUDA_tim[MAX_N_OBS + 1];
-__device__ double *CUDA_brightness/*[MAX_N_OBS+1]*/;
-__device__ double *CUDA_sig/*[MAX_N_OBS+1]*/;
-__device__ double *CUDA_Weight/*[MAX_N_OBS+1]*/;
-//__device__ double *CUDA_Area;
-__device__ double *CUDA_Dg;
-__device__ int CUDA_End;
-__device__ int CUDA_Is_Precalc;
-
-//global to one thread
-__device__ freq_context *CUDA_CC;
-
-#define UNRL 4
 #define blockIdx() (blockIdx.x + gridDim.x * threadIdx.y)
 
+#define UNRL 4
 #define BLOCKX4 4
 #define BLOCKX8 8
 #define BLOCKX16 16
