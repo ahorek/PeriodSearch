@@ -31,7 +31,7 @@ int msleep(long ms)
 #include "start_CUDA.h"
 #include "declarations_CUDA.h"
 #include "boinc_api.h"
-//#include "Start.cuh"
+#include "Start.cuh"
 //#include "cuda_runtime.h"
 #include <cuda_runtime_api.h>
 //#include <cuda_occupancy.h>
