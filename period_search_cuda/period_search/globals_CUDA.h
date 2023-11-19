@@ -136,7 +136,3 @@ __managed__ extern double be_best[N_BLOCKS];
 
 #define CUDA_Nphpar 3
 #define UNRL 4
-#define BLOCKX4 4
-#define BLOCKX8 8
-#define BLOCKX16 16
-#define BLOCKX32 32

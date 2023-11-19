@@ -1,5 +1,12 @@
 #pragma once
 
+#define BLOCKX4 4
+#define BLOCKX8 8
+#define BLOCKX16 16
+#define BLOCKX32 32
+
+#define blockIdx() (blockIdx.x + gridDim.x * threadIdx.y) 
+
 __device__ void curv(freq_context * __restrict__ CUDA_LCC,
 		     double * __restrict__ cg,
 		     int bid);
