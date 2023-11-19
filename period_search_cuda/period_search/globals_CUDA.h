@@ -46,6 +46,7 @@ __device__ __device_builtin__ double __hiloint2double(int hi, int lo);
 //#endif
 
 #include "constants.h"
+#include "cudamemasm.h"
 
 //NOTE: https://devtalk.nvidia.com/default/topic/517801/-34-texture-is-not-a-template-34-error-mvs-2010/
 

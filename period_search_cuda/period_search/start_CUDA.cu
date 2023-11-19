@@ -46,7 +46,6 @@ int msleep(long ms)
 #include <time.h>
 #endif
 #include "ComputeCapability.h"
-#include "cudamemasm.h"
 
 /*
 int sched_yield(void) __THROW
