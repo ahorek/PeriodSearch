@@ -169,14 +169,6 @@ __device__ extern double Ochisq[N_BLOCKS];
 __device__ extern double Chisq[N_BLOCKS];
 __device__ extern double Areag[N_BLOCKS][MAX_N_FAC + 1];
 
-//LFR
-__managed__ extern int isReported[N_BLOCKS];
-__managed__ extern double dark_best[N_BLOCKS];
-__managed__ extern double per_best[N_BLOCKS];
-__managed__ extern double dev_best[N_BLOCKS];
-__managed__ extern double la_best[N_BLOCKS];
-__managed__ extern double be_best[N_BLOCKS];
-
 
 #ifdef NEWDYTEMP
 __device__ extern double dytemp[POINTS_MAX + 1][40][N_BLOCKS];
