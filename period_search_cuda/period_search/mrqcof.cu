@@ -13,40 +13,40 @@
 
 
 __device__ void __forceinline__ mrqcof_start(freq_context * __restrict__ CUDA_LCC,
-											 double * __restrict__ a,
-											 double * __restrict__ alpha,
-											 double * __restrict__ beta,
-											 int bid)
+					     double * __restrict__ a,
+					     double * __restrict__ alpha,
+					     double * __restrict__ beta,
+					     int bid)
 {
-	int j, k;
-	int mf = CUDA_mfit, mf1 = CUDA_mfit1;
-
-	/* N.B. curv and blmatrix called outside bright
-	   because output same for all points */
-	curv(CUDA_LCC, a, bid);
+  int j, k;
+  int mf = CUDA_mfit, mf1 = CUDA_mfit1;
+  
+  /* N.B. curv and blmatrix called outside bright
+     because output same for all points */
+  curv(CUDA_LCC, a, bid);
 
 #pragma unroll 4
-	for (j = 1; j <= mf; j++)
-	{
-		alpha += mf1;
-		k = threadIdx.x + 1;
-#pragma unroll
-		while (k <= j)
-		{
-			__stwb(&alpha[k], 0.0);
-			k += CUDA_BLOCK_DIM;
-		}
+  for(j = 1; j <= mf; j++)
+    {
+      alpha += mf1;
+      k = threadIdx.x + 1;
+#pragma unroll 
+      while(k <= j)
+	{ 
+	  __stwb(&alpha[k], 0.0);
+	  k += CUDA_BLOCK_DIM;
 	}
-
-	j = threadIdx.x + 1;
+    }
+  
+  j = threadIdx.x + 1;
 #pragma unroll 2
-	while (j <= mf)
-	{
-		__stwb(&beta[j], 0.0);
-		j += CUDA_BLOCK_DIM;
-	}
-
-	// __syncthreads(); //pro jistotu
+  while(j <= mf)
+    {
+      __stwb(&beta[j], 0.0);
+      j += CUDA_BLOCK_DIM;
+    }
+  
+  // __syncthreads(); //pro jistotu
 }
 
 __device__ double __forceinline__ mrqcof_end(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha)

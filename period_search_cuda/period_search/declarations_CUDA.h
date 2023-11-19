@@ -9,7 +9,6 @@
 
 __device__ void curv(freq_context * __restrict__ CUDA_LCC,
 		     double * __restrict__ cg,
-		     int brtmpl, int brtmph,
 		     int bid);
 __device__ int mrqmin_1_end(freq_context * __restrict__ CUDA_LCC,
 			    int ma, int mfit, int mfit1, int block);
@@ -63,6 +62,6 @@ __device__ double bright(freq_context * __restrict__ CUDA_LCC,
 			 int jp, int Lpoints1, int Inrel);
 __device__ void matrix_neo(freq_context * __restrict__ CUDA_LCC,
 			   double const * __restrict__ cg,
-			   int lnp1, int Lpoints);
+			   int lnp1, int Lpoints, int bid);
 __global__ void CudaCalculateIter1Mrqcof2Curve2(int inrel, int lpoints);
 __global__ void CudaCalculateIter1Mrqcof1Curve2(int inrel, int lpoints);
