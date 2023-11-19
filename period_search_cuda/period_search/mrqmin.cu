@@ -7,6 +7,7 @@
 #include <cuda.h>
 #include "globals_CUDA.h"
 #include "declarations_CUDA.h"
+#include "cuda_vars.cuh"
 #include <device_launch_parameters.h>
 #include <stdio.h>
 
