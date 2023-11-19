@@ -6,6 +6,7 @@
 #include "constants.h"
 #include "globals_CUDA.h"
 #include "declarations_CUDA.h"
+#include "cuda_vars.cuh"
 #include <cstdio>
 
 __global__ void CudaCalculatePrepare(int n_start, int n_max)

@@ -8,9 +8,8 @@
 #include <stdlib.h>
 #include "globals_CUDA.h"
 #include "declarations_CUDA.h"
+#include "cuda_vars.cuh"
 #include <device_launch_parameters.h>
-
-
 
 __device__ void __forceinline__ mrqcof_start(freq_context * __restrict__ CUDA_LCC,
 					     double * __restrict__ a,
