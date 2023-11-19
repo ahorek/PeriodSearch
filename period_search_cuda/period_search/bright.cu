@@ -8,7 +8,7 @@
 #include "globals_CUDA.h"
 #include <device_launch_parameters.h>
 
-__device__ void __forceinline__ matrix_neo(freq_context *__restrict__ CUDA_LCC, double const *__restrict__ cg, int lnp1, int Lpoints, int bid)
+__device__ void __forceinline__ matrix_neo(freq_context * __restrict__ CUDA_LCC, double const *__restrict__ cg, int lnp1, int Lpoints, int bid)
 {
   int lnp, jp;
   int blockidx = bid;

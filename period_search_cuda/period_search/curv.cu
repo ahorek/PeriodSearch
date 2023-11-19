@@ -8,7 +8,7 @@
 #include "globals_CUDA.h"
 
 
-__device__ void __forceinline__ curv(freq_context const *__restrict__ CUDA_LCC, double *__restrict__ cg, int bid)
+__device__ void __forceinline__ curv(freq_context const * __restrict__ CUDA_LCC, double *__restrict__ cg, int bid)
 {
    int i, m, n, l, k;
    double g;
