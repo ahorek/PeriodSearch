@@ -233,7 +233,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
   cudaMallocHost(&theEnd, sizeof(int));
 
   return (res == cudaSuccess) ? 1 : 0;
-
+}
 
 
 void CUDAUnprepare(void)
