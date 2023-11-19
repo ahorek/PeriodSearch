@@ -21,11 +21,21 @@ __device__ void mrqcof_curve1(freq_context * __restrict__ CUDA_LCC,
 __device__ double mrqcof_end(freq_context * __restrict__ CUDA_LCC,
 			     double * __restrict__ alpha);
 
+__device__ void mrqcof_curve1_lastI1(
+	      freq_context * __restrict__ CUDA_LCC,
+	      double * __restrict__ a,
+	      double * __restrict__ alpha,
+	      double * __restrict__ beta,
+	      int bid);
+
 __device__ void mrqcof_curve1_lastI0(freq_context * __restrict__ CUDA_LCC,
 													 double * __restrict__ a,
 													 double * __restrict__ alpha,
 													 double * __restrict__ beta,
 													 int bid);
+
+__device__ void MrqcofCurve23I0IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+__device__ void MrqcofCurve23I0IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
 
 __device__ int gauss_errc(freq_context * __restrict__ CUDA_LCC, int ma);
 __device__ void blmatrix(double bet, double lam, int tid);

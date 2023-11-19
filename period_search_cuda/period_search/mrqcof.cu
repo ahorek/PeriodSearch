@@ -290,6 +290,112 @@ __device__ void __forceinline__ mrqcof_curve1_lastI1(
 	__syncwarp();
 }
 
+__device__ void __forceinline__  mrqcof_curve1_lastI1(
+	      freq_context * __restrict__ CUDA_LCC,
+	      double * __restrict__ a,
+	      double * __restrict__ alpha,
+	      double * __restrict__ beta,
+	      int bid)
+{
+  int Lpoints = 3;
+  int Lpoints1 = Lpoints + 1;
+  int jp, lnp;
+  double ymod, lave;
+  __shared__ double dyda[BLOCKX4][N80];
+  double * __restrict__ dydap = dyda[threadIdx.y];
+  //int bid = blockIdx();
+  
+  lnp = npg[bid];
+
+  int n = threadIdx.x + 1, ma = CUDA_ma;
+  double * __restrict__ p = &(dave[bid][n]);
+#pragma unroll 2
+  while(n <= ma)
+    {
+      *p = 0;
+      p += CUDA_BLOCK_DIM;
+      n += CUDA_BLOCK_DIM;
+    }
+  lave = 0;
+
+  //__syncthreads();
+
+  double * __restrict__ dytemp = CUDA_LCC->dytemp, *ytemp = CUDA_LCC->ytemp;
+  long int lpadd = sizeof(double) * Lpoints1;
+
+#pragma unroll 1
+  for(jp = 1; jp <= Lpoints; jp++)
+    {
+      ymod = conv(CUDA_LCC, (jp - 1), dydap, bid); 
+
+      lnp++;
+      
+      if(threadIdx.x == 0)
+	{
+	  ytemp[jp] = ymod;
+	  lave = lave + ymod;
+	}
+      
+      int n = threadIdx.x + 1;
+      double const * __restrict__ a;
+      double * __restrict__ b, * __restrict__ c;
+
+      a = &(dydap[n-1]);
+      b = &(dave[bid][n]);
+#ifdef DYTEMP_NEW
+      //c = &(dytemp2[blockIdx()][jp][n]); 
+#else
+      c = &(dytemp[jp + Lpoints1 * n]); //ZZZ bad store order, strided
+#endif
+      //unrl2
+#pragma unroll 2
+      while(n <= ma - CUDA_BLOCK_DIM)
+	{ /////////////  ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZz
+	  double d = a[0], bb = b[0];
+	  double d2 = a[CUDA_BLOCK_DIM], bb2 = b[CUDA_BLOCK_DIM];
+#ifdef DYTEMP_NEW
+	  dytemp2[bid][jp][n] = d;
+#else
+	  c[0] = d;
+#endif
+	  //c += Lpoints1;
+	  c = (double *)(((char *)c) + lpadd);
+	  b[0] = bb + d;
+#ifdef DYTEMP_NEW
+	  dytemp2[bid][jp][n + CUDA_BLOCK_DIM] = d2;
+#else
+	  c[0] = d2;
+#endif
+	  //c += Lpoints1;
+	  c = (double *)(((char *)c) + lpadd);
+	  b[CUDA_BLOCK_DIM] = bb2 + d2;	      
+	  a += 2 * CUDA_BLOCK_DIM;
+	  b += 2 * CUDA_BLOCK_DIM;
+	  n += 2 * CUDA_BLOCK_DIM;
+	}
+      //#pragma unroll 1
+      if(n <= ma)
+	{
+	  double d = a[0], bb = b[0];
+#ifdef DYTEMP_NEW
+	  dytemp2[bid][jp][n] = d;
+#else
+	  c[0] = d;
+#endif
+	  b[0] = bb + d;
+	}
+    } /* jp, lpoints */
+  
+  if(threadIdx.x == 0)
+    {
+      npg[bid]  = lnp;
+      aveg[bid] = lave;
+    }
+  
+   /* save lightcurves */
+  __syncwarp();
+}
+
 __device__ void __forceinline__ mrqcof_curve1_lastI0(freq_context * __restrict__ CUDA_LCC,
 													 double * __restrict__ a,
 													 double * __restrict__ alpha,
