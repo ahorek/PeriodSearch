@@ -172,11 +172,11 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 
       fprintf(stderr, "CUDA version: %d\n", cudaVersion);
       fprintf(stderr, "CUDA Device number: %d\n", cudadev);
-      fprintf(stderr, "CUDA Device: %s %lluMB\n", deviceProp.name, totalGlobalMemory);
+      fprintf(stderr, "CUDA Device: %s %luMB\n", deviceProp.name, totalGlobalMemory);
       //fprintf(stderr, "CUDA Device driver: %s\n", drv_version_str);
       fprintf(stderr, "Compute capability: %d.%d\n", deviceProp.major, deviceProp.minor);
       //fprintf(stderr, "Device peak clock: %d MHz\n", devicePeakClock);
-      fprintf(stderr, "Shared memory per Block | per SM: %llu | %llu\n", sharedMemoryBlock, sharedMemorySm);
+      fprintf(stderr, "Shared memory per Block | per SM: %lu | %lu\n", sharedMemoryBlock, sharedMemorySm);
       fprintf(stderr, "Multiprocessors per task under cuda-mps: %d\n\n", deviceProp.multiProcessorCount);
     }
 
