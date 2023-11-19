@@ -29,15 +29,19 @@ __device__ void mrqcof_curve1_lastI1(
 	      int bid);
 
 __device__ void MrqcofCurve23I1IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+__device__ void MrqcofCurve23I1IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+__device__ void MrqcofCurve23I0IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+__device__ void MrqcofCurve23I0IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+__device__ void MrqcofCurve2I0IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int lpoints, int bid);
+__device__ void MrqcofCurve2I1IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int lpoints, int bid);
+__device__ void MrqcofCurve2I0IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int lpoints, int bid);
+__device__ void MrqcofCurve2I1IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int lpoints, int bid);
 
 __device__ void mrqcof_curve1_lastI0(freq_context * __restrict__ CUDA_LCC,
 													 double * __restrict__ a,
 													 double * __restrict__ alpha,
 													 double * __restrict__ beta,
 													 int bid);
-
-__device__ void MrqcofCurve23I0IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
-__device__ void MrqcofCurve23I0IA1(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
 
 __device__ int gauss_errc(freq_context * __restrict__ CUDA_LCC, int ma);
 __device__ void blmatrix(double bet, double lam, int tid);
