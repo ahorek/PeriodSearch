@@ -6,6 +6,7 @@
 #include <math.h>
 #include "globals_CUDA.h"
 #include "declarations_CUDA.h"
+#include "cuda_vars.cuh"
 
 __device__ void __forceinline__ blmatrix(double bet, double lam, int tid)
 {

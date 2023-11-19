@@ -6,6 +6,7 @@
 #include <cuda.h>
 #include <math.h>
 #include "globals_CUDA.h"
+#include "cuda_vars.cuh"
 #include "declarations_CUDA.h"
 
 
