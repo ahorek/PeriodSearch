@@ -28,6 +28,8 @@ __device__ void mrqcof_curve1_lastI1(
 	      double * __restrict__ beta,
 	      int bid);
 
+__device__ void MrqcofCurve23I1IA0(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha, double * __restrict__ beta, int bid);
+
 __device__ void mrqcof_curve1_lastI0(freq_context * __restrict__ CUDA_LCC,
 													 double * __restrict__ a,
 													 double * __restrict__ alpha,
