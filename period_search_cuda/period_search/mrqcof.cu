@@ -12,10 +12,10 @@
 
 
 
-__device__ void __forceinline__ mrqcof_start(freq_context *__restrict__ CUDA_LCC,
-											 double *__restrict__ a,
-											 double *__restrict__ alpha,
-											 double *__restrict__ beta,
+__device__ void __forceinline__ mrqcof_start(freq_context * __restrict__ CUDA_LCC,
+											 double * __restrict__ a,
+											 double * __restrict__ alpha,
+											 double * __restrict__ beta,
 											 int bid)
 {
 	int j, k;
@@ -49,7 +49,7 @@ __device__ void __forceinline__ mrqcof_start(freq_context *__restrict__ CUDA_LCC
 	// __syncthreads(); //pro jistotu
 }
 
-__device__ double __forceinline__ mrqcof_end(freq_context *__restrict__ CUDA_LCC, double *__restrict__ alpha)
+__device__ double __forceinline__ mrqcof_end(freq_context * __restrict__ CUDA_LCC, double * __restrict__ alpha)
 {
 	int j, k, mf = CUDA_mfit, mf1 = CUDA_mfit1;
 	int tid = threadIdx.x;
@@ -255,10 +255,10 @@ __device__ void __forceinline__ mrqcof_curve1(freq_context *__restrict__ CUDA_LC
 // }
 
 __device__ void __forceinline__ mrqcof_curve1_lastI1(
-	freq_context *__restrict__ CUDA_LCC,
-	double *__restrict__ a,
-	double *__restrict__ alpha,
-	double *__restrict__ beta,
+	freq_context * __restrict__ CUDA_LCC,
+	double * __restrict__ a,
+	double * __restrict__ alpha,
+	double * __restrict__ beta,
 	int bid)
 {
 	int Lpoints = 3;
@@ -360,10 +360,10 @@ __device__ void __forceinline__ mrqcof_curve1_lastI1(
 	__syncwarp();
 }
 
-__device__ void __forceinline__ mrqcof_curve1_lastI0(freq_context *__restrict__ CUDA_LCC,
-													 double *__restrict__ a,
-													 double *__restrict__ alpha,
-													 double *__restrict__ beta,
+__device__ void __forceinline__ mrqcof_curve1_lastI0(freq_context * __restrict__ CUDA_LCC,
+													 double * __restrict__ a,
+													 double * __restrict__ alpha,
+													 double * __restrict__ beta,
 													 int bid)
 {
 	int Lpoints = 3;
