@@ -61,24 +61,28 @@
 #include <Shlwapi.h>
 #include "Version.h"
 #else
-#include "config.h"
+#include "config.h" // <- freebsd
 #include <cstdio>
 #include <cctype>
 #include <ctime>
+#include <cstring>
 #include <cstdlib>
 #include <csignal>
 #include <unistd.h>
 #include <limits>
+#include <iostream>
 #endif
 
-#include "str_util.h"
-#include "util.h"
+#ifdef __GNUC__
+#include <filesystem>
+#endif
+
+#include "str_util.h"  // <- freebsd
+#include "util.h"      // <- freebsd
 #include "filesys.h"
 #include "boinc_api.h"
 #include "mfile.h"
 #include "systeminfo.h"
-#include <iostream>
-#include <cstring>
 
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
@@ -148,66 +152,56 @@ Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
 Deallocate, n_iter;
 
 double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
-Area[MAX_N_FAC + 1], Darea[MAX_N_FAC + 1], Sclnw[MAX_LC + 1],
+Sclnw[MAX_LC + 1],
 Yout[MAX_N_OBS + 1],
 Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1],
 Tc[MAX_N_FAC + 1][MAX_LM + 1], Ts[MAX_N_FAC + 1][MAX_LM + 1],
-Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1], Dg[MAX_N_FAC + 1][MAX_N_PAR + 1],
-Nor[MAX_N_FAC + 1][4], Blmat[4][4],
+Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
+Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4],
 Weight[MAX_N_OBS + 1];
 
-APP_INIT_DATA aid;
-bool verboseMode = false;
+#ifdef __GNUC__
+double Nor[3][MAX_N_FAC + 2] __attribute__((aligned(16))),
+Area[MAX_N_FAC + 2] __attribute__((aligned(16))),
+Darea[MAX_N_FAC + 2] __attribute__((aligned(16))),
+Dg[MAX_N_FAC + 4][MAX_N_PAR + 10] __attribute__((aligned(16)));
+#else
+__declspec(align(16)) double Nor[3][MAX_N_FAC + 2], Area[MAX_N_FAC + 2], Darea[MAX_N_FAC + 2], Dg[MAX_N_FAC + 4][MAX_N_PAR + 10]; //Nor,Dg ARE ZERO INDEXED
+#endif
 
-
-/*--------------------------------------------------------------*/
-
-//void blinkLed(int count) {
-//	for (int i = 0; i < count; i++) {
-//		digitalWrite(LED, HIGH);  // On
-//		delay(150); // ms
-//		digitalWrite(LED, LOW);	  // Off
-//		delay(150);
-//	}
-//}
-
-//bool cmdOptionExists(std::vector<char> vec, char &option)
-//{
-//	return std::find(vec.begin(), vec.end(), option) != vec.end();
-//}
-
-int main(int argc, char** argv) {
-	int retval, nlines, ntestperiods, checkpoint_exists, n_start_from;
+int main(int argc, char **argv) {
+	int /*c,*/ /*nchars = 0,*/ retval, nlines, ntestperiods, checkpoint_exists, n_start_from;
+	//    double fsize, fd;
 	char input_path[512], output_path[512], chkpt_path[512], buf[256];
 	MFILE out;
-	FILE* state, * infile;
+	FILE* state, *infile;
 
-	int i, j, l, m, k, n, nrows, onlyrel, ndata, k2, ndir, i_temp,
+	int i, j, l, m, k, n, nrows, ndata, k2, ndir, i_temp, onlyrel,
 		n_iter_max, n_iter_min,
-		* ia, ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl,
+		*ia, ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl,
 		lc_number,
-		** ifp, new_conw, max_test_periods;
+		**ifp, new_conw, max_test_periods;
 
 	double per_start, per_step_coef, per_end,
 		freq, freq_start, freq_step, freq_end, jd_min, jd_max,
 		dev_old, dev_new, iter_diff, iter_diff_max, stop_condition,
-		totarea, sum, dark, dev_best, per_best, dark_best, la_tmp, be_tmp, la_best, be_best,
-		* t, * f, * at, * af, sum_dark_facet, ave_dark_facet;
+		totarea, sum, dark, dev_best, per_best, dark_best, la_tmp, be_tmp, la_best, be_best, //fraction_done,
+		*t, *f, *at, *af, sum_dark_facet, ave_dark_facet;
 
 	double jd_0, jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95, a, b, c_axis,
 		prd, cl, al0, al0_abs, ave, e0len, elen, cos_alpha,
 		dth, dph, rfit, escl,
-		* brightness, e[4], e0[4], ** ee,
-		** ee0, * cg, * cg_first, ** covar,
-		** aalpha, * sig, chck[4],
-		* tim, * al,
-		beta_pole[N_POLES + 1], lambda_pole[N_POLES + 1], par[4], rchisq, * weight_lc;
+		*brightness, e[4], e0[4], **ee,
+		**ee0, *cg, *cg_first, **covar,
+		**aalpha, *sig, chck[4],
+		*tim, *al,
+		beta_pole[N_POLES + 1], lambda_pole[N_POLES + 1], par[4], rchisq, *weight_lc;
 
-	char* str_temp;
+	char *str_temp;
 
-	str_temp = (char*)malloc(MAX_LINE_LENGTH);
+	str_temp = (char *)malloc(MAX_LINE_LENGTH);
 
 	ee = matrix_double(MAX_N_OBS, 3);
 	ee0 = matrix_double(MAX_N_OBS, 3);
@@ -240,33 +234,10 @@ int main(int argc, char** argv) {
 
 	ia_lambda_pole = ia_beta_pole = 1;
 
-	//wiringPiSetupSys();
-	//pinMode(LED, OUTPUT);
-
-	if (argc > 1)
-	{
-		std::cout << "args: " << argc << " | " << argv[0] << " | " << argv[1] << std::endl;
-		if (std::strcmp(argv[1], "-v") == 0)
-		{
-			verboseMode = true;
-			std::cout << "verbose: " << std::boolalpha << verboseMode << std::endl;
-		}
-
-		if (std::strcmp(argv[1], "-h") == 0)
-		{
-			std::cout << "Usage: " << argv[0] << " [OPTION]" << std::endl;
-			std::cout << "  -v\tverbose output" << std::endl;
-			std::cout << "  -h\ttdisplay this help and exit" << std::endl;
-
-			exit(0);
-		}
-	}
-
 	retval = boinc_init();
-	if (retval) {
-		fprintf(stderr, "%s boinc_init returned %d\n",
-			boinc_msg_prefix(buf, sizeof(buf)), retval
-		);
+	if (retval)
+	{
+		fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
 		exit(retval);
 	}
 
@@ -665,20 +636,20 @@ int major, minor, build, revision;
 		freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
 
 		/* Give ia the value 0/1 if it's fixed/free */
-		ia[Ncoef + 1] = ia_beta_pole;
-		ia[Ncoef + 2] = ia_lambda_pole;
-		ia[Ncoef + 3] = ia_prd;
+		ia[Ncoef + 1 - 1] = ia_beta_pole;
+		ia[Ncoef + 2 - 1] = ia_lambda_pole;
+		ia[Ncoef + 3 - 1] = ia_prd;
 		/* phase function parameters */
 		Nphpar = 3;
 		/* shape is free to be optimized */
-		for (i = 1; i <= Ncoef; i++)
+		for (i = 0; i < Ncoef; i++)
 			ia[i] = 1;
 		/* The first shape param. fixed for relative br. fit */
 		if (onlyrel == 1)
-			ia[1] = 0;
-		ia[Ncoef + 3 + Nphpar + 1] = ia_cl;
+			ia[0] = 0;
+		ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
 		/* Lommel-Seeliger part is fixed */
-		ia[Ncoef + 3 + Nphpar + 2] = 0;
+		ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
 
 		if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
 		{
@@ -702,13 +673,9 @@ int major, minor, build, revision;
 			n = 1;
 		}
 
-		if (verboseMode) {
-			std::cout << "Gatering initial poles..." << std::endl;
-		}
-
 		for (; n <= max_test_periods; n++)
 		{
-			boinc_fraction_done(n / 10000.0 / max_test_periods); // signalize start
+			boinc_fraction_done(n / 10000.0 / max_test_periods);
 
 			freq = freq_start - (n - 1) * freq_step;
 
@@ -717,11 +684,6 @@ int major, minor, build, revision;
 			dev_best = 1e40;
 			for (m = 1; m <= N_POLES; m++)
 			{
-				if (verboseMode)
-				{
-					std::cout << ".";
-				}
-
 				prd = 1 / freq;
 
 				/* starts from the initial ellipsoid */
@@ -743,7 +705,7 @@ int major, minor, build, revision;
 				for (i = 1; i <= Nphpar; i++)
 				{
 					cg[Ncoef + 3 + i] = par[i];
-					ia[Ncoef + 3 + i] = ia_par[i];
+					ia[Ncoef + 3 + i - 1] = ia_par[i];
 				}
 				/* Lommel-Seeliger part */
 				cg[Ncoef + 3 + Nphpar + 2] = 1;
@@ -785,7 +747,7 @@ int major, minor, build, revision;
 						{
 							chck[i] = 0;
 							for (j = 1; j <= Numfac; j++)
-								chck[i] = chck[i] + Area[j] * Nor[j][i];
+								chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
 						}
 						rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 					}
@@ -806,7 +768,7 @@ int major, minor, build, revision;
 
 				totarea = 0;
 				for (i = 1; i <= Numfac; i++)
-					totarea = totarea + Area[i];
+					totarea = totarea + Area[i - 1];
 				sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
 				dark = sqrt(sum);
 
@@ -826,10 +788,6 @@ int major, minor, build, revision;
 					be_best = be_tmp;
 				}
 			} /* pole loop */
-
-			if (verboseMode) {
-				std::cout << std::endl;
-			}
 
 			if (la_best < 0)
 				la_best += 360;
@@ -950,20 +908,20 @@ int major, minor, build, revision;
 	freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
 
 	/* Give ia the value 0/1 if it's fixed/free */
-	ia[Ncoef + 1] = ia_beta_pole;
-	ia[Ncoef + 2] = ia_lambda_pole;
-	ia[Ncoef + 3] = ia_prd;
+	ia[Ncoef + 1 - 1] = ia_beta_pole;
+	ia[Ncoef + 2 - 1] = ia_lambda_pole;
+	ia[Ncoef + 3 - 1] = ia_prd;
 	/* phase function parameters */
 	Nphpar = 3;
 	/* shape is free to be optimized */
-	for (i = 1; i <= Ncoef; i++)
+	for (i = 0; i < Ncoef; i++)
 		ia[i] = 1;
 	/* The first shape param. fixed for relative br. fit */
 	if (onlyrel == 1)
-		ia[1] = 0;
-	ia[Ncoef + 3 + Nphpar + 1] = ia_cl;
+		ia[0] = 0;
+	ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
 	/* Lommel-Seeliger part is fixed */
-	ia[Ncoef + 3 + Nphpar + 2] = 0;
+	ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
 
 	if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
 	{
@@ -975,15 +933,14 @@ int major, minor, build, revision;
 		auto fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
 		boinc_fraction_done(fraction_done);
 
-		if (verboseMode)
-		{
-			auto fraction = fraction_done * 100;
-			auto time = std::time(nullptr);   // get time now
-			auto now = std::localtime(&time);
+#ifdef _DEBUG
+		auto fraction = fraction_done * 100;
+		auto time = std::time(nullptr);   // get time now
+		auto now = std::localtime(&time);
 
-			printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
-			fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
-		}
+		printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
+		fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
+#endif
 
 		freq = freq_start - (n - 1) * freq_step;
 
@@ -1012,7 +969,7 @@ int major, minor, build, revision;
 			for (i = 1; i <= Nphpar; i++)
 			{
 				cg[Ncoef + 3 + i] = par[i];
-				ia[Ncoef + 3 + i] = ia_par[i];
+				ia[Ncoef + 3 + i - 1] = ia_par[i];
 			}
 			/* Lommel-Seeliger part */
 			cg[Ncoef + 3 + Nphpar + 2] = 1;
@@ -1054,7 +1011,7 @@ int major, minor, build, revision;
 					{
 						chck[i] = 0;
 						for (j = 1; j <= Numfac; j++)
-							chck[i] = chck[i] + Area[j] * Nor[j][i];
+							chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
 					}
 					rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 				}
@@ -1075,7 +1032,7 @@ int major, minor, build, revision;
 
 			totarea = 0;
 			for (i = 1; i <= Numfac; i++)
-				totarea = totarea + Area[i];
+				totarea = totarea + Area[i - 1];
 			sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
 			dark = sqrt(sum);
 
@@ -1109,13 +1066,13 @@ int major, minor, build, revision;
 
 		/* output file */
 		if (n == 1)
+		{
 			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
+		}
 		else
+		{
 			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
-
-#if defined(ARM) || defined(ARM32) || defined(ARM64)
-		//blinkLed(3);
-#endif
+		}
 
 		if (boinc_time_to_checkpoint() || boinc_is_standalone())
 		{
