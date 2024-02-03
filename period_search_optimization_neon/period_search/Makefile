@@ -41,7 +41,7 @@ else
 	LIBJPEG = /usr/local/lib/libjpeg.a
 endif
 
-PROGS = period_search_rpi_armv8_arm64 
+PROGS = Period_search_BOINC_armv8_neon_10215_arm64_Release
 # uc2_graphics
 # make this optional so compile doesn't break on systems without OpenGL
 
@@ -66,7 +66,7 @@ install: Period_search_BOINC_armv8_neon_10215_arm64_Release
 #	$(BOINC_API_DIR)/libboinc_api.a \
 #	$(BOINC_LIB_DIR)/libboinc.a
 
-period_search_rpi_armv8_arm64: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
+Period_search_BOINC_armv8_neon_10215_arm64_Release: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a -lm 
