@@ -231,7 +231,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
-         printVec(dbr[incl_count]);
+         printf("d: %f", tmp4);
 
 		 INNER_CALC
 	  }
