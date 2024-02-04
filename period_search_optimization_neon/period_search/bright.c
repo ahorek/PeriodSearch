@@ -200,8 +200,11 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 			dbr[incl_count++] = vdupq_n_f64(tmp2);
 		} else {
     		//avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
+         printf("pre1");
+			printVec(avx_pbr);
     		avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 0);
-         printVec(avx_pbr);
+         printf("post1");
+			printVec(avx_pbr);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 0);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 0);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 0);
@@ -218,8 +221,11 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  else if (icmp & 2)
 	  {
  		 INNER_CALC_DSMU
+       	printf("pre2");
+			printVec(avx_pbr);
 		 avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 1);
-       printVec(avx_pbr);
+       	printf("post2");
+			printVec(avx_pbr);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
