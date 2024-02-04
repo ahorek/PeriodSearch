@@ -184,7 +184,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
     		dbr[incl_count++] = vdupq_n_f64(avx_pdbr);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
-    		dbr[incl_count++] = vdupq_n_f64(vrev64q_f64(avx_pdbr));
+    		dbr[incl_count++] = vdupq_n_f64(vextq_f64(avx_pdbr, avx_pdbr, 1));
 		} else {
     		avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
     		avx_dsmu = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_dsmu), 63));
@@ -207,7 +207,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu0 = vextq_f64(avx_11, avx_lmu0, 1);
 
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
-		 dbr[incl_count++] = vdupq_n_f64(vrev64q_f64(avx_pdbr));
+		 dbr[incl_count++] = vdupq_n_f64(vextq_f64(avx_pdbr, avx_pdbr, 1));
 		 INNER_CALC
 	  }
    }
@@ -319,7 +319,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
       avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
 	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
-      avx_dyda3 = vaddq_f64(avx_dyda3, vrev64q_f64(avx_dyda3));
+      avx_dyda3 = vpaddq_f64(avx_dyda3, avx_dyda3);
       avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
 	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
