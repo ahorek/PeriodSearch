@@ -348,9 +348,13 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
       avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
 	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
+   printVec(avx_d);
       avx_d = vpaddq_f64(avx_d, avx_d);
+      printVec(avx_d);
       avx_d = vmulq_f64(avx_d, avx_Scale);
+      printVec(avx_d);
       avx_d = vmulq_f64(avx_d, avx_cl1);
+      printVec(avx_d);
       vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
 
  /* Ders. of br. w.r.t. phase function params. */
@@ -362,6 +366,8 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
+   printf("br: %f\n", br);
+   exit(1);
 
    return(br);
 }
