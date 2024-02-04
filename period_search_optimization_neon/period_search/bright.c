@@ -250,7 +250,7 @@ printVec(res_br);
    //res_br=_mm_hadd_pd(res_br,res_br);
    //br=_mm_cvtsd_f64(res_br);
 
-   printf("br: %d\n", br);
+   printf("br: %f\n", br);
    exit(1);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
