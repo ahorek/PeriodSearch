@@ -115,31 +115,31 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    }
 
    /*Integrated brightness (phase coeff. used later) */
-   float64x2_t avx_e1 = vdupq_n_f64(&e[1]);
-   float64x2_t avx_e2 = vdupq_n_f64(&e[2]);
-   float64x2_t avx_e3 = vdupq_n_f64(&e[3]);
-   float64x2_t avx_e01 = vdupq_n_f64(&e0[1]);
-   float64x2_t avx_e02 = vdupq_n_f64(&e0[2]);
-   float64x2_t avx_e03 = vdupq_n_f64(&e0[3]);
-   float64x2_t avx_de11 = vdupq_n_f64(&de[1][1]);
-   float64x2_t avx_de12 = vdupq_n_f64(&de[1][2]);
-   float64x2_t avx_de13 = vdupq_n_f64(&de[1][3]);
-   float64x2_t avx_de21 = vdupq_n_f64(&de[2][1]);
-   float64x2_t avx_de22 = vdupq_n_f64(&de[2][2]);
-   float64x2_t avx_de23 = vdupq_n_f64(&de[2][3]);
-   float64x2_t avx_de31 = vdupq_n_f64(&de[3][1]);
-   float64x2_t avx_de32 = vdupq_n_f64(&de[3][2]);
-   float64x2_t avx_de33 = vdupq_n_f64(&de[3][3]);
-   float64x2_t avx_de011 = vdupq_n_f64(&de0[1][1]);
-   float64x2_t avx_de012 = vdupq_n_f64(&de0[1][2]);
-   float64x2_t avx_de013 = vdupq_n_f64(&de0[1][3]);
-   float64x2_t avx_de021 = vdupq_n_f64(&de0[2][1]);
-   float64x2_t avx_de022 = vdupq_n_f64(&de0[2][2]);
-   float64x2_t avx_de023 = vdupq_n_f64(&de0[2][3]);
-   float64x2_t avx_de031 = vdupq_n_f64(&de0[3][1]);
-   float64x2_t avx_de032 = vdupq_n_f64(&de0[3][2]);
-   float64x2_t avx_de033 = vdupq_n_f64(&de0[3][3]);
-   float64x2_t avx_Scale = vdupq_n_f64(&Scale);
+   float64x2_t avx_e1 = vdupq_n_f64(e[1]);
+   float64x2_t avx_e2 = vdupq_n_f64(e[2]);
+   float64x2_t avx_e3 = vdupq_n_f64(e[3]);
+   float64x2_t avx_e01 = vdupq_n_f64(e0[1]);
+   float64x2_t avx_e02 = vdupq_n_f64(e0[2]);
+   float64x2_t avx_e03 = vdupq_n_f64(e0[3]);
+   float64x2_t avx_de11 = vdupq_n_f64(de[1][1]);
+   float64x2_t avx_de12 = vdupq_n_f64(de[1][2]);
+   float64x2_t avx_de13 = vdupq_n_f64(de[1][3]);
+   float64x2_t avx_de21 = vdupq_n_f64(de[2][1]);
+   float64x2_t avx_de22 = vdupq_n_f64(de[2][2]);
+   float64x2_t avx_de23 = vdupq_n_f64(de[2][3]);
+   float64x2_t avx_de31 = vdupq_n_f64(de[3][1]);
+   float64x2_t avx_de32 = vdupq_n_f64(de[3][2]);
+   float64x2_t avx_de33 = vdupq_n_f64(de[3][3]);
+   float64x2_t avx_de011 = vdupq_n_f64(de0[1][1]);
+   float64x2_t avx_de012 = vdupq_n_f64(de0[1][2]);
+   float64x2_t avx_de013 = vdupq_n_f64(de0[1][3]);
+   float64x2_t avx_de021 = vdupq_n_f64(de0[2][1]);
+   float64x2_t avx_de022 = vdupq_n_f64(de0[2][2]);
+   float64x2_t avx_de023 = vdupq_n_f64(de0[2][3]);
+   float64x2_t avx_de031 = vdupq_n_f64(de0[3][1]);
+   float64x2_t avx_de032 = vdupq_n_f64(de0[3][2]);
+   float64x2_t avx_de033 = vdupq_n_f64(de0[3][3]);
+   float64x2_t avx_Scale = vdupq_n_f64(Scale);
 
    float64x2_t avx_tiny = vdupq_n_f64(TINY);
    float64x2_t avx_cl = vdupq_n_f64(cl);
