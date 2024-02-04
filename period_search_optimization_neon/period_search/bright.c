@@ -188,10 +188,12 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+         printVec(dbr[incl_count]);
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
+         printVec(dbr[incl_count]);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
