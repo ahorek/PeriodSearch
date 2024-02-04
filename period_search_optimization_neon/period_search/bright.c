@@ -188,17 +188,23 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
-         printVec(dbr[incl_count]);
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
-         printVec(dbr[incl_count]);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
-            float64_t tmp2;
-            vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+
+         //avx_lmu0 = vcombine_f64(vget_low_f64(avx_pdbr), vget_high_f64(avx_pdbr));
+
+			//double tmp2 = _mm_cvtsd_f64(_mm_shuffle_pd(avx_pdbr,avx_pdbr,1));
+			//dbr[incl_count++]=_mm_set1_pd(tmp2);
+
+
+         float64_t tmp2;
+         vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+         //printf("tmp2: %f\n", tmp2);
 			dbr[incl_count++] = vdupq_n_f64(tmp2);
 		} else {
     		avx_pbr = vcombine_f64(vget_low_f64(avx_pbr), vdup_n_f64(0.0));
@@ -249,6 +255,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
+   printf("br: %f\n", br);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
