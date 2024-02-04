@@ -4,30 +4,82 @@
    8.11.2006
 */
 
-// TODO!
-
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
+#include <arm_neon.h>
+
+#define INNER_CALC \
+	res_br = vaddq_f64(res_br, avx_pbr); \
+	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
+	\
+	avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
+    avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor2, avx_de21)); \
+    avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor3, avx_de31)); \
+    \
+    avx_sum10 = vmulq_f64(avx_Nor1, avx_de011); \
+    avx_sum10 = vaddq_f64(avx_sum10, vmulq_f64(avx_Nor2, avx_de021)); \
+    avx_sum10 = vaddq_f64(avx_sum10, vmulq_f64(avx_Nor3, avx_de031)); \
+    \
+    avx_sum2 = vmulq_f64(avx_Nor1, avx_de12); \
+    avx_sum2 = vaddq_f64(avx_sum2, vmulq_f64(avx_Nor2, avx_de22)); \
+    avx_sum2 = vaddq_f64(avx_sum2, vmulq_f64(avx_Nor3, avx_de32)); \
+    \
+    avx_sum20 = vmulq_f64(avx_Nor1, avx_de012); \
+    avx_sum20 = vaddq_f64(avx_sum20, vmulq_f64(avx_Nor2, avx_de022)); \
+    avx_sum20 = vaddq_f64(avx_sum20, vmulq_f64(avx_Nor3, avx_de032)); \
+    \
+    avx_sum3 = vmulq_f64(avx_Nor1, avx_de13); \
+    avx_sum3 = vaddq_f64(avx_sum3, vmulq_f64(avx_Nor2, avx_de23)); \
+    avx_sum3 = vaddq_f64(avx_sum3, vmulq_f64(avx_Nor3, avx_de33)); \
+    \
+    avx_sum30 = vmulq_f64(avx_Nor1, avx_de013); \
+    avx_sum30 = vaddq_f64(avx_sum30, vmulq_f64(avx_Nor2, avx_de023)); \
+    avx_sum30 = vaddq_f64(avx_sum30, vmulq_f64(avx_Nor3, avx_de033)); \
+    \
+    avx_sum1 = vmulq_f64(avx_sum1, avx_dsmu); \
+    avx_sum2 = vmulq_f64(avx_sum2, avx_dsmu); \
+    avx_sum3 = vmulq_f64(avx_sum3, avx_dsmu); \
+    avx_sum10 = vmulq_f64(avx_sum10, avx_dsmu0); \
+    avx_sum20 = vmulq_f64(avx_sum20, avx_dsmu0); \
+    avx_sum30 = vmulq_f64(avx_sum30, avx_dsmu0); \
+    \
+    avx_dyda1 = vaddq_f64(avx_dyda1, vmulq_f64(avx_Area, vaddq_f64(avx_sum1, avx_sum10))); \
+    avx_dyda2 = vaddq_f64(avx_dyda2, vmulq_f64(avx_Area, vaddq_f64(avx_sum2, avx_sum20))); \
+    avx_dyda3 = vaddq_f64(avx_dyda3, vmulq_f64(avx_Area, vaddq_f64(avx_sum3, avx_sum30))); \
+    \
+    avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
+    avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0)));
+// end of inner_calc
+#define INNER_CALC_DSMU \
+    avx_Area = vld1q_f64(&Area[i]); \
+    avx_dnom = vaddq_f64(avx_lmu, avx_lmu0); \
+    avx_s = vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), vaddq_f64(avx_cl, vdivq_f64(avx_cls, avx_dnom))); \
+    avx_pdbr = vmulq_f64(vld1q_f64(&Darea[i]), avx_s); \
+    avx_pbr = vmulq_f64(avx_Area, avx_s); \
+    avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
+    avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
+    avx_dsmu = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu0)); \
+    avx_powdnom = vdivq_f64(avx_lmu, avx_dnom); \
+    avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
+    avx_dsmu0 = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu));
+// end of inner_calc_dsmu
 
 double bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef)
 {
    int ncoef0, i, j, k,
-	   incl[MAX_N_FAC], //array of indexes of facets to Area, Dg, Nor. !!!!!!!!!!!incl IS ZERO INDEXED
 	   incl_count=0;
 
-   double cos_alpha, br, cl, cls, alpha, dnom, tmpdyda,
-		  e[4],e0[4],
-		  php[N_PHOT_PAR+1], dphp[N_PHOT_PAR+1], s,
-	  dbr[MAX_N_FAC], //IS ZERO INDEXED
-	  de[4][4], de0[4][4], tmat[4][4],
+   double cos_alpha, br, cl, cls, alpha,
+          e[4], e0[4],
+          php[N_PHOT_PAR+1], dphp[N_PHOT_PAR+1],
+	  	  de[4][4], de0[4][4], tmat[4][4],
 	  dtm[4][4][4];
 
-   double tmpdyda1 = 0,tmpdyda2 = 0,tmpdyda3 = 0;
-   double tmpdyda4 = 0,tmpdyda5 = 0;
+   float64x2_t *Dg_row[MAX_N_FAC+3], dbr[MAX_N_FAC+3];
 
    ncoef0 = ncoef - 2 - Nphpar;
    cl = exp(cg[ncoef-1]); /* Lambert */
@@ -35,90 +87,253 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    cos_alpha = dot_product(ee, ee0);
    alpha = acos(cos_alpha);
    for (i = 1; i <= Nphpar; i++)
-	  php[i] = cg[ncoef0+i];
+      php[i] = cg[ncoef0+i];
 
    phasec(dphp,alpha,php); /* computes also Scale */
 
    matrix(cg[ncoef0],t,tmat,dtm);
 
-   br = 0;
+//   br = 0;
    /* Directions (and ders.) in the rotating system */
+
    for (i = 1; i <= 3; i++)
    {
-	  e[i] = 0;
-	  e0[i] = 0;
-	  for (j = 1; j <= 3; j++)
-	  {
-		 e[i] = e[i] + tmat[i][j] * ee[j];
-		 e0[i] = e0[i] + tmat[i][j] * ee0[j];
-		 de[i][j] = 0;
-		 de0[i][j] = 0;
-		 for (k = 1; k <= 3; k++)
+      e[i] = 0;
+      e0[i] = 0;
+      for (j = 1; j <= 3; j++)
+      {
+         e[i] = e[i] + tmat[i][j] * ee[j];
+         e0[i] = e0[i] + tmat[i][j] * ee0[j];
+         de[i][j] = 0;
+         de0[i][j] = 0;
+         for (k = 1; k <= 3; k++)
 	 {
-			de[i][j] = de[i][j] + dtm[j][i][k] * ee[k];
-			de0[i][j] = de0[i][j] + dtm[j][i][k] * ee0[k];
-		 }
-	  }
+            de[i][j] = de[i][j] + dtm[j][i][k] * ee[k];
+            de0[i][j] = de0[i][j] + dtm[j][i][k] * ee0[k];
+         }
+      }
    }
 
    /*Integrated brightness (phase coeff. used later) */
-   double lmu,lmu0,dsmu,dsmu0;
-   for (i = 1; i <= Numfac; i++)
+   float64x2_t avx_e1 = vdupq_n_f64(&e[1]);
+   float64x2_t avx_e2 = vdupq_n_f64(&e[2]);
+   float64x2_t avx_e3 = vdupq_n_f64(&e[3]);
+   float64x2_t avx_e01 = vdupq_n_f64(&e0[1]);
+   float64x2_t avx_e02 = vdupq_n_f64(&e0[2]);
+   float64x2_t avx_e03 = vdupq_n_f64(&e0[3]);
+   float64x2_t avx_de11 = vdupq_n_f64(&de[1][1]);
+   float64x2_t avx_de12 = vdupq_n_f64(&de[1][2]);
+   float64x2_t avx_de13 = vdupq_n_f64(&de[1][3]);
+   float64x2_t avx_de21 = vdupq_n_f64(&de[2][1]);
+   float64x2_t avx_de22 = vdupq_n_f64(&de[2][2]);
+   float64x2_t avx_de23 = vdupq_n_f64(&de[2][3]);
+   float64x2_t avx_de31 = vdupq_n_f64(&de[3][1]);
+   float64x2_t avx_de32 = vdupq_n_f64(&de[3][2]);
+   float64x2_t avx_de33 = vdupq_n_f64(&de[3][3]);
+   float64x2_t avx_de011 = vdupq_n_f64(&de0[1][1]);
+   float64x2_t avx_de012 = vdupq_n_f64(&de0[1][2]);
+   float64x2_t avx_de013 = vdupq_n_f64(&de0[1][3]);
+   float64x2_t avx_de021 = vdupq_n_f64(&de0[2][1]);
+   float64x2_t avx_de022 = vdupq_n_f64(&de0[2][2]);
+   float64x2_t avx_de023 = vdupq_n_f64(&de0[2][3]);
+   float64x2_t avx_de031 = vdupq_n_f64(&de0[3][1]);
+   float64x2_t avx_de032 = vdupq_n_f64(&de0[3][2]);
+   float64x2_t avx_de033 = vdupq_n_f64(&de0[3][3]);
+   float64x2_t avx_Scale = vdupq_n_f64(&Scale);
+
+   float64x2_t avx_tiny = vdupq_n_f64(TINY);
+   float64x2_t avx_cl = vdupq_n_f64(cl);
+   float64x2_t avx_cl1 = vsetq_lane_f64(cl, vdupq_n_f64(1.0), 1); // TODO ?
+   float64x2_t avx_cls = vdupq_n_f64(cls);
+   float64x2_t avx_11 = vdupq_n_f64(1.0);
+   float64x2_t res_br = vdupq_n_f64(0.0);
+   float64x2_t avx_dyda1 = vdupq_n_f64(0.0);
+   float64x2_t avx_dyda2 = vdupq_n_f64(0.0);
+   float64x2_t avx_dyda3 = vdupq_n_f64(0.0);
+   float64x2_t avx_d = vdupq_n_f64(0.0);
+   float64x2_t avx_d1 = vdupq_n_f64(0.0);
+
+   for (i = 0; i < Numfac; i += 2)
    {
-	  lmu = e[1] * Nor[i][1] + e[2] * Nor[i][2] + e[3] * Nor[i][3];
-	  lmu0 = e0[1] * Nor[i][1] + e0[2] * Nor[i][2] + e0[3] * Nor[i][3];
-	  if((lmu > TINY) && (lmu0 > TINY))
-	  {
-		 dnom = lmu + lmu0;
-		 s = lmu * lmu0 * (cl + cls / dnom);
-		 br = br + Area[i] * s;
-		 //
-		 incl[incl_count] = i;
-		 dbr[incl_count++] = Darea[i] * s;
-		 //
-		 dsmu = cls * pow(lmu0 / dnom,2) + cl * lmu0;
-		 dsmu0 = cls * pow(lmu / dnom,2) + cl * lmu;
+      float64x2_t avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
+      float64x2_t avx_Nor1 = vld1q_f64(&Nor[0][i]);
+      float64x2_t avx_Nor2 = vld1q_f64(&Nor[1][i]);
+      float64x2_t avx_Nor3 = vld1q_f64(&Nor[2][i]);
+      float64x2_t avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
+      float64x2_t avx_Area;
 
-		 double sum1 = 0,sum2 = 0,sum3 = 0;
-		 double sum10 = 0,sum20 = 0,sum30 = 0;
+      avx_lmu = vmulq_f64(avx_e1, avx_Nor1);
+      avx_lmu = vaddq_f64(avx_lmu, vmulq_f64(avx_e2, avx_Nor2));
+      avx_lmu = vaddq_f64(avx_lmu, vmulq_f64(avx_e3, avx_Nor3));
+      avx_lmu0 = vmulq_f64(avx_e01, avx_Nor1);
+      avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e02, avx_Nor2));
+      avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e03, avx_Nor3));
 
-		 for (j = 1; j <= 3; j++)
-		 {
-			   sum1 = sum1 + Nor[i][j] * de[j][1];
-			   sum10 = sum10 + Nor[i][j] * de0[j][1];
-			   sum2 = sum2 + Nor[i][j] * de[j][2];
-			   sum20 = sum20 + Nor[i][j] * de0[j][2];
-			   sum3 = sum3 + Nor[i][j] * de[j][3];
-			   sum30 = sum30 + Nor[i][j] * de0[j][3];
+      cmpe = vcgtq_f64(avx_lmu, avx_tiny);
+      cmpe0 = vcgtq_f64(avx_lmu0, avx_tiny);
+      cmp = vandq_s64(vreinterpretq_s64_f64(cmpe), vreinterpretq_s64_f64(cmpe0));
+      int icmp = vget_lane_s64(vreinterpret_s64_s8(vqmovn_s16(vqmovn_s32(cmp))), 0); // TODO ?
+
+	  // TODO AVX
+	  if(icmp & 1)  //first and second or only first
+      {
+		 INNER_CALC_DSMU
+		 if (icmp & 2) {
+    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		dbr[incl_count++] = vdupq_lane_f64(avx_pdbr, 0);
+
+    		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+    		dbr[incl_count++] = vdupq_lane_f64(vrev64q_f64(avx_pdbr), 0);
+		} else {
+    		avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
+    		avx_dsmu = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_dsmu), 63));
+    		avx_dsmu0 = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_dsmu0), 63));
+    		avx_lmu = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_lmu), 63));
+    		avx_lmu0 = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_lmu0), 63));
+
+    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		dbr[incl_count++] = vdupq_lane_f64(avx_pdbr, 0);
 		 }
-		 tmpdyda1 = tmpdyda1 + Area[i] * (dsmu * sum1 + dsmu0 * sum10);
-		 tmpdyda2 = tmpdyda2 + Area[i] * (dsmu * sum2 + dsmu0 * sum20);
-		 tmpdyda3 = tmpdyda3 + Area[i] * (dsmu * sum3 + dsmu0 * sum30);
-		 tmpdyda4 = tmpdyda4 + lmu * lmu0 * Area[i];
-		 tmpdyda5 = tmpdyda5 + Area[i] * lmu * lmu0 / (lmu + lmu0);
+		 INNER_CALC
 	  }
-	}
+	  else if (icmp & 2)
+	  {
+ 		 INNER_CALC_DSMU
+         avx_pbr = vrev64q_f64(avx_pbr);
+         avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
+         avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
+         avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
+         avx_lmu0 = vextq_f64(avx_11, avx_lmu0, 1);
+
+         Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+		 dbr[incl_count++] = vdupq_lane_f64(vrev64q_f64(avx_pdbr), 0);
+		 INNER_CALC
+	  }
+   }
+
+   dbr[incl_count] = vdupq_n_f64(0.0);
+   dbr[incl_count + 1] = vdupq_n_f64(0.0);
+   dbr[incl_count + 2] = vdupq_n_f64(0.0);
+   dbr[incl_count + 3] = vdupq_n_f64(0.0);
+   Dg_row[incl_count] = Dg_row[0];
+   Dg_row[incl_count + 1] = Dg_row[0];
+   Dg_row[incl_count + 2] = Dg_row[0];
+   Dg_row[incl_count + 3] = Dg_row[0];
+   res_br = vcombine_f64(vpadd_f64(vget_low_f64(res_br), vget_high_f64(res_br)));
+   vst1q_lane_f64(&br, res_br, 0);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
-   for (i = 1; i <= ncoef0-3; i++)
+   int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
+
+   for (i = 0; i < cyklus1; i+=10) //5 * 2doubles
    {
-	  tmpdyda=0;
-	  for (j = 0; j < incl_count; j++)
-		tmpdyda = tmpdyda + dbr[j] * Dg[incl[j]][i];
-	  dyda[i] = Scale * tmpdyda;
+      float64x2_t tmp1, tmp2, tmp3, tmp4, tmp5;
+	  float64x2_t *Dgrow, *Dgrow1, *Dgrow2, *Dgrow3, pdbr, pdbr1, pdbr2, pdbr3;
+
+		Dgrow = &Dg_row[0][dgi];
+		pdbr=dbr[0];
+		Dgrow1 = &Dg_row[1][dgi];
+		pdbr1=dbr[1];
+		Dgrow2 = &Dg_row[2][dgi];
+		pdbr2=dbr[2];
+		Dgrow3 = &Dg_row[3][dgi];
+		pdbr3=dbr[3];
+
+		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[0]),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[1]),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+		tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[2]),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
+		tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[3]),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
+		tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[4]),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
+
+	  for (j=4;j<incl_count;j+=4)
+ 	  {
+
+		Dgrow = &Dg_row[j][dgi];
+		pdbr=dbr[j];
+		Dgrow1 = &Dg_row[j+1][dgi];
+		pdbr1=dbr[j+1];
+		Dgrow2 = &Dg_row[j+2][dgi];
+		pdbr2=dbr[j+2];
+		Dgrow3 = &Dg_row[j+3][dgi];
+		pdbr3=dbr[j+3];
+
+		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+		tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp3,vmulq_f64(pdbr,Dgrow[2])),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
+		tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp4,vmulq_f64(pdbr,Dgrow[3])),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
+		tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp5,vmulq_f64(pdbr,Dgrow[4])),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
+	  }
+	  dgi+=5;
+	  tmp1=vmulq_f64(tmp1,avx_Scale);
+	  vst1q_f64(&dyda[i],tmp1);
+	  tmp2=vmulq_f64(tmp2,avx_Scale);
+	  vst1q_f64(&dyda[i+2],tmp2);
+	  tmp3=vmulq_f64(tmp3,avx_Scale);
+	  vst1q_f64(&dyda[i+4],tmp3);
+	  tmp4=vmulq_f64(tmp4,avx_Scale);
+	  vst1q_f64(&dyda[i+6],tmp4);
+	  tmp5=vmulq_f64(tmp5,avx_Scale);
+	  vst1q_f64(&dyda[i+8],tmp5);
    }
+   for (; i < ncoef03; i+=4) //2 * 2doubles
+   {
+	  float64x2_t tmp1, tmp2;
+	  float64x2_t *Dgrow, *Dgrow1, *Dgrow2, *Dgrow3, pdbr, pdbr1, pdbr2, pdbr3;
+
+		Dgrow = &Dg_row[0][dgi];
+		pdbr=dbr[0];
+		Dgrow1 = &Dg_row[1][dgi];
+		pdbr1=dbr[1];
+		Dgrow2 = &Dg_row[2][dgi];
+		pdbr2=dbr[2];
+		Dgrow3 = &Dg_row[3][dgi];
+		pdbr3=dbr[3];
+
+		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[0]),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[1]),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+	  for (j=4;j<incl_count;j+=4)
+ 	  {
+
+		Dgrow = &Dg_row[j][dgi];
+		pdbr=dbr[j];
+		Dgrow1 = &Dg_row[j+1][dgi];
+		pdbr1=dbr[j+1];
+		Dgrow2 = &Dg_row[j+2][dgi];
+		pdbr2=dbr[j+2];
+		Dgrow3 = &Dg_row[j+3][dgi];
+		pdbr3=dbr[j+3];
+
+		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+	  }
+	  dgi+=2;
+	  tmp1=vmulq_f64(tmp1,avx_Scale);
+	  vst1q_f64(&dyda[i],tmp1);
+	  tmp2=vmulq_f64(tmp2,avx_Scale);
+	  vst1q_f64(&dyda[i+2],tmp2);
+   }
+
    /* Ders. of brightness w.r.t. rotation parameters */
-   dyda[ncoef0-3+1] = Scale * tmpdyda1;
-   dyda[ncoef0-3+2] = Scale * tmpdyda2;
-   dyda[ncoef0-3+3] = Scale * tmpdyda3;
+	  avx_dyda1 = vcombine_f64(vpadd_f64(vget_low_f64(avx_dyda1), vget_high_f64(avx_dyda1)));
+	  avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
+	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
-   /* Ders. of br. w.r.t. phase function params. */
-   for(i = 1; i <= Nphpar; i++)
-	  dyda[ncoef0+i] = br * dphp[i];
-
+	  avx_dyda3 = vcombine_f64(vpadd_f64(vget_low_f64(avx_dyda3), vget_high_f64(avx_dyda3)));
+      avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
+	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
-   dyda[ncoef-1] = Scale * tmpdyda4 * cl;
-   dyda[ncoef] = Scale * tmpdyda5;
+      avx_d = vcombine_f64(vpadd_f64(vget_low_f64(avx_d), vget_high_f64(avx_d)));
+      avx_d = vmulq_f64(avx_d, avx_Scale);
+      avx_d = vmulq_f64(avx_d, avx_cl1);
+	  vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
+
+ /* Ders. of br. w.r.t. phase function params. */
+     for(i = 1; i <= Nphpar; i++)
+       dyda[ncoef0+i-1] = br * dphp[i];
+/*     dyda[ncoef0+1-1] = br * dphp[1];
+     dyda[ncoef0+2-1] = br * dphp[2];
+     dyda[ncoef0+3-1] = br * dphp[3];*/
+
    /* Scaled brightness */
    br *= Scale;
 
