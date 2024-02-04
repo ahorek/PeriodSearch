@@ -202,7 +202,8 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
     		//avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
          printf("pre1");
 			printVec(avx_pbr);
-    		avx_pbr = vextq_f64(vdupq_n_f64(0.0), avx_pbr, 0);
+    		//avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 0);
+         avx_pbr = vdupq_lane_f64(vget_low_f64(avx_pbr), 0);
          printf("post1");
 			printVec(avx_pbr);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 0);
