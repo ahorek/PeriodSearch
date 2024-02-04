@@ -155,7 +155,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    for (i = 0; i < Numfac; i += 2)
    {
-      float64x2_t avx_lmu, avx_lmu0; //, cmpe, cmpe0, cmp;
+      float64x2_t avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
       float64x2_t avx_Nor1 = vld1q_f64(&Nor[0][i]);
       float64x2_t avx_Nor2 = vld1q_f64(&Nor[1][i]);
       float64x2_t avx_Nor3 = vld1q_f64(&Nor[2][i]);
@@ -169,12 +169,11 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
       avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e02, avx_Nor2));
       avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e03, avx_Nor3));
 
-      uint64x2_t cmpe = vcgtq_f64(avx_lmu, avx_tiny);
-      uint64x2_t cmpe0 = vcgtq_f64(avx_lmu0, avx_tiny);
-      float64x2_t cmp = vandq_s64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0));
-	  // uint64_t
-      int icmp = vget_lane_s64(vreinterpret_s64_s8(vqmovn_s16(vqmovn_s32(cmp))), 0); // TODO ?
-	  //int icmp = vget_lane_u64(vreinterpret_u64_u8(vqmovn_u16(vqmovn_u32(vqmovn_u64(cmp)))), 0);
+      cmpe = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu, avx_tiny));
+      cmpe0 = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu0, avx_tiny));
+	  cmp = vreinterpretq_f64_u64(vandq_u64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0)));
+	  int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
+      int icmp = (vgetq_lane_s64(cmp_int, 0) & 1) | ((vgetq_lane_s64(cmp_int, 1) & 1) << 1);
 
 	  // TODO AVX
 	  if(icmp & 1)  //first and second or only first
@@ -316,18 +315,18 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    }
 
    /* Ders. of brightness w.r.t. rotation parameters */
-	  avx_dyda1 = vcombine_f64(vpadd_f64(vget_low_f64(avx_dyda1), vget_high_f64(avx_dyda1)));
-	  avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
+	  avx_dyda1 = vaddq_f64(avx_dyda1, vrev64q_f64(avx_dyda1));
+      avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
 	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
-	  avx_dyda3 = vcombine_f64(vpadd_f64(vget_low_f64(avx_dyda3), vget_high_f64(avx_dyda3)));
+      avx_dyda3 = vaddq_f64(avx_dyda3, vrev64q_f64(avx_dyda3));
       avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
 	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
-      avx_d = vcombine_f64(vpadd_f64(vget_low_f64(avx_d), vget_high_f64(avx_d)));
+      avx_d = vaddq_f64(avx_d, vrev64q_f64(avx_d));
       avx_d = vmulq_f64(avx_d, avx_Scale);
       avx_d = vmulq_f64(avx_d, avx_cl1);
-	  vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
+      vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
 
  /* Ders. of br. w.r.t. phase function params. */
      for(i = 1; i <= Nphpar; i++)
