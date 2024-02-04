@@ -219,7 +219,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  {
  		 INNER_CALC_DSMU
 		 avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 1);
-       //printVec(avx_pbr);
+       printVec(avx_pbr);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
