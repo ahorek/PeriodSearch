@@ -228,6 +228,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          //avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          //avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          //avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
+         printVec(avx_pbr);
          avx_pbr = vcombine_f64(vget_high_f64(avx_pbr), vdup_n_f64(0.0));
          avx_dsmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu));
          avx_dsmu0 = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu0));
@@ -240,6 +241,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
          printVec(avx_pbr);
+         exit(1);
 
 		 INNER_CALC
 	  }
