@@ -221,7 +221,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
          //avx_lmu0 = vextq_f64(avx_11, avx_lmu0, 1);
-         avx_lmu0 = vcombine_f64(vget_high_f64(avx_11), vget_low_f64(avx_lmu0));
+         avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
          printf("lmu1");
 			printVec(avx_lmu0);
 
