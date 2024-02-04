@@ -66,7 +66,7 @@ install: Period_search_BOINC_armv8_neon_10215_arm64_Release
 #	$(BOINC_API_DIR)/libboinc_api.a \
 #	$(BOINC_LIB_DIR)/libboinc.a
 
-Period_search_BOINC_armv8_neon_10215_arm64_Release: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
+Period_search_BOINC_armv8_neon_10215_arm64_Release: period_search_BOINC.cpp $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a -lm 
