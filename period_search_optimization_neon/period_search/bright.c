@@ -183,13 +183,13 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
 
 			float64_t tmp;
-			vst1q_lane_f64(tmp, avx_pdbr, 0);
+			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
             float64_t tmp2;
-            vst1q_lane_f64(tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+            vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp2);
 		} else {
     		avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
@@ -201,7 +201,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
 
 			float64_t tmp3;
-			vst1q_lane_f64(tmp, avx_pdbr, 0);
+			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
             dbr[incl_count++] = vdupq_n_f64(tmp3);
 		 }
 		 INNER_CALC
@@ -218,7 +218,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
          float64_t tmp4;
-         vst1q_lane_f64(tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+         vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
 
 		 INNER_CALC
