@@ -151,7 +151,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    float64x2_t avx_tiny = vdupq_n_f64(TINY);
    float64x2_t avx_cl = vdupq_n_f64(cl);
-   float64x2_t avx_cl1 = vsetq_lane_f64(cl, vdupq_n_f64(1.0), 1);
+   float64x2_t avx_cl1 = vsetq_lane_f64(cl, vdupq_n_f64(1.0), 0);
    printVec(avx_cl1);
    float64x2_t avx_cls = vdupq_n_f64(cls);
    float64x2_t avx_11 = vdupq_n_f64(1.0);
