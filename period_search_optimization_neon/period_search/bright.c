@@ -220,10 +220,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
-         //avx_lmu0 = vextq_f64(avx_11, avx_lmu0, 1);
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
-         printf("lmu1");
-			printVec(avx_lmu0);
 
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
@@ -246,12 +243,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
-
-   //res_br=_mm_hadd_pd(res_br,res_br);
-   //br=_mm_cvtsd_f64(res_br);
-
-   printf("br: %f\n", br);
-   exit(1);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
