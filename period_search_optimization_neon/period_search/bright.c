@@ -12,6 +12,14 @@
 #include "constants.h"
 #include <arm_neon.h>
 
+void printVec(float64x2_t vec)
+{
+    double tempi16[2];
+    vst1q_f64(&tempi16[0], vec);
+    printf("[0]=%2f, [1]=%2f\n\n",
+    tempi16[0],tempi16[1]);
+}
+
 #define INNER_CALC \
 	res_br = vaddq_f64(res_br, avx_pbr); \
 	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
@@ -184,12 +192,14 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
+         printf("tmp: %f\n", tmp);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
             float64_t tmp2;
             vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+            printf("tmp2: %f\n", tmp2);
 			dbr[incl_count++] = vdupq_n_f64(tmp2);
 		} else {
     		avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
@@ -202,6 +212,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
+         printf("tmp3: %f\n", tmp3);
             dbr[incl_count++] = vdupq_n_f64(tmp3);
 		 }
 		 INNER_CALC
@@ -219,11 +230,13 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
+         printf("tmp4: %f\n", tmp4);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
 
 		 INNER_CALC
 	  }
    }
+   exit(1);
 
    dbr[incl_count] = vdupq_n_f64(0.0);
    dbr[incl_count + 1] = vdupq_n_f64(0.0);
