@@ -220,10 +220,10 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          //avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          //avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          //avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
-         avx_pbr = vcombine_f64(vget_high_f64(avx_pbr), vdup_n_f64(0.0));
-         avx_dsmu = vcombine_f64(vget_high_f64(avx_dsmu), vdup_n_f64(0.0));
-         avx_dsmu0 = vcombine_f64(vget_high_f64(avx_dsmu0), vdup_n_f64(0.0));
-         avx_lmu = vcombine_f64(vget_high_f64(avx_lmu), vdup_n_f64(0.0));
+         avx_pbr = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_pbr));
+         avx_dsmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu));
+         avx_dsmu0 = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu0));
+         avx_lmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_lmu));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
 
          printVec(avx_pbr);
