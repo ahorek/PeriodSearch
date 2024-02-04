@@ -183,8 +183,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
       int icmp = (vgetq_lane_s64(cmp_int, 0) & 1) | ((vgetq_lane_s64(cmp_int, 1) & 1) << 1);
 
-      printf("icmp: %d\n", icmp);
-
 	  if(icmp & 1)  //first and second or only first
       {
 		 INNER_CALC_DSMU
@@ -342,7 +340,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    }
 
    /* Ders. of brightness w.r.t. rotation parameters */
-	  avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda1);
+	  avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda2);
      avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
 	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
@@ -364,10 +362,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
-   printf("br: %f\n", br);
-
-   if (fabs(br - 2.762886) < 0.1)
-     exit(1);
+   //printf("br: %f\n", br);
 
    return(br);
 }
