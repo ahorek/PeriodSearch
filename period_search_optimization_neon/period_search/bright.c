@@ -183,6 +183,8 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
       int icmp = (vgetq_lane_s64(cmp_int, 0) & 1) | ((vgetq_lane_s64(cmp_int, 1) & 1) << 1);
 
+      printf("icmp: %d\n", icmp);
+
 	  if(icmp & 1)  //first and second or only first
       {
 		 INNER_CALC_DSMU
@@ -363,6 +365,9 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    /* Scaled brightness */
    br *= Scale;
    printf("br: %f\n", br);
+
+   if (br == 2.762886)
+     exit(1);
 
    return(br);
 }
