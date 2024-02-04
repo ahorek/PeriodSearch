@@ -220,24 +220,18 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          //avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          //avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          //avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
-         avx_pbr = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_pbr));
+         avx_pbr = vcombine_f64(vget_high_f64(avx_pbr), vdup_n_f64(0.0));
          avx_dsmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu));
          avx_dsmu0 = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu0));
          avx_lmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_lmu));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
-
-         printVec(avx_pbr);
-         printVec(avx_dsmu);
-         printVec(avx_dsmu0);
-         printVec(avx_lmu);
-         printVec(avx_lmu0);
-         printf("\n");
 
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
+         printVec(dbr[incl_count]);
 
 		 INNER_CALC
 	  }
