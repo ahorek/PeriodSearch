@@ -362,6 +362,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
+   printf("br: %f\n", br);
 
    return(br);
 }
