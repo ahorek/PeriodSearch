@@ -171,9 +171,10 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
       uint64x2_t cmpe = vcgtq_f64(avx_lmu, avx_tiny);
       uint64x2_t cmpe0 = vcgtq_f64(avx_lmu0, avx_tiny);
-      float64x2_t cmp = vandq_s64(vreinterpretq_s64_f64(cmpe), vreinterpretq_s64_f64(cmpe0));
+      float64x2_t cmp = vandq_s64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0));
 	  // uint64_t
       int icmp = vget_lane_s64(vreinterpret_s64_s8(vqmovn_s16(vqmovn_s32(cmp))), 0); // TODO ?
+	  //int icmp = vget_lane_u64(vreinterpret_u64_u8(vqmovn_u16(vqmovn_u32(vqmovn_u64(cmp)))), 0);
 
 	  // TODO AVX
 	  if(icmp & 1)  //first and second or only first
