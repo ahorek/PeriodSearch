@@ -366,7 +366,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    br *= Scale;
    printf("br: %f\n", br);
 
-   if (br == 2.762886)
+   if (fabs(br - 2.762886) < 0.1)
      exit(1);
 
    return(br);
