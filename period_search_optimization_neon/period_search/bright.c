@@ -270,7 +270,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[2]),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
 		tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[3]),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
 		tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[4]),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
-      printVec(tmp1);
 
 	  for (j=4;j<incl_count;j+=4)
  	  {
@@ -302,7 +301,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  tmp5=vmulq_f64(tmp5,avx_Scale);
 	  vst1q_f64(&dyda[i+8],tmp5);
    }
-   exit(1);
    for (; i < ncoef03; i+=4) //2 * 2doubles
    {
 	  float64x2_t tmp1, tmp2;
@@ -336,10 +334,13 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  }
 	  dgi+=2;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
+     printVec(tmp1);
 	  vst1q_f64(&dyda[i],tmp1);
 	  tmp2=vmulq_f64(tmp2,avx_Scale);
+     printVec(tmp2);
 	  vst1q_f64(&dyda[i+2],tmp2);
    }
+   exit(1);
 
    /* Ders. of brightness w.r.t. rotation parameters */
 	  avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda1);
