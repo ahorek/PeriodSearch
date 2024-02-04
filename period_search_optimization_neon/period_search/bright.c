@@ -217,7 +217,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
-            dbr[incl_count++] = vdupq_n_f64(tmp3);
+         dbr[incl_count++] = vdupq_n_f64(tmp3);
 		 }
 		 INNER_CALC
 	  }
@@ -239,6 +239,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
+         printf("tmp4: %f\n", tmp4);
 
 		 INNER_CALC
 	  }
@@ -255,7 +256,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
-   printf("br: %f\n", br);
+   //printf("br: %f\n", br);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
