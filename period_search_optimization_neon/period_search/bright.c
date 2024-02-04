@@ -152,7 +152,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    float64x2_t avx_tiny = vdupq_n_f64(TINY);
    float64x2_t avx_cl = vdupq_n_f64(cl);
    float64x2_t avx_cl1 = vsetq_lane_f64(cl, vdupq_n_f64(1.0), 0);
-   printVec(avx_cl1);
    float64x2_t avx_cls = vdupq_n_f64(cls);
    float64x2_t avx_11 = vdupq_n_f64(1.0);
    float64x2_t res_br = vdupq_n_f64(0.0);
@@ -342,22 +341,16 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Ders. of brightness w.r.t. rotation parameters */
 	  avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda1);
-      avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
+     avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
 	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
       avx_dyda3 = vpaddq_f64(avx_dyda3, avx_dyda3);
       avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
 	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
-      printVec(avx_d);
-      printVec(avx_d1);
       avx_d = vpaddq_f64(avx_d, avx_d1);
-      printVec(avx_d);
       avx_d = vmulq_f64(avx_d, avx_Scale);
-      printVec(avx_d);
-      printVec(avx_cl1);
       avx_d = vmulq_f64(avx_d, avx_cl1);
-      printVec(avx_d);
       vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
 
  /* Ders. of br. w.r.t. phase function params. */
@@ -369,8 +362,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
-   printf("br: %f\n", br);
-   exit(1);
 
    return(br);
 }
