@@ -155,7 +155,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    for (i = 0; i < Numfac; i += 2)
    {
-      float64x2_t avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
+      float64x2_t avx_lmu, avx_lmu0; //, cmpe, cmpe0, cmp;
       float64x2_t avx_Nor1 = vld1q_f64(&Nor[0][i]);
       float64x2_t avx_Nor2 = vld1q_f64(&Nor[1][i]);
       float64x2_t avx_Nor3 = vld1q_f64(&Nor[2][i]);
@@ -169,9 +169,10 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
       avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e02, avx_Nor2));
       avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e03, avx_Nor3));
 
-      cmpe = vcgtq_f64(avx_lmu, avx_tiny);
-      cmpe0 = vcgtq_f64(avx_lmu0, avx_tiny);
-      cmp = vandq_s64(vreinterpretq_s64_f64(cmpe), vreinterpretq_s64_f64(cmpe0));
+      uint64x2_t cmpe = vcgtq_f64(avx_lmu, avx_tiny);
+      uint64x2_t cmpe0 = vcgtq_f64(avx_lmu0, avx_tiny);
+      float64x2_t cmp = vandq_s64(vreinterpretq_s64_f64(cmpe), vreinterpretq_s64_f64(cmpe0));
+	  // uint64_t
       int icmp = vget_lane_s64(vreinterpret_s64_s8(vqmovn_s16(vqmovn_s32(cmp))), 0); // TODO ?
 
 	  // TODO AVX
