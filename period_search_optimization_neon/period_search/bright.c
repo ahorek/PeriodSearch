@@ -200,7 +200,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  else if (icmp & 2)
 	  {
  		 INNER_CALC_DSMU
-         avx_pbr = vrev64q_f64(avx_pbr);
+		 avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 1);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
@@ -323,7 +323,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
       avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
 	  dyda[ncoef0-3+3-1] = vgetq_lane_f64(avx_dyda3, 0);
    /* Ders. of br. w.r.t. cl, cls */
-      avx_d = vpaddq_f64(avx_d, avx_d));
+      avx_d = vpaddq_f64(avx_d, avx_d);
       avx_d = vmulq_f64(avx_d, avx_Scale);
       avx_d = vmulq_f64(avx_d, avx_cl1);
       vst1q_lane_f64(&dyda[ncoef-1-1], avx_d, 0); //unaligned memory because of odd index
