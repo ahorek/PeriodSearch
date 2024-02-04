@@ -200,6 +200,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 			dbr[incl_count++] = vdupq_n_f64(tmp2);
 		} else {
     		avx_pbr = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_pbr), 63));
+         printVec(avx_pbr);
     		avx_dsmu = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_dsmu), 63));
     		avx_dsmu0 = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_dsmu0), 63));
     		avx_lmu = vreinterpretq_f64_s64(vshlq_n_s64(vreinterpretq_s64_f64(avx_lmu), 63));
@@ -217,6 +218,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  {
  		 INNER_CALC_DSMU
 		 avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 1);
+       printVec(avx_pbr);
          avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
          avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
@@ -241,10 +243,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    Dg_row[incl_count + 2] = Dg_row[0];
    Dg_row[incl_count + 3] = Dg_row[0];
 
-printVec(res_br);
-
    res_br = vpaddq_f64(res_br, res_br);
-   printVec(res_br);
    vst1q_lane_f64(&br, res_br, 0);
 
    //res_br=_mm_hadd_pd(res_br,res_br);
