@@ -241,11 +241,11 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
          printVec(avx_pbr);
-         exit(1);
 
 		 INNER_CALC
 	  }
    }
+   exit(1);
 
    dbr[incl_count] = vdupq_n_f64(0.0);
    dbr[incl_count + 1] = vdupq_n_f64(0.0);
