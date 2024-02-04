@@ -244,7 +244,11 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 printVec(res_br);
 
    res_br = vpaddq_f64(res_br, res_br);
+   printVec(res_br);
    vst1q_lane_f64(&br, res_br, 0);
+
+   //res_br=_mm_hadd_pd(res_br,res_br);
+   //br=_mm_cvtsd_f64(res_br);
 
    printf("br: %d\n", br);
    exit(1);
