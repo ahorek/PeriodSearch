@@ -231,7 +231,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
          dbr[incl_count++] = vdupq_n_f64(tmp4);
-         printf("d: %f", tmp4);
 
 		 INNER_CALC
 	  }
@@ -249,16 +248,13 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
 
-   printf("br: %f\n", br);
-   exit(1);
-
    /* Derivatives of brightness w.r.t. g-coeffs */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
 
    for (i = 0; i < cyklus1; i+=10) //5 * 2doubles
    {
       float64x2_t tmp1, tmp2, tmp3, tmp4, tmp5;
-	  float64x2_t *Dgrow, *Dgrow1, *Dgrow2, *Dgrow3, pdbr, pdbr1, pdbr2, pdbr3;
+	   float64x2_t *Dgrow, *Dgrow1, *Dgrow2, *Dgrow3, pdbr, pdbr1, pdbr2, pdbr3;
 
 		Dgrow = &Dg_row[0][dgi];
 		pdbr=dbr[0];
@@ -274,6 +270,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[2]),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
 		tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[3]),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
 		tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[4]),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
+      printVec(tmp1);
 
 	  for (j=4;j<incl_count;j+=4)
  	  {
@@ -305,6 +302,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 	  tmp5=vmulq_f64(tmp5,avx_Scale);
 	  vst1q_f64(&dyda[i+8],tmp5);
    }
+   exit(1);
    for (; i < ncoef03; i+=4) //2 * 2doubles
    {
 	  float64x2_t tmp1, tmp2;
