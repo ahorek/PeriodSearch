@@ -225,13 +225,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
          avx_lmu0 = vextq_f64(avx_11, avx_lmu0, 1);
 
-        avx_pbr=_mm_shuffle_pd(avx_pbr,_mm_setzero_pd(),1);
-		  //printVec(avx_pbr);
-		  avx_dsmu=_mm_shuffle_pd(_mm_setzero_pd(),avx_dsmu,_MM_SHUFFLE2(1,0));
-		  avx_dsmu0=_mm_shuffle_pd(_mm_setzero_pd(),avx_dsmu0,_MM_SHUFFLE2(1,0));
-		  avx_lmu=_mm_shuffle_pd(_mm_setzero_pd(),avx_lmu,_MM_SHUFFLE2(1,0));
-		  avx_lmu0=_mm_shuffle_pd(avx_11,avx_lmu0,_MM_SHUFFLE2(1,0));
-
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
 
          float64_t tmp4;
