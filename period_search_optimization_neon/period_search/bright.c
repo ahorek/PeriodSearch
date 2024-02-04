@@ -342,8 +342,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    /* Ders. of brightness w.r.t. rotation parameters */
 	  avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda1);
       avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
-      printVec(avx_dyda1);
-      exit(1);
 	  vst1q_lane_f64(&dyda[ncoef0-3+1-1], avx_dyda1, 0);  //unaligned memory because of odd index
 
       avx_dyda3 = vpaddq_f64(avx_dyda3, avx_dyda3);
