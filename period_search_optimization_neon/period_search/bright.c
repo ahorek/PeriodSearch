@@ -365,7 +365,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
-   exit(1);
 
    return(br);
 }
