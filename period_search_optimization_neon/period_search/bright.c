@@ -25,7 +25,6 @@ void printVec(float64x2_t vec)
 	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
 	\
 	avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
-   printVec(avx_sum1); \
     avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor2, avx_de21)); \
     avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor3, avx_de31)); \
     \
@@ -189,19 +188,14 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+         printVec(Dg_row[incl_count]);
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
-
-
-         //avx_lmu0 = vcombine_f64(vget_low_f64(avx_pdbr), vget_high_f64(avx_pdbr));
-
-			//double tmp2 = _mm_cvtsd_f64(_mm_shuffle_pd(avx_pdbr,avx_pdbr,1));
-			//dbr[incl_count++]=_mm_set1_pd(tmp2);
-
+         printVec(Dg_row[incl_count]);
 
          float64_t tmp2;
          vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -214,6 +208,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_lmu0), vget_high_f64(avx_11));
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+         printVec(Dg_row[incl_count]);
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
@@ -235,6 +230,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
 
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+         printVec(Dg_row[incl_count]);
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -370,6 +366,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
+   exit(1);
 
    return(br);
 }
