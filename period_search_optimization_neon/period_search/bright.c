@@ -61,8 +61,9 @@ void printVec(float64x2_t vec)
     \
     avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
     avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0))); \
-    printVec(avx_d); \
-    printVec(avx_d1);
+printVec(avx_dyda1); \
+            printVec(avx_dyda2); \
+			printVec(avx_dyda3);
 // end of inner_calc
 #define INNER_CALC_DSMU \
     avx_Area = vld1q_f64(&Area[i]); \
