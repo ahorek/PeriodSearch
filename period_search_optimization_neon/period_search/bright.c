@@ -22,10 +22,10 @@ void printVec(float64x2_t vec)
 
 #define INNER_CALC \
 	res_br = vaddq_f64(res_br, avx_pbr); \
-   printVec(res_br); \
 	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
 	\
 	avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
+   printVec(avx_sum1); \
     avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor2, avx_de21)); \
     avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor3, avx_de31)); \
     \
@@ -255,7 +255,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
-   //printf("br: %f\n", br);
 
    /* Derivatives of brightness w.r.t. g-coeffs */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
