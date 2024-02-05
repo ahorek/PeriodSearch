@@ -60,7 +60,9 @@ void printVec(float64x2_t vec)
     avx_dyda3 = vaddq_f64(avx_dyda3, vmulq_f64(avx_Area, vaddq_f64(avx_sum3, avx_sum30))); \
     \
     avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
-    avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0)));
+    avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0))); \
+    printVec(avx_d); \
+    printVec(avx_d1);
 // end of inner_calc
 #define INNER_CALC_DSMU \
     avx_Area = vld1q_f64(&Area[i]); \
@@ -188,14 +190,12 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
-         printVec(*Dg_row[incl_count]);
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
-         printVec(*Dg_row[incl_count]);
 
          float64_t tmp2;
          vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -208,7 +208,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_lmu0), vget_high_f64(avx_11));
 
     		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
-         printVec(*Dg_row[incl_count]);
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
@@ -230,7 +229,6 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
 
          Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
-         printVec(*Dg_row[incl_count]);
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
