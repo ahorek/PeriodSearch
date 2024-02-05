@@ -16,7 +16,7 @@ void printVec(float64x2_t vec)
 {
     double tempi16[2];
     vst1q_f64(&tempi16[0], vec);
-    printf("[0]=%2f, [1]=%2f\n\n",
+    printf("[0]=%2f, [1]=%2f\n",
     tempi16[0],tempi16[1]);
 }
 
@@ -60,10 +60,7 @@ void printVec(float64x2_t vec)
     avx_dyda3 = vaddq_f64(avx_dyda3, vmulq_f64(avx_Area, vaddq_f64(avx_sum3, avx_sum30))); \
     \
     avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
-    avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0))); \
-printVec(avx_dyda1); \
-            printVec(avx_dyda2); \
-			printVec(avx_dyda3);
+    avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0)));
 // end of inner_calc
 #define INNER_CALC_DSMU \
     avx_Area = vld1q_f64(&Area[i]); \
@@ -248,6 +245,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
    Dg_row[incl_count + 2] = Dg_row[0];
    Dg_row[incl_count + 3] = Dg_row[0];
 
+   printVec(res_br);
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&br, res_br, 0);
 
@@ -365,7 +363,7 @@ double bright(double ee[], double ee0[], double t, double cg[], double dyda[], i
 
    /* Scaled brightness */
    br *= Scale;
-   exit(1);
+   //exit(1);
 
    return(br);
 }
