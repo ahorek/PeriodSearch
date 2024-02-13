@@ -17,7 +17,7 @@ int msleep(long ms)
   ts.tv_sec = ms / 1000;
   ts.tv_nsec = (ms % 1000) * 1000000L;
   
-  while(0 != (ret = nanosleep(&ts, &ts)));
+  //while(0 != (ret = nanosleep(&ts, &ts)));
   //nop
   
   return ret;
@@ -39,8 +39,10 @@ int msleep(long ms)
 #include <cuda_texture_types.h>
 #include <nvml.h>
 
+//#ifdef __GNUC__
 #include <sys/time.h>
 #include <sys/resource.h>
+//#endif
 
 #ifdef __GNUC__
 #include <ctime>
@@ -51,7 +53,7 @@ int msleep(long ms)
 
 int sched_yield(void) __THROW
 {
-  usleep(0);
+  //usleep(0);
   return 0;
 }
 
@@ -283,7 +285,7 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
   //freq_result *res;
   void *pcc; //, *pbrightness; //, *psig, *psigr2;
 
-  setpriority(PRIO_PROCESS, 0, -20);
+  //setpriority(PRIO_PROCESS, 0, -20);
 
   // NOTE: max_test_periods dictates the CUDA_Grid_dim_precalc value which is actual Threads-per-Block
   /*	Cuda Compute profiler gives the following advice for almost every kernel launched:
@@ -638,7 +640,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 {
   int retval, i, n, m, iC, n_max = (int)((freq_start - freq_end) / freq_step) + 1;
 
-  setpriority(PRIO_PROCESS, 0, 20);
+  //setpriority(PRIO_PROCESS, 0, 20);
 
   if(n_max < CUDA_grid_dim)
     CUDA_grid_dim = 32 * ((n_max + 31) / 32);
@@ -781,7 +783,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
       for(m = 1; m <= N_POLES; m++)
 	{
 	  cudaStreamQuery(stream1);
-	  usleep(1);
+	  //usleep(1);
 	  
 	  //sched_yield(); //usleep(1);
 	  double q = n_max - n; q = q > CUDA_grid_dim ? CUDA_grid_dim : q;
@@ -807,7 +809,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	  CudaCalculatePreparePole<<<dim1, dim2, 0, stream1>>>(m, freq_start, freq_step, n); // RRRR
 
 	  cudaStreamQuery(stream1);
-	  usleep(1);
+	  //usleep(1);
 
 	  //usleep(1);
 	  int loop = 0;
@@ -827,12 +829,12 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	      cudaStreamAddCallback(stream2, cbCopyReady, (void *)&copyReady, 0);
 
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 	      cudaStreamQuery(stream2);
 
 	      CudaCalculateIter1Mrqcof1Start<<<CUDA_grid_dim/BLOCKX4, block4/*CUDA_BLOCK_DIM*/, 0, stream1>>>();
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 
 	      for(iC = 1; iC < l_curves; iC++)
 		{
@@ -854,7 +856,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 		}
 
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 
 	      if(in_rel[l_curves])
 		{
@@ -874,22 +876,22 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 		}
 
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 
 	      CudaCalculateIter1Mrqcof1End<<<dim1, dim_3, 0, stream1>>>(); //RRRR
 
 	      cudaStreamQuery(stream1);
-	      usleep(1); // allow higher priority threads (stage 1) run
+	      //usleep(1); // allow higher priority threads (stage 1) run
 
 	      CudaCalculateIter1Mrqmin1End<<<CUDA_grid_dim/1, CUDA_BLOCK_DIM, 0, stream1>>>(); // 1 max?, gauss, shared
 
 	      cudaStreamQuery(stream1);
-	      usleep(1); 
+	      //usleep(1); 
 	      
 	      CudaCalculateIter1Mrqcof2Start<<<CUDA_grid_dim/4, block4 /*CUDA_BLOCK_DIM*/, 0, stream1>>>();
 
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 
 	      for(iC = 1; iC < l_curves; iC++)
 		{
@@ -912,7 +914,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 		}
 
 	      cudaStreamQuery(stream1);
-	      usleep(1);
+	      //usleep(1);
 
 	      if(in_rel[l_curves])
 		{
@@ -932,7 +934,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 		}
 
 	      cudaStreamQuery(stream1);
-	      usleep(1); // allow higher priority threads (stage 1) run
+	      //usleep(1); // allow higher priority threads (stage 1) run
 
 	      while(!copyReady)
 		{
@@ -964,7 +966,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	  CudaCalculateFinishPole<<<dim1, dim2, 0, stream1>>>(); // RRRR
 
 	  cudaStreamQuery(stream1);
-	  usleep(1);
+	  //usleep(1);
 	}
 
       cudaStreamQuery(stream1);

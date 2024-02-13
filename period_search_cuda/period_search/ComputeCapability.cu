@@ -124,7 +124,10 @@ int Cc::GetSmxBlockCc8() const
 	case 6:
 	case 7:
 		smxBlock = 16;	// GeForce RTX 3080 etc.; Quadro A6000 | occupancy 100% = 16 blocks per SMX
-		break;	
+		break;
+	case 8:
+		smxBlock = 16;	// ZLuda
+		break;
 	case 9:
 		smxBlock = 24;	// GeForce RTX 4090, RTX 4080 16GB; RTX 6000 Ada | occupancy 100% = 24 blocks per SMX
 		break;
