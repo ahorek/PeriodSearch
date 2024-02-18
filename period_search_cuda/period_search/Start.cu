@@ -3315,7 +3315,7 @@ CudaCalculateIter1Mrqcof1Start(void)
 	  aveg[bid] = 0;
 	}
       
-      mrqcof_start(CUDA_LCC, cgg[bid], alphag[bid], betag[bid], bid);
+      mrqcof_start(CUDA_LCC, cgg[bid], alphag[bid] - 1, betag[bid] - 1, bid);
     }
   
   int tid = blockIdx() * blockDim.x + threadIdx.x;
@@ -3338,7 +3338,7 @@ CudaCalculateIter1Mrqcof1Curve2I0IA0(void)
   unsigned int flags = getFlags(bid);
   if((!!(flags & isInvalid)) | !(flags & isNiter) | !(flags & isAlambda)) return;
 
-  MrqcofCurve23I0IA0(CUDA_LCC, alphag[bid], betag[bid], bid);
+  MrqcofCurve23I0IA0(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, bid);
 }
 
 
@@ -3352,7 +3352,7 @@ CudaCalculateIter1Mrqcof1Curve2I0IA1(void)
   unsigned int flags = getFlags(bid);
   if((!!(flags & isInvalid)) | !(flags & isNiter) | !(flags & isAlambda)) return;
 
-  MrqcofCurve23I0IA1(CUDA_LCC, alphag[bid], betag[bid], bid);
+  MrqcofCurve23I0IA1(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, bid);
 }
 
 
@@ -3366,7 +3366,7 @@ CudaCalculateIter1Mrqcof1Curve2I1IA0(void)
   unsigned int flags = getFlags(bid);
   if((!!(flags & isInvalid)) | !(flags & isNiter) | !(flags & isAlambda)) return;
 
-  MrqcofCurve23I1IA0(CUDA_LCC, alphag[bid], betag[bid], bid);
+  MrqcofCurve23I1IA0(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, bid);
 }
 
 
@@ -3381,7 +3381,7 @@ CudaCalculateIter1Mrqcof1Curve2I1IA1(void)
   unsigned int flags = getFlags(bid);
   if((!!(flags & isInvalid)) | !(flags & isNiter) | !(flags & isAlambda)) return;
 
-  MrqcofCurve23I1IA1(CUDA_LCC, alphag[bid], betag[bid], bid);
+  MrqcofCurve23I1IA1(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, bid);
 }
 
 
@@ -3479,7 +3479,7 @@ CudaCalculateIter1Mrqcof1CurveM12I0IA0(const int lpoints)
 
   double *cg = cgg[bid]; //CUDA_LCC->cg;
   mrqcof_curve1(CUDA_LCC, cg, 0, lpoints, bid);
-  MrqcofCurve2I0IA0(CUDA_LCC, alphag[bid], betag[bid], lpoints, bid);
+  MrqcofCurve2I0IA0(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, lpoints, bid);
 }
 
 
@@ -3499,7 +3499,7 @@ CudaCalculateIter1Mrqcof1CurveM12I0IA1(const int lpoints)
 
   double *cg = cgg[bid]; //CUDA_LCC->cg;
   mrqcof_curve1(CUDA_LCC, cg, 0, lpoints, bid);
-  MrqcofCurve2I0IA1(CUDA_LCC, alphag[bid], betag[bid], lpoints, bid);
+  MrqcofCurve2I0IA1(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, lpoints, bid);
 }
 
 
@@ -3520,7 +3520,7 @@ CudaCalculateIter1Mrqcof1CurveM12I1IA0(const int lpoints)
 
   double *cg = cgg[bid]; //CUDA_LCC->cg;
   mrqcof_curve1(CUDA_LCC, cg, 1, lpoints, bid);
-  MrqcofCurve2I1IA0(CUDA_LCC, alphag[bid], betag[bid], lpoints, bid);
+  MrqcofCurve2I1IA0(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, lpoints, bid);
 }
 
 
@@ -3540,7 +3540,7 @@ CudaCalculateIter1Mrqcof1CurveM12I1IA1(const int lpoints)
 
   double *cg = cgg[bid]; //CUDA_LCC->cg;
   mrqcof_curve1(CUDA_LCC, cg, 1, lpoints, bid);
-  MrqcofCurve2I1IA1(CUDA_LCC, alphag[bid], betag[bid], lpoints, bid);
+  MrqcofCurve2I1IA1(CUDA_LCC, alphag[bid] - 1, betag[bid] - 1, lpoints, bid);
 }
 
 
@@ -3591,7 +3591,7 @@ __global__ void CudaCalculateIter1Mrqcof1End(void)
   unsigned int flags = getFlags(tid);
   if((!!(flags & isInvalid)) | !(flags & isNiter) | !(flags & isAlambda)) return;
 
-  mrqcof_end(CUDA_LCC, alphag[tid]);
+  mrqcof_end(CUDA_LCC, alphag[tid] - 1);
   Ochisq[tid] = trial_chisqg[tid];
 }
 
