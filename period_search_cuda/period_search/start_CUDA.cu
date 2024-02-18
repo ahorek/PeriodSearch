@@ -47,7 +47,7 @@ int msleep(long ms)
   ts.tv_sec = ms / 1000;
   ts.tv_nsec = (ms % 1000) * 1000000L;
   
-  while(0 != (ret = __nanosleep(&ts, &ts)));
+  while(0 != (ret = nanosleep(&ts, &ts)));
   //nop
   
   return ret;
@@ -67,11 +67,19 @@ int msleep(long ms)
   }
 #endif
 
-int sched_yield(void)// __THROW
+#if defined __GNUC__
+int sched_yield(void) __THROW
 {
   usleep(0);
   return 0;
 }
+#else
+int sched_yield(void)
+{
+  usleep(0);
+  return 0;
+}
+#endif
 
 /*
 void myinit(void)
