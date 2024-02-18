@@ -39,17 +39,7 @@
     <ClCompile Include="period_search\VersionInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="period_search\blmatrix.cu" />
-    <CudaCompile Include="period_search\bright.cu" />
     <CudaCompile Include="period_search\ComputeCapability.cu" />
-    <CudaCompile Include="period_search\conv.cu" />
-    <CudaCompile Include="period_search\curv.cu" />
-    <CudaCompile Include="period_search\curve2_CUDA.cu" />
-    <CudaCompile Include="period_search\gauss_errc.cu" />
-    <CudaCompile Include="period_search\matrix.cu" />
-    <CudaCompile Include="period_search\mrqcof.cu" />
-    <CudaCompile Include="period_search\mrqmin.cu" />
-    <CudaCompile Include="period_search\phasec.cu" />
     <CudaCompile Include="period_search\Start.cu" />
     <CudaCompile Include="period_search\start_CUDA.cu" />
   </ItemGroup>
@@ -83,7 +73,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -97,21 +87,21 @@
     <OutDir>$(ProjectDir)$(Platform)_$(CudaToolkitVersion)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)$(Platform)_$(CudaToolkitVersion)\$(Configuration)\</IntDir>
     <TargetName>Period_search_$(SDKIdentifier)_$(WindowsTargetPlatformVersion)_$(Platform)_cuda_$(CudaToolkitVersion)_$(Configuration)</TargetName>
-    <LibraryPath>D:\boincsdk\boinc\win_build\Build\x64\Debug;$(CudaToolkitLibDir);$(LibraryPath);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>c:\moje\boinc\boinc\win_build\Build\x64\Debug;$(CudaToolkitLibDir);$(LibraryPath);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)$(Platform)_$(CudaToolkitVersion)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)$(Platform)_$(CudaToolkitVersion)\$(Configuration)\</IntDir>
     <TargetName>Period_search_$(SDKIdentifier)_$(WindowsTargetPlatformVersion)_$(Platform)_cuda_$(CudaToolkitVersion)_$(Configuration)</TargetName>
-    <LibraryPath>D:\boincsdk\boinc\win_build\Build\x64\Release;$(CudaToolkitLibDir);$(LibraryPath);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>c:\moje\boinc\boinc\win_build\Build\x64\Release;$(CudaToolkitLibDir);$(LibraryPath);$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WIN32;WIN64;_DEBUG;_CONSOLE;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;APP_GRAPHICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\boincsdk\boinc\lib;D:\boincsdk\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32;WIN64;_DEBUG;_CONSOLE;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>c:\moje\boinc\boinc\lib;c:\moje\boinc\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
       <OmitFramePointers>false</OmitFramePointers>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -121,7 +111,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(CUDA_PATH_V12_0)\lib\x64;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
       <StackReserveSize>10000000</StackReserveSize>
       <OptimizeReferences>false</OptimizeReferences>
@@ -132,7 +122,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <GenerateLineInfo>false</GenerateLineInfo>
-      <MaxRegCount>255</MaxRegCount>
+      <MaxRegCount>32</MaxRegCount>
       <PtxAsOptionV>true</PtxAsOptionV>
       <CodeGeneration>compute_50,sm_50;compute_52,sm_52;compute_53,sm_53;compute_60,sm_60;compute_61,sm_61;compute_62,sm_62;compute_70,sm_70;compute_72,sm_72;compute_75,sm_75;compute_80,sm_80;compute_86,sm_86;compute_87,sm_87;compute_89,sm_89;compute_90,sm_90;%(CodeGeneration)</CodeGeneration>
     </CudaCompile>
@@ -147,7 +137,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_WIN32;WIN64;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\boincsdk\boinc\lib;D:\boincsdk\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>c:\moje\boinc\boinc\lib;c:\moje\boinc\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -157,7 +147,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(CUDA_PATH_V12_0)\lib\x64;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
@@ -175,6 +165,6 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.0.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.3.targets" />
   </ImportGroup>
 </Project>

@@ -371,7 +371,7 @@ int main(int argc, char** argv)
 	fscanf(infile, "%lf", &a_lamda_incr);                       fgets(stringTemp, MAX_LINE_LENGTH, infile);
 
 	if (a_lamda_incr != 0.0)
-	  a_lamda_incrr = 1.0d / (double)a_lamda_incr;
+	  a_lamda_incrr = double(1.0) / (double)a_lamda_incr;
 	else
 	  a_lamda_incrr = std::numeric_limits<double>::max();
 
@@ -432,7 +432,7 @@ int main(int argc, char** argv)
 		{
 			printf("%d points in light curve[%d]\n", l_points[i], i);
 		}
-		usleep(1);
+		//usleep(1);
 		fgets(stringTemp, MAX_LINE_LENGTH, infile);
 		in_rel[i] = 1 - iTemp;
 		if (in_rel[i] == 0)
@@ -449,7 +449,7 @@ int main(int argc, char** argv)
 		for (j = 1; j <= l_points[i]; j++)
 		{
 			ndata++;
-			usleep(1);
+			//usleep(1);
 
 			if (ndata > MAX_N_OBS)
 			{
@@ -505,7 +505,7 @@ int main(int argc, char** argv)
 		{
 			k2++;
 			sig[k2] = ave;
-			sigr2[k2] = 1.0d/(ave*ave);
+			sigr2[k2] = double(1.0)/(ave*ave);
 		}
 
 	} /* i, all lightcurves */
@@ -630,14 +630,14 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
 	}
 
-  	usleep(1);
+  	//usleep(1);
   	retval = CUDAPrepare(cuda_device, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, a_lamda_incrr, ee, ee0, tim, phi_0, checkpointExists, ndata);
 	if (!retval)
 	{
 		fflush(stderr);
 		exit(2);
 	}
-    usleep(1);
+    //usleep(1);
 
 	/* optimization of the convexity weight **************************************************************/
 	if (!checkpointExists)
@@ -645,13 +645,13 @@ int main(int argc, char** argv)
 		conwR = conw / escl / escl;
 		newConw = 0;
 		boinc_fraction_done(0.0001); //signal start
-#if _DEBUG
+//#if _DEBUG
 		std::time_t time = std::time(nullptr);   // get time now
 		auto now = std::localtime(&time);
 		printf("%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
 		fprintf(stderr, "%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
 		//fprintf(stderr, "WU cpu time: %f\n", aid.wu_cpu_time);
-#endif
+//#endif
 
 	}
 	while ((newConw != 1) && ((conwR * escl * escl) < 10.0))

@@ -4,25 +4,6 @@
 
 //#define NEWDYTEMP
 
-int msleep(long ms)
-{
-  struct timespec ts;
-  int ret;
-  
-  if(ms < 0)
-    {
-      return -1;
-    }
-  
-  ts.tv_sec = ms / 1000;
-  ts.tv_nsec = (ms % 1000) * 1000000L;
-  
-  while(0 != (ret = nanosleep(&ts, &ts)));
-  //nop
-  
-  return ret;
-}
-
 #include <cuda.h>
 #include <cstdio>
 #include "mfile.h"
@@ -39,8 +20,11 @@ int msleep(long ms)
 #include <cuda_texture_types.h>
 #include <nvml.h>
 
-#include <sys/time.h>
+#ifdef __GNUC__
 #include <sys/resource.h>
+#else
+#define PRIO_PROCESS
+#endif
 
 #ifdef __GNUC__
 #include <ctime>
@@ -48,8 +32,42 @@ int msleep(long ms)
 #endif
 #include "ComputeCapability.h"
 
+#if defined __GNUC__
+#include <sys/time.h>
+int msleep(long ms)
+{
+  struct timespec ts;
+  int ret;
+  
+  if(ms < 0)
+    {
+      return -1;
+    }
+  
+  ts.tv_sec = ms / 1000;
+  ts.tv_nsec = (ms % 1000) * 1000000L;
+  
+  while(0 != (ret = __nanosleep(&ts, &ts)));
+  //nop
+  
+  return ret;
+}
+#else
+  #include <thread>
+  #include <chrono>
+  int msleep(long ms)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    return 0;
+  }
+  int usleep(long usec)
+  {
+    std::this_thread::sleep_for(std::chrono::microseconds(usec));
+    return 0;
+  }
+#endif
 
-int sched_yield(void) __THROW
+int sched_yield(void)// __THROW
 {
   usleep(0);
   return 0;
@@ -301,7 +319,10 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
   //freq_result *res;
   void *pcc; //, *pbrightness; //, *psig, *psigr2;
 
-  setpriority(PRIO_PROCESS, 0, -20);
+  #if defined __GNUC__
+    setpriority(PRIO_PROCESS, 0, -20);
+  #endif
+
 
   // NOTE: max_test_periods dictates the CUDA_Grid_dim_precalc value which is actual Threads-per-Block
   /*	Cuda Compute profiler gives the following advice for almost every kernel launched:
@@ -463,10 +484,10 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 	  CudaCalculatePreparePole<<<1, CUDA_Grid_dim_precalc, 0, stream3>>>(freq_start, freq_step, n, g_beta[m], g_lambda[m]); 
 
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
     // printf("ia[1] = %d\r\n", ia[1]);
 	  printf("."); fflush(stdout);
-#endif
+//#endif
 
 	  int loop = 0;
 
@@ -658,7 +679,9 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 {
   int retval, i, n, m, iC, n_max = (int)((freq_start - freq_end) / freq_step) + 1;
 
-  setpriority(PRIO_PROCESS, 0, 20);
+  #if defined __GNUC__
+    setpriority(PRIO_PROCESS, 0, 20);
+  #endif
 
   if(n_max < CUDA_grid_dim)
     CUDA_grid_dim = 32 * ((n_max + 31) / 32);
@@ -812,7 +835,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	  //fflush(stdout);
 	  boinc_fraction_done(fractionDone);
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
 	  float fraction2 = fractionDone2 * 100;
 	  //float fraction = fractionDone * 100;
 	  std::time_t t = std::time(nullptr);   // get time now
@@ -820,7 +843,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 
 	  printf("%02d:%02d:%02d | Fraction done: %.4f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction2);
 	  fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.4f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction2);
-#endif
+//#endif
 
 	  //zero global End signal
 	  *theEnd = 0;
