@@ -8,6 +8,7 @@
 #include <cstdio>
 #include "globals.h"
 #include "declarations.h"
+#include <string.h>
 #include <arm_neon.h>
 
 /*
@@ -37,9 +38,9 @@ double conv(int nc, double dres[], int ma) {
     int i, j;
     double res = 0;
 
-    //for (j = 1; j <= ma; j++)
-    //    dres[j] = 0;
-    memset(dres + 1, 0, ma * sizeof(double));
+    for (j = 1; j <= ma; j++)
+        dres[j] = 0;
+    //memset(dres + 1, 0, ma * sizeof(double));
 
     for (i = 0; i < Numfac; i++) {
         res += Area[i] * Nor[nc - 1][i];

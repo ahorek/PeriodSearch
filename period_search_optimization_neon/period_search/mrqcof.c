@@ -123,7 +123,7 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
             coef = sig[np1] * Lpoints[i] / ave;
 
             float64x2_t avx_coef = vdupq_n_f64(coef);
-            float64x2_t avx_ytemp = vld1q_dup_f64(&ytemp[jp][0]);
+            float64x2_t avx_ytemp = vld1q_dup_f64(&ytemp[jp]);
             //avx_coef=_mm_set1_pd(coef);
 			   //avx_ytemp=_mm_loaddup_pd(&ytemp[jp]);
 
