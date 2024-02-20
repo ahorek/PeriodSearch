@@ -9,7 +9,6 @@
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
-#include <arm_neon.h>
 
 /* comment the following line if no YORP */
 /*#define YORP*/
@@ -81,20 +80,11 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
          if (Inrel[i]/* == 1*/)
 		 {
             ave = ave + ymod;
-            //for (l = 1; l <= ma; l++)
-	    	//{
-				//dytemp[jp][l] = dyda[l - 1];
-				//dave[l] += dyda[l - 1];
-			//}
-         for (l = 1; l <= ma; l += 2) {
-        		float64x2_t avx_dyda = vld1q_f64(&dyda[l - 1]);
-        		float64x2_t avx_dave = vld1q_f64(&dave[l]);
-
-        		avx_dave = vaddq_f64(avx_dave, avx_dyda);
-
-        		vst1q_f64(&dytemp[jp][l], avx_dyda);
-        		vst1q_f64(&dave[l], avx_dave);
-    		}
+            for (l = 1; l <= ma; l++)
+	    	{
+				dytemp[jp][l] = dyda[l - 1];
+				dave[l] += dyda[l - 1];
+			}
 		 }
 		 else
 		 {
@@ -111,48 +101,17 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 
    if (Lastcall != 1)
    {
-
-     float64x2_t avx_ave, avx_coef, avx_ytemp;
-     avx_ave = vdupq_n_f64(ave);
-
       for (jp = 1; jp <= Lpoints[i]; jp++)
       {
          np1++;
          if (Inrel[i] /*== 1*/) 
          {
             coef = sig[np1] * Lpoints[i] / ave;
-
-            float64x2_t avx_coef = vdupq_n_f64(coef);
-            float64x2_t avx_ytemp = vld1q_dup_f64(&ytemp[jp][0]);
-            //avx_coef=_mm_set1_pd(coef);
-			   //avx_ytemp=_mm_loaddup_pd(&ytemp[jp]);
-
-            for (l = 1; l <= ma; l += 2) {
-               float64x2_t avx_dytemp = vld1q_f64(&dytemp[jp][l]);
-               float64x2_t avx_dave = vld1q_f64(&dave[l]);
-
-               avx_dytemp = vsubq_f64(avx_dytemp, vdivq_f64(vmulq_f64(avx_ytemp, avx_dave), avx_ave));
-               avx_dytemp = vmulq_f64(avx_dytemp, avx_coef);
-
-               vst1q_f64(&dytemp[jp][l], avx_dytemp);
-            }
-    
-    /*
-            for (l = 1; l <= ma; l+=2)
-			   {
-				   __m128d avx_dytemp = _mm_loadu_pd(&dytemp[jp][l]);
-               __m128d avx_dave = _mm_loadu_pd(&dave[l]);
-				   avx_dytemp=_mm_sub_pd(avx_dytemp, _mm_div_pd(_mm_mul_pd(avx_ytemp, avx_dave), avx_ave));
-				   avx_dytemp=_mm_mul_pd(avx_dytemp, avx_coef);
-				   _mm_storeu_pd(&dytemp[jp][l], avx_dytemp);
-			   }
-            */
-
-		    //for (l = 1; l <= ma; l++) {
-			 //  dytemp[jp][l] = coef * (dytemp[jp][l] - ytemp[jp] * dave[l] / ave);
-			 //}
+		    for (l = 1; l <= ma; l++) {
+				dytemp[jp][l] = coef * (dytemp[jp][l] - ytemp[jp] * dave[l] / ave);
+			}
 			           		
-			   ytemp[jp] = coef * ytemp[jp];
+			ytemp[jp] = coef * ytemp[jp];
             /* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
             dytemp[jp][1]=0;
          }
@@ -179,44 +138,16 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 		 //
 		 for (l = 1; l <= lastone; l++)  //line of ones
          {
-	         wt = dyda[l] * sig2iwght;
-            //__m128d avx_wt = _mm_set1_pd(wt);
-            float64x2_t avx_wt = vdupq_n_f64(wt);
+	           wt = dyda[l] * sig2iwght;
 			   k = 0;
 			   //m=0
   			   alpha[j][k] = alpha[j][k] + wt * dyda[0];
-	         k++;
-
-
-            for (m = 1; m <= l; m += 2) {
-               float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
-               float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
-               float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
-
-               vst1q_f64(&alpha[j][k], avx_result);
-
-               k += 2;
-            } /* m */
-
-/*
-			   for (m = 1; m <= l; m +=2 )
-				{
-				 __m128d avx_alpha = _mm_loadu_pd(&alpha[j][k]);
-             __m128d avx_dyda = _mm_loadu_pd(&dyda[m]);
-				 avx_alpha = _mm_add_pd(avx_alpha, _mm_mul_pd(avx_wt, avx_dyda));
-				 _mm_storeu_pd(&alpha[j][k], avx_alpha);
-				 k += 2;
-			   }
-
+	           k++;
 			   for (m = 1; m <= l; m++)
 				{
 				 alpha[j][k] = alpha[j][k] + wt * dyda[m];
 				 k++;
-			   }
-
-*/
-
-
+			   } /* m */
                beta[j] = beta[j] + dy * wt;
                j++;
            } /* l */ 
@@ -225,44 +156,16 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 			 if (ia[l])
 			 {
 	           wt = dyda[l] * sig2iwght;
-              float64x2_t avx_wt = vdupq_n_f64(wt);
-              //__m128d avx_wt=_mm_set1_pd(wt);
 			   k = 0;
 			   //m=0
 			   alpha[j][k] = alpha[j][k] + wt * dyda[0];
 	           k++;
 			   int kk=k;
-
-
-            for (m = 1; m <= lastone; m += 2) {
-               float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
-               float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
-               float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
-
-               vst1q_f64(&alpha[j][kk], avx_result);
-
-               kk += 2;
-            } /* m */
-
-/*
-			   for (m = 1; m <=lastone; m+=2)
-				{
-				 __m128d avx_alpha=_mm_loadu_pd(&alpha[j][kk]),avx_dyda=_mm_loadu_pd(&dyda[m]);
-				 avx_alpha=_mm_add_pd(avx_alpha,_mm_mul_pd(avx_wt,avx_dyda));
-				 _mm_storeu_pd(&alpha[j][kk],avx_alpha);
-				 kk+=2;
-			   }
-
-
 			   for (m = 1; m <= lastone; m++)
 				{
 				 alpha[j][k] = alpha[j][kk] + wt * dyda[m];
 				 kk++;
-			   }
-
-
-*/
-
+			   } /* m */
                k+=lastone;
 			   for (m=lastone+1;m<=l;m++)
 				if (ia[m])
@@ -296,32 +199,14 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 		 for (l = 1; l <= lastone; l++)  //line of ones
          {
 	           wt = dyda[l] * sig2iwght;
-              float64x2_t avx_wt = vdupq_n_f64(wt);
 			   k=0;
 			   //m=0
 			   //
-
-
-            for (m = 1; m <= l; m += 2) {
-               float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
-               float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
-               float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
-
-               vst1q_f64(&alpha[j][k], avx_result);
-
-               k += 2;
-            } /* m */
-
-            /*
-
 			   for (m = 1; m <= l; m++)
 				{
 				 alpha[j][k] = alpha[j][k] + wt * dyda[m];
 				 k++;
-			   }
-
-*/
-
+			   } /* m */
 			   beta[j] = beta[j] + dy * wt;
                j++;
            } /* l */ 
@@ -330,32 +215,14 @@ double mrqcof(double **x1, double **x2, double x3[], double y[],
 			 if (ia[l])
 			 {
 	           wt = dyda[l] * sig2iwght;
-              float64x2_t avx_wt = vdupq_n_f64(wt);
 			   //m=0
 			   //
 			   int kk=0;
-
-            for (m = 1; m <= lastone; m += 2) {
-               float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
-               float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
-               float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
-
-               vst1q_f64(&alpha[j][kk], avx_result);
-
-               kk += 2;
-            } /* m */
-
-
-/*
 			   for (m = 1; m <=lastone; m++)
 				{
 				 alpha[j][kk] = alpha[j][kk] + wt * dyda[m];
 				 kk++;
-			   }
-*/
-
-
-
+			   } /* m */
                k=lastone;
 			   for (m=lastone+1;m<=l;m++)
 				if (ia[m])
