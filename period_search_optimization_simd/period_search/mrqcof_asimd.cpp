@@ -9,22 +9,25 @@
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
+#include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
-#include "CalcStrategyNone.hpp"
 
 /* comment the following line if no YORP */
 /*#define YORP*/
+
 //double xx1[4], xx2[4], dy, sig2i, wt, dyda[MAX_N_PAR + 1], ymod,
 //ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1],
 //dave[MAX_N_PAR + 1],
 //coef, ave = 0, trial_chisq, wght;
 
-double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
+#if defined(__GNUC__)
+__attribute__((__target__("asimd,neon")))
+#endif
+double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
 	double** alpha, double beta[], int mfit, int lastone, int lastma)
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
-
 
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
@@ -36,12 +39,17 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 	blmatrix(a[ma - 4 - Nphpar], a[ma - 3 - Nphpar]);
 	//   #endif
 
+	//for (j = 1; j <= mfit; j++)
 	for (j = 0; j < mfit; j++)
 	{
-		for (k = 0; k < j; k++)
+		//for (k = 1; k <= j; k++)
+		for (k = 0; k <= j; k++)
+		{
 			alpha[j][k] = 0;
+		}
 		beta[j] = 0;
 	}
+
 	trial_chisq = 0;
 	np = 0;
 	np1 = 0;
@@ -70,25 +78,43 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 				ymod = CalcStrategyNone::conv(jp, dyda, ma);
 
 			//printf("[%3d][%3d] % 0.6f\n", i, jp, ymod);
-			if (jp == 1)
-				printf("[%3d][%3d] % 0.6f\n", i, jp, dyda[1]);
-			//printArray(a, 56, "cg");
+			/*if(jp == 1)
+				printf("[%3d][%3d] % 0.6f\n", i, jp, dyda[1]);*/
+			//printArray(dyda, 208, "dyda");
 
 			ytemp[jp] = ymod;
 
+			//if (Inrel[i]/* == 1*/)
+			//{
+			//	ave = ave + ymod;
+			//	for (l = 1; l <= ma; l++)
+			//	{
+			//		dytemp[jp][l] = dyda[l - 1];
+			//		dave[l] += dyda[l - 1];
+			//	}
+			//}
+			//else
+			//{
+			//	for (l = 1; l <= ma; l++)
+			//	{
+			//		dytemp[jp][l] = dyda[l - 1];
+			//	}
+			//}
 			if (Inrel[i] == 1)
 				ave = ave + ymod;
 
 			for (l = 1; l <= ma; l++)
 			{
 				dytemp[jp][l] = dyda[l - 1];
-				if (Inrel[i] == 1)
-					dave[l] = dave[l] + dyda[l - 1];
+				//if (Inrel[i] == 1)
+				dave[l] = dave[l] + dyda[l - 1];
 			}
 			/* save lightcurves */
 
 			if (Lastcall == 1)
+			{
 				Yout[np] = ymod;
+			}
 		} /* jp, lpoints */
 
 		if (Lastcall != 1)
@@ -126,12 +152,11 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 					double sig2iwght = sig2i * wght;
 					//l=0
 					wt = dyda[0] * sig2iwght;
-
 					alpha[j][0] = alpha[j][0] + wt * dyda[0];
 					beta[j] = beta[j] + dy * wt;
 					j++;
 					//
-					for (l = 1; l <= lastone; l++)
+					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
 						k = 0;
@@ -146,7 +171,7 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
-					for (; l <= lastma; l++)
+					for (; l <= lastma; l++)  //rest parameters
 					{
 						if (ia[l])
 						{
@@ -158,7 +183,7 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 							int kk = k;
 							for (m = 1; m <= lastone; m++)
 							{
-								alpha[j][kk] = alpha[j][kk] + wt * dyda[m];
+								alpha[j][k] = alpha[j][kk] + wt * dyda[m];
 								kk++;
 							} /* m */
 							k += lastone;
@@ -192,15 +217,13 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 					//
 					double sig2iwght = sig2i * wght;
 					//l=0
-					wt = dyda[0] * sig2iwght;
 					//
-					for (l = 1; l <= lastone; l++)
+					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
 						k = 0;
 						//m=0
 						//
-						alpha[j][k] = alpha[j][k] + wt * dyda[0];
 						for (m = 1; m <= l; m++)
 						{
 							alpha[j][k] = alpha[j][k] + wt * dyda[m];
@@ -209,22 +232,21 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
-					for (; l <= lastma; l++)
+					for (; l <= lastma; l++)  //rest parameters
 					{
 						if (ia[l])
 						{
 							wt = dyda[l] * sig2iwght;
-							k = 0;
 							//m=0
-							alpha[j][k] = alpha[j][k] + wt * dyda[0];
-							k++;
-							int kk = k;
+							//
+							int kk = 0;
 							for (m = 1; m <= lastone; m++)
 							{
 								alpha[j][kk] = alpha[j][kk] + wt * dyda[m];
 								kk++;
 							} /* m */
-							k += lastone;
+							// k += lastone;
+							k = lastone;
 							for (m = lastone + 1; m <= l; m++)
 							{
 								if (ia[m])
@@ -248,7 +270,7 @@ double CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[
 	} /* i,  lcurves */
 
 	for (j = 1; j < mfit; j++)
-		for (k = 0; k < j - 1; k++)
+		for (k = 0; k <= j - 1; k++)
 			alpha[k][j] = alpha[j][k];
 
 	return trial_chisq;

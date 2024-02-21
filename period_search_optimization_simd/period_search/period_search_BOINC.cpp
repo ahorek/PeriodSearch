@@ -80,8 +80,14 @@
 #include "systeminfo.h"
 #include "Enums.h"
 #include "CalcStrategy.hpp"
-#include "CalcStrategyAvx.hpp"
-#include "CalcStrategyFma.hpp"
+#include "CalcStrategyNone.hpp"
+#if defined __x86_64__ || defined(__i386__)
+  #include "CalcStrategySse2.hpp"
+  #include "CalcStrategySse3.hpp"
+  #include "CalcStrategyAvx.hpp"
+  #include "CalcStrategyFma.hpp"
+  #include "CalcStrategyAvx512.hpp"
+#endif
 
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
@@ -95,7 +101,7 @@ bool x64 = true;
 bool x64 = false;
 #endif
 
-CalcContext calcCtx(std::make_unique<CalcStrategyAvx>()); // <--- CalcStrategyNone
+CalcContext calcCtx(std::make_unique<CalcStrategyNone>());
 SIMDSupport CPUopt;
 
 using std::string;
@@ -620,7 +626,9 @@ int main(int argc, char** argv) {
 	//CPUopt.hasFMA = false;
 	//CPUopt.hasAVX = false;
 	//CPUopt.hasSSE3 = false;
-	//CPUopt.hasSSE2 = true;
+	//CPUopt.hasSSE2 = false;
+	//CPUopt.hasASIMD = false;
+	//CPUopt.hasSVE = false;
 
 	useOptimization = useOptimization == SIMDEnum::Undefined
 		? GetBestSupportedSIMD()
