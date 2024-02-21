@@ -31,7 +31,7 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
-	CalcStrategyNone::curv(a);
+	CalcStrategyAsimd::curv(a);
 
 	//   #ifdef YORP
 	//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
@@ -73,9 +73,9 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 			}
 
 			if (i < Lcurves)
-				ymod = CalcStrategyNone::bright(xx1, xx2, x3[np], a, dyda, ma);
+				ymod = CalcStrategyAsimd::bright(xx1, xx2, x3[np], a, dyda, ma);
 			else
-				ymod = CalcStrategyNone::conv(jp, dyda, ma);
+				ymod = CalcStrategyAsimd::conv(jp, dyda, ma);
 
 			//printf("[%3d][%3d] % 0.6f\n", i, jp, ymod);
 			/*if(jp == 1)
