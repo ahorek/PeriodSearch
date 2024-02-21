@@ -19,7 +19,8 @@ CFLAGS=$(OPTFLAGS) -w -s
 LDFLAGS=-lm
 MY_LIBS=areanorm.o arrayHelpers.o blmatrix.o bright.o \
     conv.o \
-    covsrt.o CpuInfoArm.o curv.o bright_sve.o conv_sve.o curv_sve.o gauss_errc_sve.o mrqcof_sve.o bright_asimd.o conv_asimd.o curv_asimd.o gauss_errc_asimd.o mrqcof_asimd.o\
+    covsrt.o CpuInfoArm.o curv.o \
+    bright_sve.o conv_sve.o curv_sve.o gauss_errc_sve.o mrqcof_sve.o bright_asimd.o conv_asimd.o curv_asimd.o gauss_errc_asimd.o mrqcof_asimd.o \
     dot_product.o ellfit.o EnumHelpers.o gauss_errc.o \
     lubksb.o ludcmp.o matrix.o \
     memory.o mrqcof.o \
@@ -46,10 +47,10 @@ PROGS = period_search_BOINC_linux_10215_x64_universal_linux_Release
 all: $(PROGS)
 
 libstdc++.a:
-        ln -s `g++ -print-file-name=libstdc++.a`
+	ln -s `g++ -print-file-name=libstdc++.a`
 
 clean:
-        /bin/rm -f $(PROGS) *.o libstdc++.a
+	/bin/rm -f $(PROGS) *.o libstdc++.a
 
 distclean:
 	/bin/rm -f $(PROGS) *.o libstdc++.a
