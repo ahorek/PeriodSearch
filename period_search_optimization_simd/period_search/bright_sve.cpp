@@ -13,7 +13,7 @@
 #include "CalcStrategySve.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("sve")))
+__attribute__((__target__("+sve")))
 #endif
 double CalcStrategySve::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef)
 {

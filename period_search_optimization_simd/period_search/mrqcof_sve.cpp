@@ -21,7 +21,7 @@
 //coef, ave = 0, trial_chisq, wght;
 
 #if defined(__GNUC__)
-__attribute__((__target__("sve")))
+__attribute__((__target__("+sve")))
 #endif
 double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,

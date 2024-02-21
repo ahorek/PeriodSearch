@@ -10,7 +10,7 @@
 #include "CalcStrategySve.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("sve")))
+__attribute__((__target__("+sve")))
 #endif
 int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 {

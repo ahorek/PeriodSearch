@@ -11,7 +11,7 @@
 #include "CalcStrategySve.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("sve")))
+__attribute__((__target__("+sve")))
 #endif
 double CalcStrategySve::conv(int nc, double dres[], int ma)
 {
