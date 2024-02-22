@@ -13,7 +13,7 @@
 #include "CalcStrategyAsimd.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("asimd,neon")))
+__attribute__((__target__("arch=armv8-a+simd")))
 #endif
 double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef)
 {

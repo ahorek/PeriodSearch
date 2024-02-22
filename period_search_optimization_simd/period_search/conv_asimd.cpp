@@ -8,9 +8,10 @@
 #include <cstdio>
 #include "globals.h"
 #include "declarations.h"
+#include "CalcStrategyAsimd.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("asimd,neon")))
+__attribute__((__target__("arch=armv8-a+simd")))
 #endif
 double CalcStrategyAsimd::conv(int nc, double dres[], int ma)
 {

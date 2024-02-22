@@ -6,9 +6,12 @@
 #include <math.h>
 #include "globals.h"
 #include "constants.h"
-#include "CalcStrategyAsim.hpp"
+#include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
 
+#if defined(__GNUC__)
+__attribute__((__target__("arch=armv8-a+simd")))
+#endif
 void CalcStrategyAsimd::curv(double cg[])
 {
    int i, m, l, k;

@@ -10,7 +10,7 @@
 #include "CalcStrategyAsimd.hpp"
 
 #if defined(__GNUC__)
-__attribute__((__target__("asimd,neon")))
+__attribute__((__target__("arch=armv8-a+simd")))
 #endif
 int CalcStrategyAsimd::gauss_errc(double** a, int n, double b[])
 {

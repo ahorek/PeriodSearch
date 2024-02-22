@@ -21,7 +21,7 @@
 //coef, ave = 0, trial_chisq, wght;
 
 #if defined(__GNUC__)
-__attribute__((__target__("asimd,neon")))
+__attribute__((__target__("arch=armv8-a+simd")))
 #endif
 double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
