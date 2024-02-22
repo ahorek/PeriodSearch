@@ -74,8 +74,11 @@ double dot_product(double a[], double b[]);
 	bool GetVersionInfo(int& major, int& minor, int& build, int& revision);
 #endif
 
-std::string GetCpuInfo();
-std::string GetTargetInstructionSet();
+#if defined __x86_64__ || defined(__i386__)
+    std::string GetCpuInfo();
+    std::string GetTargetInstructionSet();
+#endif
+
 SIMDEnum GetBestSupportedSIMD();
 void GetSupportedSIMDs();
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd);
