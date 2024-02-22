@@ -603,9 +603,13 @@ int main(int argc, char** argv) {
 		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
 	}
 
+#if defined(ARM) || defined(ARM32) || defined(ARM64) || defined __APPLE__
+	getSystemInfo();
+#else
 	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
 	//std::cerr << "Target instruction set: " << GetTargetInstructionSet() << std::endl;
 	std::cerr << "RAM: " << getTotalSystemMemory() << std::endl;
+#endif
 
 	// --- Set desired CPU SIMD optimization ---
 	GetSupportedSIMDs();
