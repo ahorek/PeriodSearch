@@ -16,6 +16,11 @@
 #define HWCAP_ASIMD (1 << 1)
 #define HWCAP_SVE (1 << 20)
 
+std::string GetCpuInfo()
+{
+	return "";
+}
+
 void GetSupportedSIMDs()
 {
 	uint64_t hwcap = getauxval(AT_HWCAP);

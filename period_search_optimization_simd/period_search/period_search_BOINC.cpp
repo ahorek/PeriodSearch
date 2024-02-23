@@ -607,7 +607,6 @@ int main(int argc, char** argv) {
 	getSystemInfo();
 #else
 	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
-	//std::cerr << "Target instruction set: " << GetTargetInstructionSet() << std::endl;
 	std::cerr << "RAM: " << getTotalSystemMemory() << std::endl;
 #endif
 
