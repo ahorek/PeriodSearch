@@ -31,7 +31,6 @@ void GetSupportedSIMDs()
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 {
 	SIMDEnum tempSimd = simd;
-	/*
 	if (simd == SIMDEnum::OptSVE)
 	{
 		simd = CPUopt.hasSVE
@@ -45,7 +44,6 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 				   ? SIMDEnum::OptASIMD
 				   : SIMDEnum::OptNone;
 	}
-	*/
 
 	// else
 	//{
@@ -64,7 +62,6 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 
 SIMDEnum GetBestSupportedSIMD()
 {
-	/*
 	if (CPUopt.hasSVE)
 	{
 		std::cerr << "Using SVE SIMD optimizations." << std::endl;
@@ -76,7 +73,6 @@ SIMDEnum GetBestSupportedSIMD()
 		return SIMDEnum::OptASIMD;
 	}
 	else
-	*/
 	{
 		std::cerr << "Not using SIMD optimizations." << std::endl;
 		return SIMDEnum::OptNONE;
@@ -85,7 +81,6 @@ SIMDEnum GetBestSupportedSIMD()
 
 void SetOptimizationStrategy(SIMDEnum useOptimization)
 {
-	/*
 	switch (useOptimization)
 	{
 	case SIMDEnum::OptSVE:
@@ -99,6 +94,5 @@ void SetOptimizationStrategy(SIMDEnum useOptimization)
 		calcCtx.set_strategy(std::make_unique<CalcStrategyNone>());
 		break;
 	}
-	*/
     return calcCtx.set_strategy(std::make_unique<CalcStrategyNone>());
 }
