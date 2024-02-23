@@ -6,9 +6,8 @@
 #include "declarations.h"
 #include "globals.h"
 #include "CalcStrategyNone.hpp"
-//#include "CalcStrategyAsimd.hpp"
-//#include "CalcStrategySve.hpp"
-
+#include "CalcStrategyAsimd.hpp"
+#include "CalcStrategySve.hpp"
 
 #include <sys/auxv.h>
 
@@ -42,7 +41,7 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 	{
 		simd = CPUopt.hasASIMD
 				   ? SIMDEnum::OptASIMD
-				   : SIMDEnum::OptNone;
+				   : SIMDEnum::OptNONE;
 	}
 
 	// else
@@ -84,10 +83,10 @@ void SetOptimizationStrategy(SIMDEnum useOptimization)
 	switch (useOptimization)
 	{
 	case SIMDEnum::OptSVE:
-		calcCtx.set_strategy(std::make_unique<CalcStrategySVE>());
+		calcCtx.set_strategy(std::make_unique<CalcStrategySve>());
 		break;
 	case SIMDEnum::OptASIMD:
-		calcCtx.set_strategy(std::make_unique<CalcStrategyASIMD>());
+		calcCtx.set_strategy(std::make_unique<CalcStrategyAsimd>());
 		break;
 	case SIMDEnum::OptNONE:
 	default:
