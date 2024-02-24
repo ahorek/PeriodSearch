@@ -72,11 +72,11 @@ int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 
 		//printf("i[%3d] %3d % 0.6f\n", i, icol, a[icol][icol]);
 
-		float64x2_t avx_pivinv = svdup_n_f64(pivinv);
+		svfloat64_t avx_pivinv = svdup_n_f64(pivinv);
 		a[icol][icol] = 1.0;
 
 		for (l = 0; l < n; l += svcntd()) {
-    		float64x2_t avx_a1 = svld1_f64(&a[icol][l]);
+    		svfloat64_t avx_a1 = svld1_f64(&a[icol][l]);
     		avx_a1 = svmul_f64_x(avx_a1, sve_pivinv);
     		svst1_f64(&a[icol][l], avx_a1);
 		}
@@ -88,12 +88,12 @@ int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 			{
 				dum = a[ll][icol];
 				a[ll][icol] = 0.0;
-				float64x2_t avx_dum = svdup_n_f64(dum);
+				svfloat64_t avx_dum = svdup_n_f64(dum);
 
 				for (l = 0; l < n; l += svcntd()) {
-    				float64x2_t avx_a = svld1_f64(&a[ll][l]);
-    				float64x2_t avx_aa = svld1_f64(&a[icol][l]);
-    				float64x2_t avx_result = svmls_f64_x(avx_a, avx_aa, avx_dum);
+    				svfloat64_t avx_a = svld1_f64(&a[ll][l]);
+    				svfloat64_t avx_aa = svld1_f64(&a[icol][l]);
+    				svfloat64_t avx_result = svmls_f64_x(avx_a, avx_aa, avx_dum);
     				svst1_f64(&a[ll][l], avx_result);
 				}
 
