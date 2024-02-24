@@ -22,6 +22,8 @@ int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 	indxr = vector_int(n + 1);
 	ipiv = vector_int(n + 1);
 
+	svbool_t pg = svptrue_b64();
+
 	//memset(ipiv + 1, 0, n * sizeof(int));
 	memset(ipiv, 0, n * sizeof(int));
 
@@ -76,9 +78,9 @@ int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 		a[icol][icol] = 1.0;
 
 		for (l = 0; l < n; l += svcntd()) {
-    		svfloat64_t avx_a1 = svld1_f64(&a[icol][l]);
-    		avx_a1 = svmul_f64_x(avx_a1, sve_pivinv);
-    		svst1_f64(&a[icol][l], avx_a1);
+    		svfloat64_t avx_a1 = svld1_f64(pg, &a[icol][l]);
+    		avx_a1 = svmul_f64_x(pg, avx_a1, avx_pivinv);
+    		svst1_f64(pg, &a[icol][l], avx_a1);
 		}
 
 		b[icol] *= pivinv;
@@ -91,10 +93,10 @@ int CalcStrategySve::gauss_errc(double** a, int n, double b[])
 				svfloat64_t avx_dum = svdup_n_f64(dum);
 
 				for (l = 0; l < n; l += svcntd()) {
-    				svfloat64_t avx_a = svld1_f64(&a[ll][l]);
-    				svfloat64_t avx_aa = svld1_f64(&a[icol][l]);
-    				svfloat64_t avx_result = svmls_f64_x(avx_a, avx_aa, avx_dum);
-    				svst1_f64(&a[ll][l], avx_result);
+    				svfloat64_t avx_a = svld1_f64(pg, &a[ll][l]);
+    				svfloat64_t avx_aa = svld1_f64(pg, &a[icol][l]);
+    				svfloat64_t avx_result = svmls_f64_x(pg, avx_a, avx_aa, avx_dum);
+    				svst1_f64(pg, &a[ll][l], avx_result);
 				}
 
 				b[ll] -= b[icol] * dum;
