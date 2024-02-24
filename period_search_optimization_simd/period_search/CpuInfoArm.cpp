@@ -13,7 +13,8 @@
 
 #define AT_HWCAP 16
 #define HWCAP_ASIMD (1 << 1)
-#define HWCAP_SVE (1 << 20)
+#define HWCAP_ASIMDDP (1 << 20)
+#define HWCAP_SVE (1 << 22)
 
 std::string GetCpuInfo()
 {
@@ -23,7 +24,7 @@ std::string GetCpuInfo()
 void GetSupportedSIMDs()
 {
 	uint64_t hwcap = getauxval(AT_HWCAP);
-    CPUopt.hasASIMD = hwcap & HWCAP_ASIMD; // neon
+    CPUopt.hasASIMD = hwcap & HWCAP_ASIMD & HWCAP_ASIMDDP;
 	CPUopt.hasSVE = hwcap & HWCAP_SVE;
 }
 
