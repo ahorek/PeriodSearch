@@ -8,7 +8,6 @@
 #include <string.h>
 #include "declarations.h"
 #include "CalcStrategyAsimd.hpp"
-#include <arm_neon.h>
 
 #if defined(__GNUC__)
 __attribute__((__target__("arch=armv8-a+simd")))

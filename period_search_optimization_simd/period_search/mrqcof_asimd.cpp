@@ -11,7 +11,6 @@
 #include "constants.h"
 #include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
-#include <arm_neon.h>
 
 /* comment the following line if no YORP */
 /*#define YORP*/
