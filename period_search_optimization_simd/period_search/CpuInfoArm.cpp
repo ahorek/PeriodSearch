@@ -27,7 +27,7 @@ void GetSupportedSIMDs()
 {
 	#if defined(__aarch64__) || defined(_M_ARM64)
 	  uint64_t hwcap = getauxval(AT_HWCAP);
-      CPUopt.hasASIMD = hwcap & HWCAP_ASIMD & HWCAP_ASIMDDP;
+      CPUopt.hasASIMD = hwcap & HWCAP_ASIMD && hwcap & HWCAP_ASIMDDP;
 	  CPUopt.hasSVE = hwcap & HWCAP_SVE;
 	#elif
 	  CPUopt.hasASIMD = false;
