@@ -49,8 +49,6 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 	//	simd = SIMDEnum::OptNONE;
 	// }
 
-	simd = SIMDEnum::OptNONE;
-
 	if (tempSimd != simd)
 	{
 		std::cerr << "Choosen optimization " << getSIMDEnumName(tempSimd) << " is not supported. Switching to " << getSIMDEnumName(simd) << "." << std::endl;
