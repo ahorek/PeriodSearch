@@ -24,14 +24,14 @@ double CalcStrategySve::conv(int nc, double dres[], int ma)
     for (i = 0; i < Numfac; i++) {
         res += Area[i] * Nor[nc - 1][i];
         double *Dg_row = Dg[i];
-		float64x2_t sve_Darea = svdup_n_f64(Darea[i]);
-		float64x2_t sve_Nor = svdup_n_f64(Nor[nc - 1][i]);
+		float64x2_t avx_Darea = svdup_n_f64(Darea[i]);
+		float64x2_t avx_Nor = svdup_n_f64(Nor[nc - 1][i]);
 		for (j = 0; j < Ncoef; j += svcntd()) {
-    		float64x2_t sve_dres = svld1_f64(&dres[j]);
-    		float64x2_t sve_Dg = svld1_f64(&Dg_row[j]);
+    		float64x2_t avx_dres = svld1_f64(&dres[j]);
+    		float64x2_t avx_Dg = svld1_f64(&Dg_row[j]);
 
-    		sve_dres = svadd_f64_x(sve_dres, svmul_f64_x(svmul_f64_x(sve_Darea, sve_Dg), sve_Nor));
-    		svst1_f64(&dres[j], sve_dres);
+    		avx_dres = svadd_f64_x(avx_dres, svmul_f64_x(svmul_f64_x(avx_Darea, avx_Dg), avx_Nor));
+    		svst1_f64(&dres[j], avx_dres);
 		}
     }
     return res;
