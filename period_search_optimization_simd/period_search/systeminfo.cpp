@@ -18,7 +18,7 @@ using namespace std;
 using std::string;
 constexpr auto MAXC = 2048;
 
-#if defined(ARM) || defined(ARM32) || defined(ARM64)
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
 
 //TODO: Obsolete
 void getRevisionCodes(std::string revisionCodes)
@@ -85,7 +85,7 @@ void getCpuInfoByArch(std::ifstream& cpuinfo)
 
 	//getRevisionCodes(revision);
 }
-#endif // ARM / ARM32 / ARM64
+#endif
 
 std::ifstream getIfstream(const char* fileName) {
 	std::ifstream ifstream(fileName);
@@ -123,7 +123,7 @@ void getCpuInfoByArch(ifstream& cpuinfo) {
 }
 #endif // _WIN32 || macOS
 
-#if defined(ARM) || defined(ARM32) || defined(ARM64)
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
 void getSystemInfo() {
 	auto cpuinfo = getIfstream("/proc/cpuinfo");
 	getCpuInfoByArch(cpuinfo);

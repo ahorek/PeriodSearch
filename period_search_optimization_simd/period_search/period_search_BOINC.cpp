@@ -603,7 +603,8 @@ int main(int argc, char** argv) {
 		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
 	}
 
-#if defined(ARM) || defined(ARM32) || defined(ARM64) || defined __APPLE__
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__
+__arm__
 	getSystemInfo();
 #else
 	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
