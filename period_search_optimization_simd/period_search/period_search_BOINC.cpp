@@ -604,7 +604,6 @@ int main(int argc, char** argv) {
 	}
 
 #if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__
-__arm__
 	getSystemInfo();
 #else
 	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
