@@ -8,6 +8,7 @@
 #include <string.h>
 #include "declarations.h"
 #include "CalcStrategyAsimd.hpp"
+#include <arm_neon.h>
 
 #if defined(__GNUC__)
 __attribute__((__target__("arch=armv8-a+simd")))
@@ -72,12 +73,16 @@ int CalcStrategyAsimd::gauss_errc(double** a, int n, double b[])
 
 		//printf("i[%3d] %3d % 0.6f\n", i, icol, a[icol][icol]);
 
+		float64x2_t avx_pivinv = vdupq_n_f64(pivinv);
 		a[icol][icol] = 1.0;
 
-		for (l = 0; l < n; l++)
-		{
-			a[icol][l] *= pivinv;
-		}
+        for (l = 0; l < (n - 1); l += 2) {
+            float64x2_t avx_a1 = vld1q_f64(&a[icol][l]);
+            avx_a1 = vmulq_f64(avx_a1, avx_pivinv);
+            vst1q_f64(&a[icol][l], avx_a1);
+        }
+
+		if (l==(n-1)) a[icol][l] *= pivinv; //last odd value
 
 		b[icol] *= pivinv;
 		for (ll = 0; ll < n; ll++)
@@ -86,10 +91,16 @@ int CalcStrategyAsimd::gauss_errc(double** a, int n, double b[])
 			{
 				dum = a[ll][icol];
 				a[ll][icol] = 0.0;
-				for (l = 0; l < n; l++)
-				{
-					a[ll][l] -= a[icol][l] * dum;
-				}
+				float64x2_t avx_dum = vdupq_n_f64(dum);
+
+                for (l = 0; l < (n - 1); l += 2) {
+                    float64x2_t avx_a = vld1q_f64(&a[ll][l]);
+                    float64x2_t avx_aa = vld1q_f64(&a[icol][l]);
+                    float64x2_t avx_result = vmlsq_f64(avx_a, avx_aa, avx_dum);
+                    vst1q_f64(&a[ll][l], avx_result);
+                }
+
+				if (l == (n - 1)) a[ll][l] -= a[icol][l] * dum; //last odd value
 
 				b[ll] -= b[icol] * dum;
 			}

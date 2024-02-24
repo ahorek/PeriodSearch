@@ -11,6 +11,7 @@
 #include "constants.h"
 #include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
+#include <arm_neon.h>
 
 /* comment the following line if no YORP */
 /*#define YORP*/
@@ -101,34 +102,47 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 			//	}
 			//}
 			if (Inrel[i] == 1)
-				ave = ave + ymod;
+                ave = ave + ymod;
 
-			for (l = 1; l <= ma; l++)
-			{
-				dytemp[jp][l] = dyda[l - 1];
-				//if (Inrel[i] == 1)
-				dave[l] = dave[l] + dyda[l - 1];
-			}
-			/* save lightcurves */
+            for (l = 1; l <= ma; l += 2) {
+        		float64x2_t avx_dyda = vld1q_f64(&dyda[l - 1]);
+        		float64x2_t avx_dave = vld1q_f64(&dave[l]);
 
-			if (Lastcall == 1)
-			{
-				Yout[np] = ymod;
-			}
-		} /* jp, lpoints */
+        		avx_dave = vaddq_f64(avx_dave, avx_dyda);
+
+        		vst1q_f64(&dytemp[jp][l], avx_dyda);
+        		vst1q_f64(&dave[l], avx_dave);
+    		}
+		    /* save lightcurves */
+
+            if (Lastcall == 1) 
+	          Yout[np] = ymod;
+      	} /* jp, lpoints */
 
 		if (Lastcall != 1)
 		{
+			float64x2_t avx_ave, avx_coef, avx_ytemp;
+     		avx_ave = vdupq_n_f64(ave);
+
 			for (jp = 1; jp <= Lpoints[i]; jp++)
 			{
 				np1++;
 				if (Inrel[i] == 1)
 				{
 					coef = sig[np1] * Lpoints[i] / ave;
-					for (l = 1; l <= ma; l++)
-					{
-						dytemp[jp][l] = coef * (dytemp[jp][l] - ytemp[jp] * dave[l] / ave);
-					}
+
+					float64x2_t avx_coef = vdupq_n_f64(coef);
+            		float64x2_t avx_ytemp = vld1q_dup_f64(&ytemp[jp]);
+
+            		for (l = 1; l <= ma; l += 2) {
+               			float64x2_t avx_dytemp = vld1q_f64(&dytemp[jp][l]);
+               			float64x2_t avx_dave = vld1q_f64(&dave[l]);
+
+               			avx_dytemp = vsubq_f64(avx_dytemp, vdivq_f64(vmulq_f64(avx_ytemp, avx_dave), avx_ave));
+               			avx_dytemp = vmulq_f64(avx_dytemp, avx_coef);
+
+               			vst1q_f64(&dytemp[jp][l], avx_dytemp);
+            		}
 
 					ytemp[jp] = coef * ytemp[jp];
 					/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
@@ -159,15 +173,20 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
+						float64x2_t avx_wt = vdupq_n_f64(wt);
 						k = 0;
 						//m=0
 						alpha[j][k] = alpha[j][k] + wt * dyda[0];
 						k++;
-						for (m = 1; m <= l; m++)
-						{
-							alpha[j][k] = alpha[j][k] + wt * dyda[m];
-							k++;
-						} /* m */
+						for (m = 1; m <= l; m += 2) {
+               				float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
+               				float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               				float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
+
+               				vst1q_f64(&alpha[j][k], avx_result);
+
+               				k += 2;
+            			} /* m */
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
@@ -176,16 +195,21 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 						if (ia[l])
 						{
 							wt = dyda[l] * sig2iwght;
+							float64x2_t avx_wt = vdupq_n_f64(wt);
 							k = 0;
 							//m=0
 							alpha[j][k] = alpha[j][k] + wt * dyda[0];
 							k++;
 							int kk = k;
-							for (m = 1; m <= lastone; m++)
-							{
-								alpha[j][k] = alpha[j][kk] + wt * dyda[m];
-								kk++;
-							} /* m */
+							for (m = 1; m <= lastone; m += 2) {
+               					float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
+               					float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               					float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
+
+               					vst1q_f64(&alpha[j][kk], avx_result);
+
+               					kk += 2;
+            				} /* m */
 							k += lastone;
 							for (m = lastone + 1; m <= l; m++)
 							{
@@ -221,14 +245,19 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
+						float64x2_t avx_wt = vdupq_n_f64(wt);
 						k = 0;
 						//m=0
 						//
-						for (m = 1; m <= l; m++)
-						{
-							alpha[j][k] = alpha[j][k] + wt * dyda[m];
-							k++;
-						} /* m */
+						for (m = 1; m <= l; m += 2) {
+               				float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
+               				float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               				float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
+
+               				vst1q_f64(&alpha[j][k], avx_result);
+
+               				k += 2;
+            			} /* m */
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
@@ -237,14 +266,19 @@ double CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y
 						if (ia[l])
 						{
 							wt = dyda[l] * sig2iwght;
+							float64x2_t avx_wt = vdupq_n_f64(wt);
 							//m=0
 							//
 							int kk = 0;
-							for (m = 1; m <= lastone; m++)
-							{
-								alpha[j][kk] = alpha[j][kk] + wt * dyda[m];
-								kk++;
-							} /* m */
+							for (m = 1; m <= lastone; m += 2) {
+               					float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
+               					float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               					float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
+
+               					vst1q_f64(&alpha[j][kk], avx_result);
+
+               					kk += 2;
+            				} /* m */
 							// k += lastone;
 							k = lastone;
 							for (m = lastone + 1; m <= l; m++)
