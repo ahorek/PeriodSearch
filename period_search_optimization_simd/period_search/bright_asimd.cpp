@@ -275,17 +275,17 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 		Dgrow3 = &Dg_row[j+3][dgi];
 		pdbr3=dbr[j+3];
 
-      //tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[0]), pdbr1, Dgrow1[0]), pdbr2, Dgrow2[0]), pdbr3, Dgrow3[0]);
-      //tmp2 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp2, pdbr, Dgrow[0]), pdbr1, Dgrow1[1]), pdbr2, Dgrow2[1]), pdbr3, Dgrow3[1]);
-      //tmp3 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp3, pdbr, Dgrow[0]), pdbr1, Dgrow1[2]), pdbr2, Dgrow2[2]), pdbr3, Dgrow3[2]);
-      //tmp4 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp4, pdbr, Dgrow[0]), pdbr1, Dgrow1[3]), pdbr2, Dgrow2[3]), pdbr3, Dgrow3[3]);
-      //tmp5 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp5, pdbr, Dgrow[0]), pdbr1, Dgrow1[4]), pdbr2, Dgrow2[4]), pdbr3, Dgrow3[4]);
+      tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[0]), pdbr1, Dgrow1[0]), pdbr2, Dgrow2[0]), pdbr3, Dgrow3[0]);
+      tmp2 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp2, pdbr, Dgrow[0]), pdbr1, Dgrow1[1]), pdbr2, Dgrow2[1]), pdbr3, Dgrow3[1]);
+      tmp3 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp3, pdbr, Dgrow[0]), pdbr1, Dgrow1[2]), pdbr2, Dgrow2[2]), pdbr3, Dgrow3[2]);
+      tmp4 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp4, pdbr, Dgrow[0]), pdbr1, Dgrow1[3]), pdbr2, Dgrow2[3]), pdbr3, Dgrow3[3]);
+      tmp5 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp5, pdbr, Dgrow[0]), pdbr1, Dgrow1[4]), pdbr2, Dgrow2[4]), pdbr3, Dgrow3[4]);
 
-		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
-		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
-		tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp3,vmulq_f64(pdbr,Dgrow[2])),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
-		tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp4,vmulq_f64(pdbr,Dgrow[3])),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
-		tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp5,vmulq_f64(pdbr,Dgrow[4])),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
+		//tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		//tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+		//tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp3,vmulq_f64(pdbr,Dgrow[2])),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
+		//tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp4,vmulq_f64(pdbr,Dgrow[3])),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
+		//tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp5,vmulq_f64(pdbr,Dgrow[4])),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
 	  }
 	  dgi+=5;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
@@ -327,11 +327,11 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 		Dgrow3 = &Dg_row[j+3][dgi];
 		pdbr3=dbr[j+3];
 
-      //tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[0]), pdbr1, Dgrow1[0]), pdbr2, Dgrow2[0]), pdbr3, Dgrow3[0]);
-      //tmp2 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[1]), pdbr1, Dgrow1[1]), pdbr2, Dgrow2[1]), pdbr3, Dgrow3[1]);
+      tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[0]), pdbr1, Dgrow1[0]), pdbr2, Dgrow2[0]), pdbr3, Dgrow3[0]);
+      tmp2 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[1]), pdbr1, Dgrow1[1]), pdbr2, Dgrow2[1]), pdbr3, Dgrow3[1]);
 
-		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
-		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
+		//tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
+		//tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
 	  }
 	  dgi+=2;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
