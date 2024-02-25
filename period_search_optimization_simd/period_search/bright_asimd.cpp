@@ -16,29 +16,29 @@
 	res_br = vaddq_f64(res_br, avx_pbr); \
 	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
 	\
-	avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
-    avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor2, avx_de21)); \
-    avx_sum1 = vaddq_f64(avx_sum1, vmulq_f64(avx_Nor3, avx_de31)); \
+	 avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
+    avx_sum1 = vfmaq_f64(avx_sum1, avx_Nor2, avx_de21); \
+    avx_sum1 = vfmaq_f64(avx_sum1, avx_Nor3, avx_de31); \
     \
     avx_sum10 = vmulq_f64(avx_Nor1, avx_de011); \
-    avx_sum10 = vaddq_f64(avx_sum10, vmulq_f64(avx_Nor2, avx_de021)); \
-    avx_sum10 = vaddq_f64(avx_sum10, vmulq_f64(avx_Nor3, avx_de031)); \
+    avx_sum10 = vfmaq_f64(avx_sum10, avx_Nor2, avx_de021); \
+    avx_sum10 = vfmaq_f64(avx_sum10, avx_Nor3, avx_de031); \
     \
     avx_sum2 = vmulq_f64(avx_Nor1, avx_de12); \
-    avx_sum2 = vaddq_f64(avx_sum2, vmulq_f64(avx_Nor2, avx_de22)); \
-    avx_sum2 = vaddq_f64(avx_sum2, vmulq_f64(avx_Nor3, avx_de32)); \
+    avx_sum2 = vfmaq_f64(avx_sum2, avx_Nor2, avx_de22); \
+    avx_sum2 = vfmaq_f64(avx_sum2, avx_Nor2, avx_de32); \
     \
     avx_sum20 = vmulq_f64(avx_Nor1, avx_de012); \
-    avx_sum20 = vaddq_f64(avx_sum20, vmulq_f64(avx_Nor2, avx_de022)); \
-    avx_sum20 = vaddq_f64(avx_sum20, vmulq_f64(avx_Nor3, avx_de032)); \
+    avx_sum20 = vfmaq_f64(avx_sum20, avx_Nor2, avx_de022); \
+    avx_sum20 = vfmaq_f64(avx_sum20, avx_Nor3, avx_de032); \
     \
     avx_sum3 = vmulq_f64(avx_Nor1, avx_de13); \
-    avx_sum3 = vaddq_f64(avx_sum3, vmulq_f64(avx_Nor2, avx_de23)); \
-    avx_sum3 = vaddq_f64(avx_sum3, vmulq_f64(avx_Nor3, avx_de33)); \
+    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor2, avx_de023); \
+    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor3, avx_de033); \
     \
     avx_sum30 = vmulq_f64(avx_Nor1, avx_de013); \
-    avx_sum30 = vaddq_f64(avx_sum30, vmulq_f64(avx_Nor2, avx_de023)); \
-    avx_sum30 = vaddq_f64(avx_sum30, vmulq_f64(avx_Nor3, avx_de033)); \
+    avx_sum30 = vfmaq_f64(avx_sum30, avx_Nor2, avx_de023); \
+    avx_sum30 = vfmaq_f64(avx_sum30, avx_Nor3, avx_de033); \
     \
     avx_sum1 = vmulq_f64(avx_sum1, avx_dsmu); \
     avx_sum2 = vmulq_f64(avx_sum2, avx_dsmu); \
@@ -47,11 +47,11 @@
     avx_sum20 = vmulq_f64(avx_sum20, avx_dsmu0); \
     avx_sum30 = vmulq_f64(avx_sum30, avx_dsmu0); \
     \
-    avx_dyda1 = vaddq_f64(avx_dyda1, vmulq_f64(avx_Area, vaddq_f64(avx_sum1, avx_sum10))); \
-    avx_dyda2 = vaddq_f64(avx_dyda2, vmulq_f64(avx_Area, vaddq_f64(avx_sum2, avx_sum20))); \
-    avx_dyda3 = vaddq_f64(avx_dyda3, vmulq_f64(avx_Area, vaddq_f64(avx_sum3, avx_sum30))); \
+    avx_dyda1 = vfmaq_f64(avx_dyda1, vaddq_f64(avx_sum1, avx_sum10), avx_Area); \
+    avx_dyda2 = vfmaq_f64(avx_dyda2, vaddq_f64(avx_sum2, avx_sum20), avx_Area); \
+    avx_dyda3 = vfmaq_f64(avx_dyda3, vaddq_f64(avx_sum3, avx_sum30), avx_Area); \
     \
-    avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
+    avx_d = vfmaq_f64(avx_d, vmulq_f64(avx_lmu, avx_lmu0), avx_Area); \
     avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0)));
 // end of inner_calc
 
@@ -63,10 +63,10 @@
     avx_pbr = vmulq_f64(avx_Area, avx_s); \
     avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu0)); \
+    avx_dsmu = vfmaq_f64(avx_lmu0, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
     avx_powdnom = vdivq_f64(avx_lmu, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu0 = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu));
+    avx_dsmu0 = vfmaq_f64(avx_lmu, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
 // end of inner_calc_dsmu
 
 
