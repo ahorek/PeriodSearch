@@ -68,11 +68,14 @@
     avx_pbr = vmulq_f64(avx_Area, avx_s); \
     avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu = vfmaq_f64(avx_lmu0, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
+    avx_dsmu = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu0)); \
     avx_powdnom = vdivq_f64(avx_lmu, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu0 = vfmaq_f64(avx_lmu, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
+    avx_dsmu0 = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu));
 // end of inner_calc_dsmu
+
+//avx_dsmu = vfmaq_f64(avx_lmu0, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
+//avx_dsmu0 = vfmaq_f64(avx_lmu, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
 
 
 #if defined(__GNUC__)
