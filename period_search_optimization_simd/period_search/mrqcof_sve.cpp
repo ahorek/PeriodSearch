@@ -29,11 +29,9 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
 
-    svbool_t pg = svptrue_b64();
-
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
-	CalcStrategySve::curv(a);
+	CalcStrategyNone::curv(a);
 
 	//   #ifdef YORP
 	//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
@@ -75,9 +73,9 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 			}
 
 			if (i < Lcurves)
-				ymod = CalcStrategySve::bright(xx1, xx2, x3[np], a, dyda, ma);
+				ymod = CalcStrategyNone::bright(xx1, xx2, x3[np], a, dyda, ma);
 			else
-				ymod = CalcStrategySve::conv(jp, dyda, ma);
+				ymod = CalcStrategyNone::conv(jp, dyda, ma);
 
 			//printf("[%3d][%3d] % 0.6f\n", i, jp, ymod);
 			/*if(jp == 1)
@@ -105,45 +103,32 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 			if (Inrel[i] == 1)
 				ave = ave + ymod;
 
-            for (l = 1; l <= ma; l += svcntd()) {
-                svfloat64_t avx_dyda = svld1_f64(pg, &dyda[l - 1]);
-                svfloat64_t avx_dave = svld1_f64(pg, &dave[l]);
+			for (l = 1; l <= ma; l++)
+			{
+				dytemp[jp][l] = dyda[l - 1];
+				//if (Inrel[i] == 1)
+				dave[l] = dave[l] + dyda[l - 1];
+			}
+			/* save lightcurves */
 
-                avx_dave = svadd_f64_x(pg, avx_dave, avx_dyda);
-
-                svst1_f64(pg, &dytemp[jp][l], avx_dyda);
-                svst1_f64(pg, &dave[l], avx_dave);
-            }
-		    /* save lightcurves */
-
-            if (Lastcall == 1) 
-	          Yout[np] = ymod;
-      	} /* jp, lpoints */
+			if (Lastcall == 1)
+			{
+				Yout[np] = ymod;
+			}
+		} /* jp, lpoints */
 
 		if (Lastcall != 1)
 		{
-			svfloat64_t avx_ave, avx_coef, avx_ytemp;
-            avx_ave = svdup_n_f64(ave);
-
 			for (jp = 1; jp <= Lpoints[i]; jp++)
 			{
 				np1++;
 				if (Inrel[i] == 1)
 				{
 					coef = sig[np1] * Lpoints[i] / ave;
-
-					svfloat64_t avx_coef = svdup_n_f64(coef);
-                    svfloat64_t avx_ytemp = svdup_n_f64(ytemp[jp]);
-
-                    for (l = 1; l <= ma; l += svcntd()) {
-                        svfloat64_t avx_dytemp = svld1_f64(pg, &dytemp[jp][l]);
-                        svfloat64_t avx_dave = svld1_f64(pg, &dave[l]);
-
-                        svfloat64_t avx_intermediate = svdiv_f64_x(pg, svmul_f64_x(pg, avx_ytemp, avx_dave), avx_ave);
-                        avx_dytemp = svmul_f64_x(pg, svsub_f64_x(pg, avx_dytemp, avx_intermediate), avx_coef);
-
-                        svst1_f64(pg, &dytemp[jp][l], avx_dytemp);
-                    }
+					for (l = 1; l <= ma; l++)
+					{
+						dytemp[jp][l] = coef * (dytemp[jp][l] - ytemp[jp] * dave[l] / ave);
+					}
 
 					ytemp[jp] = coef * ytemp[jp];
 					/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
@@ -174,23 +159,15 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
-                        svfloat64_t avx_wt = svdup_n_f64(wt);
-
 						k = 0;
 						//m=0
 						alpha[j][k] = alpha[j][k] + wt * dyda[0];
 						k++;
-                        for (m = 1; m <= l; m += svcntd()) {
-                            svfloat64_t avx_alpha = svld1_f64(pg, &alpha[j][k]);
-                            svfloat64_t avx_dyda = svld1_f64(pg, &dyda[m]);
-    
-                            svfloat64_t avx_result = svmla_f64_x(pg, avx_alpha, avx_wt, avx_dyda);
-
-                            svst1_f64(pg, &alpha[j][k], avx_result);
-
-                            k += svcntd();
-                        } /* m */
-
+						for (m = 1; m <= l; m++)
+						{
+							alpha[j][k] = alpha[j][k] + wt * dyda[m];
+							k++;
+						} /* m */
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
@@ -199,23 +176,16 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 						if (ia[l])
 						{
 							wt = dyda[l] * sig2iwght;
-							svfloat64_t avx_wt = svdup_n_f64(wt);
 							k = 0;
 							//m=0
 							alpha[j][k] = alpha[j][k] + wt * dyda[0];
 							k++;
 							int kk = k;
-                            for (m = 1; m <= lastone; m += svcntd()) {
-                                svfloat64_t avx_alpha = svld1_f64(pg, &alpha[j][kk]);
-                                svfloat64_t avx_dyda = svld1_f64(pg, &dyda[m]);
-    
-                                svfloat64_t avx_result = svmla_f64_x(pg, avx_alpha, avx_wt, avx_dyda);
-
-                                svst1_f64(pg, &alpha[j][kk], avx_result);
-
-                                kk += svcntd();
-                            } /* m */
-
+							for (m = 1; m <= lastone; m++)
+							{
+								alpha[j][k] = alpha[j][kk] + wt * dyda[m];
+								kk++;
+							} /* m */
 							k += lastone;
 							for (m = lastone + 1; m <= l; m++)
 							{
@@ -251,21 +221,14 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
 						wt = dyda[l] * sig2iwght;
-                        svfloat64_t avx_wt = svdup_n_f64(wt);
 						k = 0;
 						//m=0
-                        //
-                        for (m = 1; m <= l; m += svcntd()) {
-                            svfloat64_t avx_alpha = svld1_f64(pg, &alpha[j][k]);
-                            svfloat64_t avx_dyda = svld1_f64(pg, &dyda[m]);
-    
-                            svfloat64_t avx_result = svmla_f64_x(pg, avx_alpha, avx_wt, avx_dyda);
-
-                            svst1_f64(pg, &alpha[j][k], avx_result);
-
-                            k += svcntd();
-                        } /* m */
-
+						//
+						for (m = 1; m <= l; m++)
+						{
+							alpha[j][k] = alpha[j][k] + wt * dyda[m];
+							k++;
+						} /* m */
 						beta[j] = beta[j] + dy * wt;
 						j++;
 					} /* l */
@@ -274,20 +237,14 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 						if (ia[l])
 						{
 							wt = dyda[l] * sig2iwght;
-							svfloat64_t avx_wt = svdup_n_f64(wt);
 							//m=0
 							//
 							int kk = 0;
-                            for (m = 1; m <= lastone; m += svcntd()) {
-                                svfloat64_t avx_alpha = svld1_f64(pg, &alpha[j][kk]);
-                                svfloat64_t avx_dyda = svld1_f64(pg, &dyda[m]);
-    
-                                svfloat64_t avx_result = svmla_f64_x(pg, avx_alpha, avx_wt, avx_dyda);
-
-                                svst1_f64(pg, &alpha[j][kk], avx_result);
-
-                                kk += svcntd();
-                            } /* m */
+							for (m = 1; m <= lastone; m++)
+							{
+								alpha[j][kk] = alpha[j][kk] + wt * dyda[m];
+								kk++;
+							} /* m */
 							// k += lastone;
 							k = lastone;
 							for (m = lastone + 1; m <= l; m++)
@@ -318,4 +275,3 @@ double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[]
 
 	return trial_chisq;
 }
-
