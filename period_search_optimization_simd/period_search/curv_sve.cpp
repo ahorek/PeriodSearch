@@ -9,7 +9,7 @@
 #include "CalcStrategySve.hpp"
 #include "arrayHelpers.hpp"
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !(defined __x86_64__ || defined(__i386__) || defined(_WIN32))
 __attribute__((__target__("+sve")))
 #endif
 void CalcStrategySve::curv(double cg[])

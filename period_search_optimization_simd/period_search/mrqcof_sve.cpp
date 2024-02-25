@@ -20,7 +20,7 @@
 //dave[MAX_N_PAR + 1],
 //coef, ave = 0, trial_chisq, wght;
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !(defined __x86_64__ || defined(__i386__) || defined(_WIN32))
 __attribute__((__target__("+sve")))
 #endif
 double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[],
