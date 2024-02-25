@@ -33,8 +33,8 @@
     avx_sum20 = vfmaq_f64(avx_sum20, avx_Nor3, avx_de032); \
     \
     avx_sum3 = vmulq_f64(avx_Nor1, avx_de13); \
-    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor2, avx_de023); \
-    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor3, avx_de033); \
+    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor2, avx_de23); \
+    avx_sum3 = vfmaq_f64(avx_sum3, avx_Nor3, avx_de33); \
     \
     avx_sum30 = vmulq_f64(avx_Nor1, avx_de013); \
     avx_sum30 = vfmaq_f64(avx_sum30, avx_Nor2, avx_de023); \
@@ -167,16 +167,16 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
       float64x2_t avx_Area;
 
       avx_lmu = vmulq_f64(avx_e1, avx_Nor1);
-      avx_lmu = vaddq_f64(avx_lmu, vmulq_f64(avx_e2, avx_Nor2));
-      avx_lmu = vaddq_f64(avx_lmu, vmulq_f64(avx_e3, avx_Nor3));
+      avx_lmu = vfmaq_f64(avx_lmu, avx_e2, avx_Nor2); \
+      avx_lmu = vfmaq_f64(avx_lmu, avx_e3, avx_Nor3); \
       avx_lmu0 = vmulq_f64(avx_e01, avx_Nor1);
-      avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e02, avx_Nor2));
-      avx_lmu0 = vaddq_f64(avx_lmu0, vmulq_f64(avx_e03, avx_Nor3));
+      avx_lmu0 = vfmaq_f64(avx_lmu0, avx_e02, avx_Nor2); \
+      avx_lmu0 = vfmaq_f64(avx_lmu0, avx_e03, avx_Nor3); \
 
       cmpe = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu, avx_tiny));
       cmpe0 = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu0, avx_tiny));
-	  cmp = vreinterpretq_f64_u64(vandq_u64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0)));
-	  int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
+	   cmp = vreinterpretq_f64_u64(vandq_u64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0)));
+	   int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
       int icmp = (vgetq_lane_s64(cmp_int, 0) & 1) | ((vgetq_lane_s64(cmp_int, 1) & 1) << 1);
 
 	  if(icmp & 1)  //first and second or only first
@@ -212,10 +212,7 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 	  else if (icmp & 2)
 	  {
  		 INNER_CALC_DSMU
-         //avx_pbr = vextq_f64(avx_pbr, vdupq_n_f64(0.0), 1);
-         //avx_dsmu = vextq_f64(vdupq_n_f64(0.0), avx_dsmu, 1);
-         //avx_dsmu0 = vextq_f64(vdupq_n_f64(0.0), avx_dsmu0, 1);
-         //avx_lmu = vextq_f64(vdupq_n_f64(0.0), avx_lmu, 1);
+
          avx_pbr = vcombine_f64(vget_high_f64(avx_pbr), vdup_n_f64(0.0));
          avx_dsmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu));
          avx_dsmu0 = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_dsmu0));
@@ -260,6 +257,8 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 		pdbr2=dbr[2];
 		Dgrow3 = &Dg_row[3][dgi];
 		pdbr3=dbr[3];
+
+      //tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(pdbr, Dgrow[0], vmulq_f64(pdbr1, Dgrow1[0])), pdbr2, Dgrow2[0], pdbr3, Dgrow3[0]))
 
 		tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[0]),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
 		tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vmulq_f64(pdbr,Dgrow[1]),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
