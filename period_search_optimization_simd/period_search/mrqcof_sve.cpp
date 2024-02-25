@@ -26,9 +26,10 @@ __attribute__((__target__("+sve")))
 double CalcStrategySve::mrqcof(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
 	double** alpha, double beta[], int mfit, int lastone, int lastma)
-	size_t cnt = svcntd();
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
+
+	size_t cnt = svcntd();
 
 	/* N.B. curv and blmatrix called outside bright
 	   because output same for all points */
