@@ -42,7 +42,14 @@ void CalcStrategySve::curv(double cg[])
       g = exp(g);
       Area[i-1] = Darea[i-1] * g;
 
-      for (k = 1; k <= n; k++)
-         Dg[i - 1][k - 1] = g * Dsph[i][k];
+      size_t cnt = svcntd();
+      svfloat64_t avx_g = svdup_n_f64(g);
+
+      for (k = 1; k <= n; k += cnt) {
+        svbool_t pg = svwhilelt_b64(k, n);
+        svfloat64_t avx_pom = svld1_f64(pg, &Dsph[i][k]);
+        avx_pom = svmul_f64_x(pg, avx_pom, avx_g);
+        svst1_f64(pg, &Dg[i - 1][k - 1], avx_pom);
+      }
    }
 }
