@@ -15,13 +15,12 @@ __attribute__((__target__("+sve")))
 #endif
 double CalcStrategySve::conv(int nc, double dres[], int ma)
 {
-	int i, j;
+    int i, j;
+    double res;
 
-	double res;
-
-	res = 0;
-	for (j = 1; j <= ma; j++)
-		dres[j] = 0;
+    res = 0;
+    for (j = 1; j <= ma; j++)
+        dres[j] = 0;
 
     size_t cnt = svcntd();
     for (i = 0; i < Numfac; i++) {
@@ -38,6 +37,5 @@ double CalcStrategySve::conv(int nc, double dres[], int ma)
     		svst1_f64(pg, &dres[j], avx_dres);
 		}
     }
-
-	return(res);
+    return res;
 }
