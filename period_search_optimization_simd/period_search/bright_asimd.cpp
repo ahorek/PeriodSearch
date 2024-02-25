@@ -16,7 +16,7 @@
 	res_br = vaddq_f64(res_br, avx_pbr); \
 	float64x2_t avx_sum1, avx_sum10, avx_sum2, avx_sum20, avx_sum3, avx_sum30; \
 	\
-	 avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
+    avx_sum1 = vmulq_f64(avx_Nor1, avx_de11); \
     avx_sum1 = vfmaq_f64(avx_sum1, avx_Nor2, avx_de21); \
     avx_sum1 = vfmaq_f64(avx_sum1, avx_Nor3, avx_de31); \
     \
@@ -68,6 +68,7 @@
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
     avx_dsmu0 = vfmaq_f64(vmulq_f64(avx_cls, avx_powdnom), avx_cl, avx_lmu);
 // end of inner_calc_dsmu
+
 
 #if defined(__GNUC__)
 __attribute__((__target__("arch=armv8-a+simd")))
@@ -174,8 +175,8 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 
       cmpe = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu, avx_tiny));
       cmpe0 = vreinterpretq_f64_u64(vcgtq_f64(avx_lmu0, avx_tiny));
-	   cmp = vreinterpretq_f64_u64(vandq_u64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0)));
-	   int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
+      cmp = vreinterpretq_f64_u64(vandq_u64(vreinterpretq_u64_f64(cmpe), vreinterpretq_u64_f64(cmpe0)));
+      int64x2_t cmp_int = vreinterpretq_s64_f64(cmp);
       int icmp = (vgetq_lane_s64(cmp_int, 0) & 1) | ((vgetq_lane_s64(cmp_int, 1) & 1) << 1);
 
 	  if(icmp & 1)  //first and second or only first
@@ -280,12 +281,6 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
       tmp3 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp3, pdbr, Dgrow[2]), pdbr1, Dgrow1[2]), pdbr2, Dgrow2[2]), pdbr3, Dgrow3[2]);
       tmp4 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp4, pdbr, Dgrow[3]), pdbr1, Dgrow1[3]), pdbr2, Dgrow2[3]), pdbr3, Dgrow3[3]);
       tmp5 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp5, pdbr, Dgrow[4]), pdbr1, Dgrow1[4]), pdbr2, Dgrow2[4]), pdbr3, Dgrow3[4]);
-
-		//tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
-		//tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
-		//tmp3=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp3,vmulq_f64(pdbr,Dgrow[2])),vmulq_f64(pdbr1,Dgrow1[2])),vmulq_f64(pdbr2,Dgrow2[2])),vmulq_f64(pdbr3,Dgrow3[2]));
-		//tmp4=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp4,vmulq_f64(pdbr,Dgrow[3])),vmulq_f64(pdbr1,Dgrow1[3])),vmulq_f64(pdbr2,Dgrow2[3])),vmulq_f64(pdbr3,Dgrow3[3]));
-		//tmp5=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp5,vmulq_f64(pdbr,Dgrow[4])),vmulq_f64(pdbr1,Dgrow1[4])),vmulq_f64(pdbr2,Dgrow2[4])),vmulq_f64(pdbr3,Dgrow3[4]));
 	  }
 	  dgi+=5;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
@@ -329,9 +324,6 @@ double CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[
 
       tmp1 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp1, pdbr, Dgrow[0]), pdbr1, Dgrow1[0]), pdbr2, Dgrow2[0]), pdbr3, Dgrow3[0]);
       tmp2 = vfmaq_f64(vfmaq_f64(vfmaq_f64(vfmaq_f64(tmp2, pdbr, Dgrow[1]), pdbr1, Dgrow1[1]), pdbr2, Dgrow2[1]), pdbr3, Dgrow3[1]);
-
-		//tmp1=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp1,vmulq_f64(pdbr,Dgrow[0])),vmulq_f64(pdbr1,Dgrow1[0])),vmulq_f64(pdbr2,Dgrow2[0])),vmulq_f64(pdbr3,Dgrow3[0]));
-		//tmp2=vaddq_f64(vaddq_f64(vaddq_f64(vaddq_f64(tmp2,vmulq_f64(pdbr,Dgrow[1])),vmulq_f64(pdbr1,Dgrow1[1])),vmulq_f64(pdbr2,Dgrow2[1])),vmulq_f64(pdbr3,Dgrow3[1]));
 	  }
 	  dgi+=2;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
