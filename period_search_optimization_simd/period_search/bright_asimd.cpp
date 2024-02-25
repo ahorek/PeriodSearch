@@ -26,7 +26,7 @@
     \
     avx_sum2 = vmulq_f64(avx_Nor1, avx_de12); \
     avx_sum2 = vfmaq_f64(avx_sum2, avx_Nor2, avx_de22); \
-    avx_sum2 = vfmaq_f64(avx_sum2, avx_Nor2, avx_de32); \
+    avx_sum2 = vfmaq_f64(avx_sum2, avx_Nor3, avx_de32); \
     \
     avx_sum20 = vmulq_f64(avx_Nor1, avx_de012); \
     avx_sum20 = vfmaq_f64(avx_sum20, avx_Nor2, avx_de022); \
