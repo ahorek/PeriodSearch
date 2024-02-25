@@ -52,10 +52,8 @@ void CalcStrategySve::curv(double cg[])
         avx_pom = svmul_f64_x(pg, avx_pom, avx_g);
         svst1_f64(pg, &Dg[i - 1][k - 1], avx_pom);
       }
-      /*
       if (k <= n) Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
       if (k + 1 <= n) Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1]; //last odd value
       if (k + 2 <= n) Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2]; //last odd value
-      */
    }
 }
