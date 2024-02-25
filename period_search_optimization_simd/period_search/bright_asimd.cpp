@@ -47,18 +47,13 @@
     avx_sum20 = vmulq_f64(avx_sum20, avx_dsmu0); \
     avx_sum30 = vmulq_f64(avx_sum30, avx_dsmu0); \
     \
-    avx_dyda1 = vaddq_f64(avx_dyda1, vmulq_f64(avx_Area, vaddq_f64(avx_sum1, avx_sum10))); \
-    avx_dyda2 = vaddq_f64(avx_dyda2, vmulq_f64(avx_Area, vaddq_f64(avx_sum2, avx_sum20))); \
-    avx_dyda3 = vaddq_f64(avx_dyda3, vmulq_f64(avx_Area, vaddq_f64(avx_sum3, avx_sum30))); \
+    avx_dyda1 = vfmaq_f64(avx_dyda1, vaddq_f64(avx_sum1, avx_sum10), avx_Area); \
+    avx_dyda2 = vfmaq_f64(avx_dyda2, vaddq_f64(avx_sum2, avx_sum20), avx_Area); \
+    avx_dyda3 = vfmaq_f64(avx_dyda3, vaddq_f64(avx_sum3, avx_sum30), avx_Area); \
     \
-    avx_d = vaddq_f64(avx_d, vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), avx_Area)); \
+    avx_d = vfmaq_f64(avx_d, vmulq_f64(avx_lmu, avx_lmu0), avx_Area); \
     avx_d1 = vaddq_f64(avx_d1, vdivq_f64(vmulq_f64(vmulq_f64(avx_Area, avx_lmu), avx_lmu0), vaddq_f64(avx_lmu, avx_lmu0)));
 // end of inner_calc
-
-    //avx_dyda1 = vfmaq_f64(avx_dyda1, vaddq_f64(avx_sum1, avx_sum10), avx_Area); \
-    //avx_dyda2 = vfmaq_f64(avx_dyda2, vaddq_f64(avx_sum2, avx_sum20), avx_Area); \
-    //avx_dyda3 = vfmaq_f64(avx_dyda3, vaddq_f64(avx_sum3, avx_sum30), avx_Area); \
-    //avx_d = vfmaq_f64(avx_d, vmulq_f64(avx_lmu, avx_lmu0), avx_Area); \
 
 #define INNER_CALC_DSMU \
     avx_Area = vld1q_f64(&Area[i]); \
@@ -68,14 +63,11 @@
     avx_pbr = vmulq_f64(avx_Area, avx_s); \
     avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu0)); \
+    avx_dsmu = vfmaq_f64(avx_lmu0, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
     avx_powdnom = vdivq_f64(avx_lmu, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
-    avx_dsmu0 = vaddq_f64(vmulq_f64(avx_cls, avx_powdnom), vmulq_f64(avx_cl, avx_lmu));
+    avx_dsmu0 = vfmaq_f64(avx_lmu, vmulq_f64(avx_cls, avx_powdnom), avx_cl);
 // end of inner_calc_dsmu
-
-//avx_dsmu = vfmaq_f64(avx_lmu0, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
-//avx_dsmu0 = vfmaq_f64(avx_lmu, vmulq_f64(avx_cls, avx_powdnom), avx_cl); \
 
 
 #if defined(__GNUC__)
