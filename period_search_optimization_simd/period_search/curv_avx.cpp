@@ -21,43 +21,28 @@ void CalcStrategyAvx::curv(double cg[])
         double g = 0;
         int n = 0;
         //m=0
-
-        __m256d avx_g = _mm256_setzero_pd();
-        __m256d avx_Fc = _mm256_set1_pd(Fc[i][0]);
-        for (l = 0; l <= Lmax + 1; l += 4) {
-          __m256d avx_cg = _mm256_loadu_pd(&cg[l + 1]);
-          __m256d avx_fsum = _mm256_mul_pd(avx_cg, avx_Fc);
-          __m256d avx_coeff = _mm256_set_pd(Pleg[i][l + 3][0], Pleg[i][l + 2][0], Pleg[i][l + 1][0], Pleg[i][l][0]);
-          avx_g = _mm256_add_pd(avx_g, _mm256_mul_pd(avx_coeff, avx_fsum));
+        for (l = 0; l <= Lmax; l++)
+        {
+            double fsum;
+            n++;
+            fsum = cg[n] * Fc[i][0];
+            g = g + Pleg[i][l][0] * fsum;
         }
-        n += Lmax + 1;
-          
-        for (m = 1; m <= Mmax; m++) {
-          __m256d avx_Fc = _mm256_set1_pd(Fc[i][m]);
-          __m256d avx_Fs = _mm256_set1_pd(Fs[i][m]);
-
-          int offset = 0;
-          for (l = m; l <= Lmax; l += 4) {
-            int n1 = n + (8 * offset++);
-            __m256d avx_cg = _mm256_set_pd(cg[n1 + 7], cg[n1 + 5], cg[n1 + 3], cg[n1 + 1]);
-            __m256d avx_cg2 = _mm256_set_pd(cg[n1 + 8], cg[n1 + 6], cg[n1 + 4], cg[n1 + 2]);
-            __m256d avx_fsum = _mm256_mul_pd(avx_cg, avx_Fc);
-            avx_fsum = _mm256_add_pd(avx_fsum, _mm256_mul_pd(avx_cg2, avx_Fs));
-            __m256d avx_coeff = _mm256_set_pd(Pleg[i][l + 3][m], Pleg[i][l + 2][m], Pleg[i][l + 1][m], Pleg[i][l][m]);
-            avx_g = _mm256_add_pd(avx_g, _mm256_mul_pd(avx_coeff, avx_fsum));
-           }
-
-           n += (2 * (Lmax - m + 1));
-        }
-
-        avx_g = _mm256_hadd_pd(avx_g, avx_g);
-	    avx_g = _mm256_add_pd(avx_g, _mm256_permute2f128_pd(avx_g, avx_g, 1));
-        g = _mm256_cvtsd_f64(avx_g);
-          
+        //
+        for (m = 1; m <= Mmax; m++)
+            for (l = m; l <= Lmax; l++)
+            {
+                double fsum;
+                n++;
+                fsum = cg[n] * Fc[i][m];
+                n++;
+                fsum = fsum + cg[n] * Fs[i][m];
+                g = g + Pleg[i][l][m] * fsum;
+            }
         g = exp(g);
         Area[i - 1] = Darea[i - 1] * g;
 
-        avx_g = _mm256_set1_pd(g);
+        __m256d avx_g = _mm256_set1_pd(g);
         int cyklus = (n >> 2) << 2;
         for (k = 1; k <= cyklus; k += 4)
         {
