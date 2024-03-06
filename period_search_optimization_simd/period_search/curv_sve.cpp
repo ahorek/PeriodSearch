@@ -16,6 +16,8 @@ void CalcStrategySve::curv(double cg[])
 {
    int i, m, l, k;
 
+   int cnt = svcntd();
+
    for (i = 1; i <= Numfac; i++)
    {
       double g = 0;
@@ -42,7 +44,6 @@ void CalcStrategySve::curv(double cg[])
       g = exp(g);
       Area[i-1] = Darea[i-1] * g;
 
-      size_t cnt = svcntd();
       svfloat64_t avx_g = svdup_n_f64(g);
 
       for (k = 1; k <= n; k += cnt) {

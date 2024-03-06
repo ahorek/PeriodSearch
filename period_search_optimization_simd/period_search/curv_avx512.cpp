@@ -43,7 +43,7 @@ void CalcStrategyAvx512::curv(double cg[])
              __m512d avx_cg = _mm512_set_pd(cg[n1 + 15], cg[n1 + 13], cg[n1 + 11], cg[n1 + 9], cg[n1 + 7], cg[n1 + 5], cg[n1 + 3], cg[n1 + 1]);
              __m512d avx_cg2 = _mm512_set_pd(cg[n1 + 16], cg[n1 + 14], cg[n1 + 12], cg[n1 + 10], cg[n1 + 8], cg[n1 + 6], cg[n1 + 4], cg[n1 + 2]);
              __m512d avx_fsum = _mm512_mul_pd(avx_cg, avx_Fc);
-             avx_fsum = _mm256_fmadd_pd(avx_cg2, avx_Fs, avx_fsum);
+             avx_fsum = _mm512_fmadd_pd(avx_cg2, avx_Fs, avx_fsum);
              __m512d avx_coeff = _mm512_set_pd(Pleg[i][l + 7][m], Pleg[i][l + 6][m], Pleg[i][l + 5][m], Pleg[i][l + 4][m], Pleg[i][l + 3][m], Pleg[i][l + 2][m], Pleg[i][l + 1][m], Pleg[i][l][m]);
              avx_g = _mm512_fmadd_pd(avx_coeff, avx_fsum, avx_g);
            }
