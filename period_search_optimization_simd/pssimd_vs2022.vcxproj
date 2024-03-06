@@ -574,7 +574,8 @@
     <ClCompile Include="period_search\curv.cpp" />
     <ClCompile Include="period_search\curv_sve.cpp" />
     <ClCompile Include="period_search\curv_sse3.cpp" />
-    <ClCompile Include="period_search\curv_avx_fma.cpp" />
+    <ClCompile Include="period_search\curv_avx.cpp" />
+    <ClCompile Include="period_search\curv_fma.cpp" />
     <ClCompile Include="period_search\curv_avx512.cpp" />
     <ClCompile Include="period_search\curv_sse2.cpp" />
     <ClCompile Include="period_search\dot_product.cpp" />
