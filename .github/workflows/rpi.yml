@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { variant: 'cpu rpi v8', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm' }
+          - { variant: 'cpu rpi v8', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_RPi_armv8_arm64_release' }
 
     steps:
       - uses: actions/checkout@v4
