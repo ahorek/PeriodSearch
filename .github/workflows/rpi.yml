@@ -1,0 +1,64 @@
+
+name: C/C++ CI
+
+on: [push, pull_request]
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    name: >-
+      ${{ matrix.variant }} / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'cpu rpi v7', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare rpi toolchain
+        run: |
+          apt-get install binutils-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Print gcc version
+        run: |
+          arm-linux-gnueabihf-g++ -v
+
+      - name: Prepare boinc libraries
+        run: |
+          export CC=arm-linux-gnueabihf-g++
+          export CXX=arm-linux-gnueabihf-g++
+          git clone --depth 1 https://github.com/BOINC/boinc.git
+          cd ./boinc
+          ./_autosetup
+          ./configure --host=arm-linux --with-boinc-platform="arm-unknown-linux-gnueabihf" --disable-server --disable-manager --disable-client CXXFLAGS="-O3 "
+          make -j
+
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          sed -i 's/CC\s*=.*$/CC = arm-linux-gnueabihf-g++/' ${{ matrix.makefile }}
+          sed -i 's/CXX\s*=.*$/CXX = arm-linux-gnueabihf-g++/' ${{ matrix.makefile }}
+          sed -i 's/g++ -print-file-name=libstdc++.a/arm-linux-gnueabihf-g++ -print-file-name=libstdc++.a/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}_${{ matrix.os }}
+          retention-days: 1
+          path: |
+            ${{ matrix.working-directory }}/**/period_search_BOINC*
+            !${{ matrix.working-directory }}/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/period_search_BOINC.o
