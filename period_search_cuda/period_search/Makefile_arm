@@ -17,7 +17,7 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 CUDA_PATH = ../../../cuda-12.0
 # END DO-NOT-CHANGE
 
-CXXFLAGS = -march=armv8-a -O3 -std=c++17 -w -s\ \
+CXXFLAGS = -march=armv8-a -O3 -std=c++17 -w -s\
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
