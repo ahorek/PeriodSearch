@@ -33,11 +33,11 @@ jobs:
       - name: Print gcc version
         run: |
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          aarch64-linux-gnu-gcc -v
+          aarch64-linux-gnu-g++ -v
 
       - name: Prepare boinc libraries
         run: |
-          export CC=aarch64-linux-gnu-gcc
+          export CC=aarch64-linux-gnu-g++
           export CXX=aarch64-linux-gnu-g++
           git clone --depth 1 https://github.com/BOINC/boinc.git
           cd ./boinc
@@ -46,7 +46,6 @@ jobs:
           make -j
 
       - name: Install cuda
-        if: success() && matrix.variant == 'cuda'
         run: |
           wget https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda-repo-cross-aarch64-ubuntu2204-12-5-local_12.5.1-1_all.deb
           sudo dpkg -i cuda-repo-cross-aarch64-ubuntu2204-12-5-local_12.5.1-1_all.deb
@@ -64,6 +63,7 @@ jobs:
           sed -i 's/CC\s*=.*$/CC = aarch64-linux-gnu-g++/' ${{ matrix.makefile }}
           sed -i 's/CXX\s*=.*$/CXX = aarch64-linux-gnu-g++/' ${{ matrix.makefile }}
           sed -i 's/g++ -print-file-name=libstdc++.a/aarch64-linux-gnu-g++ -print-file-name=libstdc++.a/' ${{ matrix.makefile }}
+          sed -i 's/compiler-bindir=\/usr\/bin\/gcc/compiler-bindir=aarch64-linux-gnu-gcc' ${{ matrix.makefile }}
           make -f ${{ matrix.makefile }} -j
 
       - name: Upload artifact

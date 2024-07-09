@@ -17,7 +17,7 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 CUDA_PATH = ../../../cuda-12.0
 # END DO-NOT-CHANGE
 
-CXXFLAGS = -march=armv8-a -O3 -std=c++17 -w -s -frecord-gcc-switches\ \
+CXXFLAGS = -march=armv8-a -O3 -std=c++17 -w -s\ \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
@@ -38,7 +38,7 @@ NVCCFLAGS = -O3 --extra-device-vectorization  --ptxas-options=-v -O3 --extra-dev
 
 CC=g++
 CXX=g++
-OPTFLAGS=-march=armv8-a -O3 -frecord-gcc-switches
+OPTFLAGS=-march=armv8-a -O3
 CFLAGS=$(OPTFLAGS) -w -s
 LDFLAGS=-lm -lrt -Xlinker -rpath .
 
