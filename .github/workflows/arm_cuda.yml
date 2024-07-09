@@ -47,6 +47,8 @@ jobs:
 
       - name: Install cuda
         run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
           wget https://developer.download.nvidia.com/compute/cuda/12.5.1/local_installers/cuda-repo-cross-aarch64-ubuntu2204-12-5-local_12.5.1-1_all.deb
           sudo dpkg -i cuda-repo-cross-aarch64-ubuntu2204-12-5-local_12.5.1-1_all.deb
           sudo cp /var/cuda-repo-cross-aarch64-ubuntu2204-12-5-local/cuda-*-keyring.gpg /usr/share/keyrings/
