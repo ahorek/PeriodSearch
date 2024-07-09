@@ -52,9 +52,8 @@ jobs:
           sudo cp /var/cuda-repo-cross-aarch64-ubuntu2204-12-5-local/cuda-*-keyring.gpg /usr/share/keyrings/
           sudo apt-get update
           sudo apt-get -y install cuda-cross-aarch64
-          ls -l /usr/local/
-
-          sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+          ls -l /usr/local/cuda-12.5
+          sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda-12.5/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
