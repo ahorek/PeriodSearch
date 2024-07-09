@@ -56,7 +56,7 @@ jobs:
           sudo apt-get -y install cuda cuda-cross-aarch64
           ls -l /usr/local/cuda-12.5/targets/aarch64-linux
           sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda-12.5\/targets\/aarch64-linux/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
-          sed -i 's/NVCC_PATH\s*=.*$/NVCC_PATH = \/usr\/local\/cuda\/bin/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+          sed -i 's/NVCC_PATH\s*=.*$/NVCC_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
