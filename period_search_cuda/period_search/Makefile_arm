@@ -41,7 +41,7 @@ CC=g++
 CXX=g++
 OPTFLAGS=-march=armv8-a -O3
 CFLAGS=$(OPTFLAGS) -w -s -static
-LDFLAGS=-lm -lrt -Xlinker -rpath .
+LDFLAGS=-lm -lrt -Xlinker -rpath -lcuda .
 
 
 MY_LIBS=trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o\
@@ -59,26 +59,23 @@ libstdc++.a:
 libcudart_static.a:
 	ln -s $(CUDA_PATH)/lib/libcudart_static.a libcudart_static.a
 
-libcuda.so:
-	ln -s $(CUDA_PATH)/lib/stubs/libcuda.so libcuda.so
-
 libnvidia-ml.a:
 	ln -f -s $(CUDA_PATH)/lib/stubs/libnvidia-ml.a libnvidia-ml.a
 
 clean:
-	/bin/rm -f $(PROGS) *.o libstdc++.a libcudart_static.a libcuda.so
+	/bin/rm -f $(PROGS) *.o libstdc++.a libcudart_static.a
 
 distclean:
-	/bin/rm -f $(PROGS) *.o libstdc++.a libcudart_static.a libcuda.so
+	/bin/rm -f $(PROGS) *.o libstdc++.a libcudart_static.a
 
 install: period_search_BOINC_cuda12000
 
 # specify library paths explicitly (rather than -l)
 # because otherwise you might get a version in /usr/lib etc.
 
-period_search_BOINC_cuda12000: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a libcudart_static.a libcuda.so libnvidia-ml.a
+period_search_BOINC_cuda12000: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a libcudart_static.a libnvidia-ml.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
-	$(BOINC_API_DIR)/libboinc_api.a libcudart_static.a libcuda.so libnvidia-ml.a \
+	$(BOINC_API_DIR)/libboinc_api.a libcudart_static.a libnvidia-ml.a \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 
 curve2_CUDA.o: curve2_CUDA.cu
