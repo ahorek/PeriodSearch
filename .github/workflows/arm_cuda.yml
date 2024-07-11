@@ -39,7 +39,7 @@ jobs:
 
       - name: Prepare boinc libraries
         run: |
-          export CC=aarch64-linux-gnu-g++
+          export CC=aarch64-linux-gnu-gcc
           export CXX=aarch64-linux-gnu-g++
           git clone --depth 1 https://github.com/BOINC/boinc.git
           cd ./boinc
