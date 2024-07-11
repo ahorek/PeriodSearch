@@ -28,11 +28,13 @@ jobs:
 
       - name: Prepare toolchain
         run: |
-
+          wget https://sourceforge.net/projects/raspberry-pi-cross-compilers/files/Bonus%20Raspberry%20Pi%20GCC%2064-Bit%20Toolchains/Raspberry%20Pi%20GCC%2064-Bit%20Cross-Compiler%20Toolchains/Buster/GCC%2010.3.0/cross-gcc-10.3.0-pi_64.tar.gz/download
+          tar -zxvf download
 
       - name: Print gcc version
         run: |
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-10.3.0-64/bin:$PATH"
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-10.3.0-64/libexec/gcc/aarch64-linux-gnu/10.3.0:$PATH"
           aarch64-linux-gnu-g++ -v
 
       - name: Prepare boinc libraries
