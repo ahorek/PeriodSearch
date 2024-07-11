@@ -41,7 +41,7 @@ CC=g++
 CXX=g++
 OPTFLAGS=-march=armv8-a -O3
 CFLAGS=$(OPTFLAGS) -w -s
-LDFLAGS=-lm -lrt -Xlinker -rpath .
+LDFLAGS=-lm -lrt -Xlinker -rpath -ldl .
 
 
 MY_LIBS=trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o\
