@@ -45,6 +45,7 @@ jobs:
           cd ./boinc
           ./_autosetup
           ./configure --disable-server --disable-manager --disable-client CXXFLAGS="-O3 "
+          cat config.log
           make -j
 
       - name: Install cuda
