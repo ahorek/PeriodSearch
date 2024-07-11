@@ -57,13 +57,13 @@ libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a`
 
 libcudart.so:
-	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
+	ln -s $(CUDA_PATH)/lib/libcudart.so libcudart.so
 
 libcuda.so:
-	ln -s $(CUDA_PATH)/lib64/stubs/libcuda.so libcuda.so
+	ln -s $(CUDA_PATH)/lib/stubs/libcuda.so libcuda.so
 
 libnvidia-ml.so:
-	ln -f -s $(CUDA_PATH)/lib64/stubs/libnvidia-ml.so libnvidia-ml.so
+	ln -f -s $(CUDA_PATH)/lib/stubs/libnvidia-ml.so libnvidia-ml.so
 
 clean:
 	/bin/rm -f $(PROGS) *.o libstdc++.a libcudart.so libcuda.so
