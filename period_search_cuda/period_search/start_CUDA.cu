@@ -17,7 +17,6 @@
 //#include <cuda_occupancy.h>
 #include <device_launch_parameters.h>
 #include <cuda_texture_types.h>
-#include <nvml.h>
 
 #ifdef __GNUC__
 #include <ctime>
@@ -139,16 +138,6 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
   // TODO: Check if this will help to free some CPU core utilization
   //cudaSetDeviceFlags(cudaDeviceScheduleYield);
 
-  try
-    {
-      nvmlInit();
-      nvml_enabled = true;
-    }
-  catch (...)
-    {
-      nvml_enabled = false;
-    }
-
   //determine gridDim
   cudaDeviceProp deviceProp;
 
@@ -160,17 +149,6 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
       auto sharedMemorySm = deviceProp.sharedMemPerMultiprocessor;
       auto sharedMemoryBlock = deviceProp.sharedMemPerBlock;
 
-      char drv_version_str[NVML_DEVICE_PART_NUMBER_BUFFER_SIZE + 1];
-      if (nvml_enabled) 
-	{
-	  auto retval = nvmlSystemGetDriverVersion(drv_version_str,
-						   NVML_DEVICE_PART_NUMBER_BUFFER_SIZE);
-	  if (retval != NVML_SUCCESS) {
-	    fprintf(stderr, "%s\n", nvmlErrorString(retval));
-	    return 1;
-	  }
-	}
-
       /*auto peakClk = 1;
 	cudaDeviceGetAttribute(&peakClk, cudaDevAttrClockRate, cudadev);
 	auto devicePeakClock = peakClk / 1024;*/
@@ -178,7 +156,6 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
       fprintf(stderr, "CUDA version: %d\n", cudaVersion);
       fprintf(stderr, "CUDA Device number: %d\n", cudadev);
       fprintf(stderr, "CUDA Device: %s %lluMB \n", deviceProp.name, totalGlobalMemory);
-      fprintf(stderr, "CUDA Device driver: %s\n", drv_version_str);
       fprintf(stderr, "Compute capability: %d.%d\n", deviceProp.major, deviceProp.minor);
       //fprintf(stderr, "Device peak clock: %d MHz\n", devicePeakClock);
       fprintf(stderr, "Shared memory per Block | per SM: %llu | %llu\n", sharedMemoryBlock, sharedMemorySm);
