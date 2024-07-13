@@ -15,6 +15,7 @@ BOINC_DIR = ../../../boinc_src
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 CUDA_PATH = ../../../cuda-10.0
+NVCC_PATH = ../../../cuda
 # END DO-NOT-CHANGE
 
 CXXFLAGS = -march=armv8-a -O3 -w -s \
@@ -56,10 +57,10 @@ libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a`
 
 libcudart.so:
-	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
+	ln -s $(CUDA_PATH)/lib/libcudart.so libcudart.so
 
 libcuda.so:
-	ln -s $(CUDA_PATH)/lib64/stubs/libcuda.so libcuda.so
+	ln -s $(CUDA_PATH)/lib/stubs/libcuda.so libcuda.so
 
 clean:
 	/bin/rm -f $(PROGS) *.o libstdc++.a libcuda.so libcudart.so
@@ -79,25 +80,25 @@ period_search_BOINC_cuda12000: period_search_BOINC.o $(MY_LIBS) $(BOINC_API_DIR)
 	libcuda.so
 
 ComputeCapability.o: ComputeCapability.cu
-	$(CUDA_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile ComputeCapability.cu
 
 start_CUDA.o: start_CUDA.cu
-	$(CUDA_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile start_CUDA.cu
 
 Start.o: Start.cu
-	$(CUDA_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile Start.cu
 
 pscuda.device-link.o: start_CUDA.o Start.o ComputeCapability.o
-	$(CUDA_PATH)/bin/nvcc -dlink -o pscuda.device-link.o --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/bin/nvcc -dlink -o pscuda.device-link.o --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 	start_CUDA.o Start.o ComputeCapability.o
