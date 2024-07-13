@@ -510,7 +510,7 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 	      cudaEventRecord(event1, stream3);
 	      cudaStreamQuery(stream3);
 
-	      cudaStreamWaitEvent(stream3, event1);
+	      cudaStreamWaitEvent(stream3, event1, 0);
 	      cudaMemcpyFromSymbolAsync(theEnd, CUDA_End, sizeof(int), 0, cudaMemcpyDeviceToHost, stream3);
 	      //cudaStreamQuery(stream3);
 
@@ -879,7 +879,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	      //cudaStreamQuery(stream1);
 	      //usleep(1);
 
-	      cudaStreamWaitEvent(stream2, event1);
+	      cudaStreamWaitEvent(stream2, event1, 0);
 	      cudaMemcpyFromSymbolAsync(theEnd, CUDA_End, sizeof(int), 0, cudaMemcpyDeviceToHost, stream2);
 	      copyReady = false;
 	      cudaStreamAddCallback(stream2, cbCopyReady, (void *)&copyReady, 0);
