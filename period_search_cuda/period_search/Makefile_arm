@@ -41,7 +41,7 @@ CC=g++
 CXX=g++
 OPTFLAGS=-march=armv8-a -O3
 CFLAGS=$(OPTFLAGS) -w -s
-LDFLAGS=-lm -lrt -ldl -Xlinker -rpath .
+LDFLAGS=-lm -lrt -Xlinker -rpath .
 
 
 MY_LIBS=trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o\
@@ -56,8 +56,8 @@ all: $(PROGS)
 libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a`
 
-libcudart_static.a:
-	ln -s $(CUDA_PATH)/lib64/libcudart_static.a libcudart_static.a
+libcudart.so:
+	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
 
 libcuda.so:
 	ln -s $(CUDA_PATH)/lib64/stubs/libcuda.so libcuda.so
@@ -73,9 +73,9 @@ install: period_search_BOINC_cuda12000
 # specify library paths explicitly (rather than -l)
 # because otherwise you might get a version in /usr/lib etc.
 
-period_search_BOINC_cuda12000: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a libcudart_static.a libcuda.so
+period_search_BOINC_cuda12000: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a libcudart.so libcuda.so
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
-	$(BOINC_API_DIR)/libboinc_api.a libcudart_static.a libcuda.so \
+	$(BOINC_API_DIR)/libboinc_api.a libcudart.so libcuda.so \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 
 curve2_CUDA.o: curve2_CUDA.cu
