@@ -6,6 +6,7 @@
 
 #include <string>
 #include "Enums.h"
+#include "arrayHelpers.hpp"
 
 void trifac(int nrows, int** ifp);
 void areanorm(double t[], double f[], int ndir, int nfac, int** ifp,
@@ -18,7 +19,7 @@ void ludcmp(double** a, int n, int indx[], double d[]);
 
 int mrqmin(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
-	double** covar, double** alpha);
+	double** covar, double** alpha, struct globals &gl);
 
 void blmatrix(double bet, double lam);
 void covsrt(double** covar, int ma, int ia[], int mfit);
@@ -49,3 +50,7 @@ void GetSupportedSIMDs();
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd);
 void SetOptimizationStrategy(SIMDEnum useOptimization);
 const std::string getSIMDEnumName(SIMDEnum simdEnum);
+
+void delete2Darray(double **&ary, int sizeY);
+void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY);
+void prepareLcData(struct globals &gl, const char *filename);

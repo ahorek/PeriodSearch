@@ -1,4 +1,24 @@
 #include <cstdio>
+#include <algorithm>
+
+void delete2Darray(double **&ary, int sizeY)
+{
+	for (int i = 0; i < sizeY; ++i) {
+		delete[] ary[i];
+	}
+
+	delete[] ary;
+}
+
+void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY)
+{
+	matrix = new double* [dytemp_siszeX];
+	for (int i = 0; i < dytemp_siszeX; ++i)
+	{
+		matrix[i] = new double[dytemp_sizeY];
+		std::fill_n(matrix[i], dytemp_sizeY, 0.0);
+	}
+}
 
 void printArray(int array[], int iMax, char msg[])
 {

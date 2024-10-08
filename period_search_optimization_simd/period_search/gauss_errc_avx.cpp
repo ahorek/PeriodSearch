@@ -13,6 +13,7 @@
 #if defined(__GNUC__)
 __attribute__((target("avx")))
 #endif
+
 void CalcStrategyAvx::gauss_errc(double** a, int n, double b[], int& error)
 {
 	int* indxc, * indxr, * ipiv;

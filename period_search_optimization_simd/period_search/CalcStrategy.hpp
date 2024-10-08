@@ -2,6 +2,7 @@
 #include <memory>
 #include <iostream>
 #include "Enums.h"
+#include "arrayHelpers.hpp"
 
 /**
  * The Strategy interface declares operations common to all supported versions
@@ -17,7 +18,7 @@ public:
 
 	virtual void mrqcof(double** x1, double** x2, double x3[], double y[],
 							double sig[], double a[], int ia[], int ma,
-							double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq) = 0;
+							double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals &gl) = 0;
 
 	virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br) = 0;
 
@@ -63,11 +64,11 @@ public:
 
 	void CalculateMrqcof(double** x1, double** x2, double x3[], double y[],
 							double sig[], double a[], int ia[], int ma,
-							double** alpha, double beta[], int mfit, int lastone, int lastma, double &mrq) const
+							double** alpha, double beta[], int mfit, int lastone, int lastma, double &mrq, globals &gl) const
 	{
 		if (strategy_)
 		{
-			strategy_->mrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, mrq);
+			strategy_->mrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, mrq, gl);
 		}
 		else
 		{

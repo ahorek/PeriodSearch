@@ -7,7 +7,6 @@
 #include <cmath>
 #include "globals.h"
 #include "declarations.h"
-//#include "../period_search/arrayHelpers.hpp"
 #include "arrayHelpers.hpp"
 
 

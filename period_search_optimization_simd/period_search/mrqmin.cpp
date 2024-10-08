@@ -9,10 +9,11 @@
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
+#include "arrayHelpers.hpp"
 
 int mrqmin(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
-	double** covar, double** alpha)
+	double** covar, double** alpha, globals &gl)
 {
 	int j, k, l, err_code;
 	static int mfit, lastone, lastma; /* it is set in the first call*/
@@ -57,7 +58,7 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 
 			Alamda = Alamda_start; /* initial alambda */
 
-			calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, trial_chisq);
+			calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, trial_chisq, gl);
 
 			Ochisq = trial_chisq;
 			for (j = 1; j <= ma; j++)
@@ -100,7 +101,7 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 		}
 	}
 
-	calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, atry, ia, ma, covar, da, mfit, lastone, lastma, trial_chisq);
+	calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, atry, ia, ma, covar, da, mfit, lastone, lastma, trial_chisq, gl);
 
 	Chisq = trial_chisq;
 

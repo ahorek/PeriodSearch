@@ -163,6 +163,9 @@
     <ClCompile Include="period_search\mrqcof_asimd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="period_search\LcHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="period_search\arrayHelpers.hpp">

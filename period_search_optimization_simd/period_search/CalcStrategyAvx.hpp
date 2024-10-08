@@ -3,6 +3,7 @@
 #include <immintrin.h>
 #include "CalcStrategy.hpp"
 #include "constants.h"
+#include "arrayHelpers.hpp"
 
 #ifndef CSA
 #define CSA
@@ -18,7 +19,7 @@ public:
 
 	virtual void mrqcof(double** x1, double** x2, double x3[], double y[],
 		double sig[], double a[], int ia[], int ma,
-		double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq);
+		double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl);
 
 	virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br);
 

@@ -17,7 +17,7 @@
 
 void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
-	double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq)
+	double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals &gl)
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
 
@@ -44,15 +44,15 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 	np1 = 0;
 	np2 = 0;
 
-	for (i = 1; i <= Lcurves; i++)
+	for (i = 1; i <= gl.Lcurves; i++)
 	{
-		if (Inrel[i] == 1) /* is the LC relative? */
+		if (gl.Inrel[i] == 1) /* is the LC relative? */
 		{
 			ave = 0;
 			for (l = 1; l <= ma; l++)
 				dave[l] = 0;
 		}
-		for (jp = 1; jp <= Lpoints[i]; jp++)
+		for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 		{
 			np++;
 			for (ic = 1; ic <= 3; ic++) /* position vectors */
@@ -61,7 +61,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 				xx2[ic] = x2[np][ic];
 			}
 
-			if (i < Lcurves)
+			if (i < gl.Lcurves)
 			{
 				CalcStrategyNone::bright(xx1, xx2, x3[np], a, dyda, ma, ymod);
 			}
@@ -70,53 +70,53 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 				CalcStrategyNone::conv(jp, dyda, ma, ymod);
 			}
 
-			ytemp[jp] = ymod;
+			gl.ytemp[jp] = ymod;
 
-			if (Inrel[i] == 1)
+			if (gl.Inrel[i] == 1)
 				ave += ymod;
 
 			for (l = 1; l <= ma; l++)
 			{
-				dytemp[jp][l] = dyda[l - 1];
+				gl.dytemp[jp][l] = dyda[l - 1];
 				dave[l] += dyda[l - 1];
 			}
 			/* save lightcurves */
 
-			if (Lastcall == 1)
-			{
-				Yout[np] = ymod;
-			}
+			//if (Lastcall == 1)
+			//{
+			//	Yout[np] = ymod;
+			//}
 		} /* jp, lpoints */
 
 		if (Lastcall != 1)
 		{
-			for (jp = 1; jp <= Lpoints[i]; jp++)
+			for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 			{
 				np1++;
-				if (Inrel[i] == 1)
+				if (gl.Inrel[i] == 1)
 				{
-					coef = sig[np1] * Lpoints[i] / ave;
+					coef = sig[np1] * gl.Lpoints[i] / ave;
 					for (l = 1; l <= ma; l++)
 					{
-						dytemp[jp][l] = coef * (dytemp[jp][l] - ytemp[jp] * dave[l] / ave);
+						gl.dytemp[jp][l] = coef * (gl.dytemp[jp][l] - gl.ytemp[jp] * dave[l] / ave);
 					}
 
-					ytemp[jp] *= coef;
+					gl.ytemp[jp] *= coef;
 					/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
-					dytemp[jp][1] = 0;
+					gl.dytemp[jp][1] = 0;
 				}
 			}
 
 			if (ia[0]) //not relative
 			{
-				for (jp = 1; jp <= Lpoints[i]; jp++)
+				for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 				{
-					ymod = ytemp[jp];
+					ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = dytemp[jp][l];
+						dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					sig2i = 1 / (sig[np2] * sig[np2]);
-					wght = Weight[np2];
+					wght = gl.Weight[np2];
 					dy = y[np2] - ymod;
 					j = 0;
 					//
@@ -176,14 +176,14 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 			}
 			else //relative ia[0]==0
 			{
-				for (jp = 1; jp <= Lpoints[i]; jp++)
+				for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 				{
-					ymod = ytemp[jp];
+					ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = dytemp[jp][l];
+						dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					sig2i = 1 / (sig[np2] * sig[np2]);
-					wght = Weight[np2];
+					wght = gl.Weight[np2];
 					dy = y[np2] - ymod;
 					j = 0;
 					//
@@ -237,8 +237,8 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 			}
 		} /* Lastcall != 1 */
 
-		if ((Lastcall == 1) && (Inrel[i] == 1))
-			Sclnw[i] = Scale * Lpoints[i] * sig[np] / ave;
+		//if ((Lastcall == 1) && (Inrel[i] == 1))
+		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / ave;
 
 	} /* i,  lcurves */
 

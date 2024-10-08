@@ -593,6 +593,7 @@
     <ClCompile Include="period_search\gauss_errc_avx512.cpp" />
     <ClCompile Include="period_search\gauss_errc_sse2.cpp" />
     <ClCompile Include="period_search\gauss_errc_sse3.cpp" />
+    <ClCompile Include="period_search\LcHelpers.cpp" />
     <ClCompile Include="period_search\lubksb.cpp" />
     <ClCompile Include="period_search\ludcmp.cpp" />
     <ClCompile Include="period_search\matrix.cpp" />

@@ -167,20 +167,20 @@ void update_shmem() {
 
 /* global parameters */
 int Lmax, Mmax, Niter, Lastcall,
-Ncoef, Numfac, Lcurves, Nphpar,
-Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
+Ncoef, Numfac,  Nphpar,		   //Lcurves,
+//Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
 Deallocate, n_iter;
 
 double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
-Sclnw[MAX_LC + 1],
-Yout[MAX_N_OBS + 1],
+//Sclnw[MAX_LC + 1],	// unused
+//Yout[MAX_N_OBS + 1],	// unused
 Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1],
 Tc[MAX_N_FAC + 1][MAX_LM + 1], Ts[MAX_N_FAC + 1][MAX_LM + 1],
 Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
 Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
-Dblm[3][4][4],
-Weight[MAX_N_OBS + 1];
+Dblm[3][4][4];
+//Weight[MAX_N_OBS + 1];
 
 #ifdef __GNUC__
 double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64))),
@@ -202,7 +202,7 @@ __declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned
 #endif
 
 double xx1[4], xx2[4], dy, sig2i, wt, ymod,
-	ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1 + 4],
+	//ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1 + 4],
 	dave[MAX_N_PAR + 1 + 4],
 	dave2[MAX_N_PAR + 1 + 4],
 	coef, ave = 0, trial_chisq, wght;
@@ -263,7 +263,6 @@ int main(int argc, char** argv)
 	double lambda_pole[N_POLES + 1] = { 0.0, 0.0, 90.0, 180.0, 270.0, 60.0, 180.0, 300.0, 60.0, 180.0, 300.0 };
 	double beta_pole[N_POLES + 1] = { 0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, -60.0, -60.0, -60.0 };
 
-
 	// ia_lambda_pole = ia_beta_pole = 1;
 	int ia_lambda_pole = 1;
 	int ia_beta_pole = 1;
@@ -277,6 +276,9 @@ int main(int argc, char** argv)
 		fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
 		exit(retval);
 	}
+
+	globals gl = globals();
+	prepareLcData(gl, input_filename);
 
 	// open the input file (resolve logical name first)
 	boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -395,15 +397,15 @@ int main(int argc, char** argv)
 
 	/* lightcurves + geometry file */
 	/* number of lightcurves and the first realtive one */
-	err = fscanf_s(infile, "%d", &Lcurves);
+	err = fscanf_s(infile, "%d", &gl.Lcurves);
 
-	if (Lcurves > MAX_LC)
-	{
-		fprintf(stderr, "\nError: Number of lcs  is greater than MAX_LC = %d\n", MAX_LC); fflush(stderr); exit(2);
-	}
+	//if (Lcurves > MAX_LC)
+	//{
+	//	fprintf(stderr, "\nError: Number of lcs  is greater than MAX_LC = %d\n", MAX_LC); fflush(stderr); exit(2);
+	//}
 
-	double *al = vector_double(Lcurves);
-	double *weight_lc = vector_double(Lcurves);
+	double *al = vector_double(gl.Lcurves);
+	double *weight_lc = vector_double(gl.Lcurves);
 
 	int ndata = 0;			/* total number of data */
 	int k2 = 0;				/* index */
@@ -420,23 +422,23 @@ int main(int argc, char** argv)
 	double c_axis = c0;
 
 	/* Loop over lightcurves */
-	for (i = 1; i <= Lcurves; i++)
+	for (i = 1; i <= gl.Lcurves; i++)
 	{
 		double average = 0; /* average */
-		err = fscanf_s(infile, "%d %d", &Lpoints[i], &i_temp); /* points in this lightcurve */
+		err = fscanf_s(infile, "%d %d", &gl.Lpoints[i], &i_temp); /* points in this lightcurve */
 		fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-		Inrel[i] = 1 - i_temp;
-		if (Inrel[i] == 0)
+		gl.Inrel[i] = 1 - i_temp;
+		if (gl.Inrel[i] == 0)
 			onlyrel = 0;
 
-		if (Lpoints[i] > MAX_LC_POINTS)
-		{
-			fprintf(stderr, "\nError: Number of lc points is greater than MAX_LC_POINTS = %d\n", MAX_LC_POINTS); fflush(stderr); exit(2);
-		}
+		//if (Lpoints[i] > MAX_LC_POINTS)
+		//{
+		//	fprintf(stderr, "\nError: Number of lc points is greater than MAX_LC_POINTS = %d\n", MAX_LC_POINTS); fflush(stderr); exit(2);
+		//}
 
 		/* loop over one lightcurve */
-		for (j = 1; j <= Lpoints[i]; j++)
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			ndata++;
 
@@ -476,7 +478,7 @@ int main(int argc, char** argv)
 					al0 = al[i];
 					ial0 = ndata;
 				}
-				if ((al[i] < al0_abs) && (Inrel[i] == 0))
+				if ((al[i] < al0_abs) && (gl.Inrel[i] == 0))
 				{
 					al0_abs = al[i];
 					ial0_abs = ndata;
@@ -488,7 +490,7 @@ int main(int argc, char** argv)
 		/*printArray(ee, ndata, 3, "ee");
 		printArray(ee0, ndata, 3, "ee0");*/
 
-		average /= Lpoints[i];
+		average /= gl.Lpoints[i];
 		// For unit test reference only
 		//printf("ave: %.30f\n", ave);
 
@@ -496,7 +498,7 @@ int main(int argc, char** argv)
 		   Use the mean brightness as 'sigma' to renormalize the
 		   mean of each lightcurve to unity */
 
-		for (j = 1; j <= Lpoints[i]; j++)
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			k2++;
 			sig[k2] = average;
@@ -505,7 +507,7 @@ int main(int argc, char** argv)
 	} /* i, all lightcurves */
 
 	/* initiation of weights */
-	for (i = 1; i <= Lcurves; i++)
+	for (i = 1; i <= gl.Lcurves; i++)
 		weight_lc[i] = -1;
 
 	/* reads weights */
@@ -548,18 +550,18 @@ int main(int argc, char** argv)
 	Phi_0 = Phi_0 * DEG2RAD;
 
 	k = 0;
-	for (i = 1; i <= Lcurves; i++)
-		for (j = 1; j <= Lpoints[i]; j++)
+	for (i = 1; i <= gl.Lcurves; i++)
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			k++;
 			if (weight_lc[i] == -1)
-				Weight[k] = 1;
+				gl.Weight[k] = 1;
 			else
-				Weight[k] = weight_lc[i];
+				gl.Weight[k] = weight_lc[i];
 		}
 
 	for (i = 1; i <= 3; i++)
-		Weight[k + i] = 1;
+		gl.Weight[k + i] = 1;
 
 	// For Unit tests reference only
 	//printArray(Weight, 122, "Weight");
@@ -591,9 +593,9 @@ int main(int argc, char** argv)
 	/* Convexity regularization: make one last 'lightcurve' that
 	   consists of the three comps. of the residual nonconv. vect.
 	   that should all be zero */
-	Lcurves = Lcurves + 1;
-	Lpoints[Lcurves] = 3;
-	Inrel[Lcurves] = 0;
+	gl.Lcurves = gl.Lcurves + 1;
+	gl.Lpoints[gl.Lcurves] = 3;
+	gl.Inrel[gl.Lcurves] = 0;
 
 	// For Unit test reference only
 	//printArray(Inrel, 10, "Inrel");
@@ -609,10 +611,11 @@ int main(int argc, char** argv)
 		fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
 
 		int major, minor, build, revision;
+
 #if !defined __GNUC__ && defined _WIN32
-		TCHAR filepath[MAX_PATH]; //NOTE: Equal to 'getenv("_")';
-		GetModuleFileName(nullptr, filepath, MAX_PATH);
-		auto filename = PathFindFileName(filepath);
+		char buf[MAX_PATH];
+		GetModuleFileNameA(nullptr, buf, MAX_PATH);
+		auto filename = PathFindFileName(buf);
 		GetVersionInfo(filename, major, minor, build, revision);
 		std::cerr << "Application: " << filename << std::endl;
 #elif defined __GNUC__
@@ -860,7 +863,7 @@ int main(int argc, char** argv)
 
 				while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
 				{
-					mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+					mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
 
 					// For Unite test reference only
 					//printArray(aalpha, 25, 25, "aaplha");
@@ -895,7 +898,7 @@ int main(int argc, char** argv)
 
 				/* deallocates variables used in mrqmin */
 				Deallocate = 1;
-				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
 				Deallocate = 0;
 
 				totarea = 0;
@@ -1141,7 +1144,7 @@ int main(int argc, char** argv)
 
 			while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
 			{
-				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
 				Niter++;
 
 				if ((Niter == 1) || (Chisq < Ochisq))
@@ -1171,7 +1174,7 @@ int main(int argc, char** argv)
 
 			/* deallocates variables used in mrqmin */
 			Deallocate = 1;
-			mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+			mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
 			Deallocate = 0;
 
 			totarea = 0;
@@ -1254,6 +1257,13 @@ int main(int argc, char** argv)
 	deallocate_vector(ia);
 	deallocate_vector(al);
 	deallocate_vector(weight_lc);
+
+	delete[] gl.Inrel;
+	delete[] gl.Lpoints;
+	delete[] gl.ytemp;
+	delete[] gl.Weight;
+	delete2Darray(gl.dytemp, gl.dytemp_sizeY);
+
 	free(str_temp);
 
 	boinc_fraction_done(1);
