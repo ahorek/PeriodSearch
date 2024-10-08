@@ -51,6 +51,6 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd);
 void SetOptimizationStrategy(SIMDEnum useOptimization);
 const std::string getSIMDEnumName(SIMDEnum simdEnum);
 
-void delete2Darray(double **&ary, int sizeY);
 void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY);
+void delete2Darray(double **&ary, int sizeY);
 void prepareLcData(struct globals &gl, const char *filename);

@@ -8,7 +8,7 @@
 #include "arrayHelpers.hpp"
 
 ///<summary>
-///Performes the first loop over lightcurves to find all data points (replacing MAX_N_OBS)
+///Performes the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
 ///</summary>
 ///<param name="gl"></param>
 ///<param name="filename"></param>

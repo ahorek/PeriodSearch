@@ -243,13 +243,18 @@ int main(int argc, char** argv)
 
 	char *str_temp = (char*)malloc(MAX_LINE_LENGTH);
 
-	double **ee = matrix_double(MAX_N_OBS, 3);
-	double **ee0 = matrix_double(MAX_N_OBS, 3);
+	//double **ee = matrix_double(MAX_N_OBS, 3);
+	//double **ee0 = matrix_double(MAX_N_OBS, 3);
+	//double** ee;
+	//double** ee0;
 	double **covar = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR);
 	double **aalpha = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR + 8);
-	double *tim = vector_double(MAX_N_OBS);
-	double *brightness = vector_double(MAX_N_OBS);
-	double *sig = vector_double(MAX_N_OBS);
+	//double *tim = vector_double(MAX_N_OBS);
+	//double* tim;
+	//double *brightness = vector_double(MAX_N_OBS);
+	//double* brightness;
+	//double *sig = vector_double(MAX_N_OBS);
+	//double* sig;
 	double *cg = vector_double(MAX_N_PAR);
 	double *cg_first = vector_double(MAX_N_PAR);
 	double *t = vector_double(MAX_N_FAC);
@@ -279,6 +284,12 @@ int main(int argc, char** argv)
 
 	globals gl = globals();
 	prepareLcData(gl, input_filename);
+
+	double** ee = matrix_double(gl.maxDataPoints + 4, 3);
+	double** ee0 = matrix_double(gl.maxDataPoints + 4, 3);
+	double* tim = vector_double(gl.maxDataPoints + 4);
+	double* brightness = vector_double(gl.maxDataPoints + 4);
+	double* sig = vector_double(gl.maxDataPoints + 4);
 
 	// open the input file (resolve logical name first)
 	boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -442,10 +453,10 @@ int main(int argc, char** argv)
 		{
 			ndata++;
 
-			if (ndata > MAX_N_OBS)
-			{
-				fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
-			}
+			//if (ndata > MAX_N_OBS)
+			//{
+			//	fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
+			//}
 
 			err = fscanf_s(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); /* JD, brightness */
 			err = fscanf_s(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]); /* ecliptic astr_tempocentric coord. of the Sun in AU */
@@ -1239,8 +1250,10 @@ int main(int argc, char** argv)
 
 	out.close();
 
-	deallocate_matrix_double(ee, MAX_N_OBS);
-	deallocate_matrix_double(ee0, MAX_N_OBS);
+	//deallocate_matrix_double(ee, MAX_N_OBS);
+	//deallocate_matrix_double(ee0, MAX_N_OBS);
+	deallocate_matrix_double(ee, gl.maxDataPoints + 4);
+	deallocate_matrix_double(ee0, gl.maxDataPoints + 4);
 	aligned_deallocate_matrix_double(covar, MAX_N_PAR);
 	aligned_deallocate_matrix_double(aalpha, MAX_N_PAR);
 	deallocate_matrix_int(ifp, MAX_N_FAC);

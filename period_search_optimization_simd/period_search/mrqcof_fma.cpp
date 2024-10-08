@@ -277,6 +277,8 @@ void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
 
     } /* i,  lcurves */
 
+	//printf("np: %d\n", np);
+
     for (j = 1; j < mfit; j++)
         for (k = 0; k <= j - 1; k++)
             alpha[k][j] = alpha[j][k];
