@@ -95,10 +95,10 @@ inline static double reduce_pd(__m512d a) {
 // end of inner_calc
 
 #define INNER_CALC_DSMU \
-	  avx_Area=_mm512_load_pd(&Area[i]); \
+	  avx_Area=_mm512_load_pd(&gl.Area[i]); \
 	  avx_dnom=_mm512_add_pd(avx_lmu,avx_lmu0); \
 	  avx_s=_mm512_mul_pd(_mm512_mul_pd(avx_lmu,avx_lmu0),_mm512_add_pd(avx_cl,_mm512_div_pd(avx_cls,avx_dnom))); \
-	  avx_pdbr=_mm512_mul_pd(_mm512_load_pd(&Darea[i]),avx_s); \
+	  avx_pdbr=_mm512_mul_pd(_mm512_load_pd(&gl.Darea[i]),avx_s); \
 	  avx_pbr=_mm512_mul_pd(avx_Area,avx_s); \
 	  avx_powdnom=_mm512_div_pd(avx_lmu0,avx_dnom); \
 	  avx_powdnom=_mm512_mul_pd(avx_powdnom,avx_powdnom); \
@@ -111,7 +111,7 @@ inline static double reduce_pd(__m512d a) {
 #if defined(__GNUC__)
 __attribute__((target("avx512dq,avx512f")))
 #endif
-void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br)
+void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
@@ -190,9 +190,9 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 	for (i = 0; i < Numfac; i += 8)
 	{
 		__m512d avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-		__m512d avx_Nor1 = _mm512_load_pd(&Nor[0][i]);
-		__m512d avx_Nor2 = _mm512_load_pd(&Nor[1][i]);
-		__m512d avx_Nor3 = _mm512_load_pd(&Nor[2][i]);
+		__m512d avx_Nor1 = _mm512_load_pd(&gl.Nor[0][i]);
+		__m512d avx_Nor2 = _mm512_load_pd(&gl.Nor[1][i]);
+		__m512d avx_Nor3 = _mm512_load_pd(&gl.Nor[2][i]);
 		__m512d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
 		__m512d avx_Area;
 
@@ -221,42 +221,42 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 			_mm512_store_pd(g, avx_pdbr);
 			if (icmp & 1)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i];
 				dbr[incl_count++] = _mm512_set1_pd(g[0]);
 			}
 			if (icmp & 2)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 1];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 1];
 				dbr[incl_count++] = _mm512_set1_pd(g[1]);
 			}
 			if (icmp & 4)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 2];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 2];
 				dbr[incl_count++] = _mm512_set1_pd(g[2]);
 			}
 			if (icmp & 8)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 3];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 3];
 				dbr[incl_count++] = _mm512_set1_pd(g[3]);
 			}
 			if (icmp & 16)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 4];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 4];
 				dbr[incl_count++] = _mm512_set1_pd(g[4]);
 			}
 			if (icmp & 32)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 5];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 5];
 				dbr[incl_count++] = _mm512_set1_pd(g[5]);
 			}
 			if (icmp & 64)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 6];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 6];
 				dbr[incl_count++] = _mm512_set1_pd(g[6]);
 			}
 			if (icmp & 128)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 7];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 7];
 				dbr[incl_count++] = _mm512_set1_pd(g[7]);
 			}
 			INNER_CALC

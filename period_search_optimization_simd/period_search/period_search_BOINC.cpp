@@ -182,18 +182,18 @@ Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
 //Weight[MAX_N_OBS + 1];
 
-#ifdef __GNUC__
-double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64))),
-Area[MAX_N_FAC + 8] __attribute__((aligned(64))),
-Darea[MAX_N_FAC + 8] __attribute__((aligned(64))),
-Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
-#else
-__declspec(align(64))
-	double Nor[3][MAX_N_FAC + 8],
-			Area[MAX_N_FAC + 8],
-			Darea[MAX_N_FAC + 8],
-			Dg[MAX_N_FAC + 16][MAX_N_PAR + 8]; //Nor,Dg ARE ZERO INDEXED
-#endif
+//#ifdef __GNUC__
+//double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64))),
+//Area[MAX_N_FAC + 8] __attribute__((aligned(64))),
+//Darea[MAX_N_FAC + 8] __attribute__((aligned(64))),
+//Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
+//#else
+//__declspec(align(64))
+//	double //Nor[3][MAX_N_FAC + 8],
+//			Area[MAX_N_FAC + 8],
+//			Darea[MAX_N_FAC + 8],
+//			Dg[MAX_N_FAC + 16][MAX_N_PAR + 8]; //Nor,Dg ARE ZERO INDEXED
+//#endif
 
 #ifdef __GNUC__
 double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
@@ -201,12 +201,7 @@ double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
 __declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
 #endif
 
-double xx1[4], xx2[4], dy, sig2i, wt, ymod,
-	//ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1 + 4],
-	dave[MAX_N_PAR + 1 + 4],
-	dave2[MAX_N_PAR + 1 + 4],
-	coef, ave = 0, trial_chisq, wght;
-
+// NOTE: RPi related:
 //void blinkLed(int count) {
 //	for (int i = 0; i < count; i++) {
 //		digitalWrite(LED, HIGH);  // On
@@ -503,7 +498,7 @@ int main(int argc, char** argv)
 
 		average /= gl.Lpoints[i];
 		// For unit test reference only
-		//printf("ave: %.30f\n", ave);
+		//printf("gl.ave: %.30f\n", gl.ave);
 
 		/* Mean brightness of lcurve
 		   Use the mean brightness as 'sigma' to renormalize the
@@ -743,7 +738,7 @@ int main(int argc, char** argv)
 		//printArray(f, ndir, "f");
 
 		/* areas and normals of the triangulated Gaussian image sphere */
-		areanorm(t, f, ndir, Numfac, ifp, at, af);
+		areanorm(t, f, ndir, Numfac, ifp, at, af, gl);
 
 		/* Precompute some function values at each normal direction*/
 		sphfunc(Numfac, at, af);
@@ -885,13 +880,13 @@ int main(int argc, char** argv)
 					if ((Niter == 1) || (Chisq < Ochisq))
 					{
 						Ochisq = Chisq;
-						calcCtx.CalculateCurv(cg);
+						calcCtx.CalculateCurv(cg, gl);
 
 						for (i = 1; i <= 3; i++)
 						{
 							chck[i] = 0;
 							for (j = 1; j <= Numfac; j++)
-								chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
+								chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
 						}
 						rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 					}
@@ -915,7 +910,7 @@ int main(int argc, char** argv)
 				totarea = 0;
 				for (i = 1; i <= Numfac; i++)
 				{
-					totarea = totarea + Area[i - 1];
+					totarea = totarea + gl.Area[i - 1];
 				}
 
 				sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
@@ -1043,7 +1038,7 @@ int main(int argc, char** argv)
 	/* makes indices to triangle vertices */
 	trifac(nrows, ifp);
 	/* areas and normals of the triangulated Gaussian image sphere */
-	areanorm(t, f, ndir, Numfac, ifp, at, af);
+	areanorm(t, f, ndir, Numfac, ifp, at, af, gl);
 	/* Precompute some function values at each normal direction*/
 	sphfunc(Numfac, at, af);
 
@@ -1161,14 +1156,14 @@ int main(int argc, char** argv)
 				if ((Niter == 1) || (Chisq < Ochisq))
 				{
 					Ochisq = Chisq;
-					calcCtx.CalculateCurv(cg);
+					calcCtx.CalculateCurv(cg, gl);
 
 					for (i = 1; i <= 3; i++)
 					{
 						chck[i] = 0;
 						for (j = 1; j <= Numfac; j++)
 						{
-							chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
+							chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
 						}
 					}
 					rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
@@ -1191,7 +1186,7 @@ int main(int argc, char** argv)
 			totarea = 0;
 			for (i = 1; i <= Numfac; i++)
 			{
-				totarea = totarea + Area[i - 1];
+				totarea = totarea + gl.Area[i - 1];
 			}
 
 			sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);

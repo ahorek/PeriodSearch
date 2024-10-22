@@ -8,7 +8,7 @@
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
-void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[], double af[])
+void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[], double af[], globals &gl)
 {
     int i, j;
 
@@ -50,16 +50,16 @@ void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[]
 		//printf("[%3d] % 0.6f\n", i, clen);
 
         /* normal */
-        Nor[0][i - 1] = c[1] / clen;
-        Nor[1][i - 1] = c[2] / clen;
-        Nor[2][i - 1] = c[3] / clen;
+        gl.Nor[0][i - 1] = c[1] / clen;
+        gl.Nor[1][i - 1] = c[2] / clen;
+        gl.Nor[2][i - 1] = c[3] / clen;
 
         /* direction angles of normal */
-        at[i] = acos(Nor[2][i - 1]);
-        af[i] = atan2(Nor[1][i - 1], Nor[0][i - 1]);
+        at[i] = acos(gl.Nor[2][i - 1]);
+        af[i] = atan2(gl.Nor[1][i - 1], gl.Nor[0][i - 1]);
 
         /* triangle area */
-        Darea[i - 1] = 0.5 * clen;
+        gl.Darea[i - 1] = 0.5 * clen;
 		//printf("[%3d] % 0.6f\n", i-1, Darea[i - 1]);
     }
 

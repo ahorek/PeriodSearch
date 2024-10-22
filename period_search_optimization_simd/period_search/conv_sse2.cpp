@@ -10,12 +10,13 @@
 #include "declarations.h"
 #include <emmintrin.h>
 #include "CalcStrategySse2.hpp"
+#include "arrayHelpers.hpp"
 
 #if defined(__GNUC__)
 __attribute__((target("sse2")))
 #endif
 
-void CalcStrategySse2::conv(int nc, double dres[], int ma, double &result)
+void CalcStrategySse2::conv(int nc, double dres[], int ma, double &result, globals &gl)
 {
 	int i, j;
 
@@ -25,10 +26,10 @@ void CalcStrategySse2::conv(int nc, double dres[], int ma, double &result)
 
 	for (i = 0; i < Numfac; i++)
 	{
-		result += Area[i] * Nor[nc - 1][i];
-		__m128d avx_Darea = _mm_set1_pd(Darea[i]);
-		__m128d avx_Nor = _mm_set1_pd(Nor[nc - 1][i]);
-		double* Dg_row = Dg[i];
+		result += gl.Area[i] * gl.Nor[nc - 1][i];
+		__m128d avx_Darea = _mm_set1_pd(gl.Darea[i]);
+		__m128d avx_Nor = _mm_set1_pd(gl.Nor[nc - 1][i]);
+		double* Dg_row = gl.Dg[i];
 		for (j = 0; j < Ncoef; j += 2)
 		{
 			__m128d avx_dres = _mm_load_pd(&dres[j]);

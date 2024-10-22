@@ -9,8 +9,9 @@
 #include "globals.h"
 #include "declarations.h"
 #include "CalcStrategyNone.hpp"
+#include "arrayHelpers.hpp"
 
-void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result)
+void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result, globals &gl)
 {
 	int i, j;
 
@@ -20,11 +21,11 @@ void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result)
 
 	for (i = 0; i < Numfac; i++)
 	{
-		result += Area[i] * Nor[nc - 1][i];
+		result += gl.Area[i] * gl.Nor[nc - 1][i];
 
 		for (j = 0; j < Ncoef; j++)
 		{
-			dres[j] += Darea[i] * Dg[i][j] * Nor[nc - 1][i];
+			dres[j] += gl.Darea[i] * gl.Dg[i][j] * gl.Nor[nc - 1][i];
 		}
 	}
 }

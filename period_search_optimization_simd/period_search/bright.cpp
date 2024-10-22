@@ -11,8 +11,9 @@
 #include "declarations.h"
 #include "constants.h"
 #include "CalcStrategyNone.hpp"
+#include "arrayHelpers.hpp"
 
-void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
@@ -60,16 +61,16 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 	double lmu, lmu0, dsmu, dsmu0;
 	for (i = 0; i < Numfac; i++)
 	{
-		lmu = e[1] * Nor[0][i] + e[2] * Nor[1][i] + e[3] * Nor[2][i];
-		lmu0 = e0[1] * Nor[0][i] + e0[2] * Nor[1][i] + e0[3] * Nor[2][i];
+		lmu = e[1] * gl.Nor[0][i] + e[2] * gl.Nor[1][i] + e[3] * gl.Nor[2][i];
+		lmu0 = e0[1] * gl.Nor[0][i] + e0[2] * gl.Nor[1][i] + e0[3] * gl.Nor[2][i];
 		if ((lmu > TINY) && (lmu0 > TINY))
 		{
 			dnom = lmu + lmu0;
 			s = lmu * lmu0 * (cl + cls / dnom);
-			br += Area[i] * s;
+			br += gl.Area[i] * s;
 			//
 			incl[incl_count] = i;
-			dbr[incl_count++] = Darea[i] * s;
+			dbr[incl_count++] = gl.Darea[i] * s;
 			//
 			dsmu = cls * pow(lmu0 / dnom, 2) + cl * lmu0;
 			dsmu0 = cls * pow(lmu / dnom, 2) + cl * lmu;
@@ -79,19 +80,19 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 
 			for (j = 1; j <= 3; j++)
 			{
-				sum1  += Nor[j-1][i] * de[j][1];
-				sum10 += Nor[j-1][i] * de0[j][1];
-				sum2  += Nor[j-1][i] * de[j][2];
-				sum20 += Nor[j-1][i] * de0[j][2];
-				sum3  += Nor[j-1][i] * de[j][3];
-				sum30 += Nor[j-1][i] * de0[j][3];
+				sum1  += gl.Nor[j-1][i] * de[j][1];
+				sum10 += gl.Nor[j-1][i] * de0[j][1];
+				sum2  += gl.Nor[j-1][i] * de[j][2];
+				sum20 += gl.Nor[j-1][i] * de0[j][2];
+				sum3  += gl.Nor[j-1][i] * de[j][3];
+				sum30 += gl.Nor[j-1][i] * de0[j][3];
 			}
 
-			tmpdyda1 += Area[i] * (dsmu * sum1 + dsmu0 * sum10);
-			tmpdyda2 += Area[i] * (dsmu * sum2 + dsmu0 * sum20);
-			tmpdyda3 += Area[i] * (dsmu * sum3 + dsmu0 * sum30);
-			tmpdyda4 += lmu * lmu0 * Area[i];
-			tmpdyda5 += Area[i] * lmu * lmu0 / (lmu + lmu0);
+			tmpdyda1 += gl.Area[i] * (dsmu * sum1 + dsmu0 * sum10);
+			tmpdyda2 += gl.Area[i] * (dsmu * sum2 + dsmu0 * sum20);
+			tmpdyda3 += gl.Area[i] * (dsmu * sum3 + dsmu0 * sum30);
+			tmpdyda4 += gl.Area[i] * lmu * lmu0;
+			tmpdyda5 += gl.Area[i] * lmu * lmu0 / (lmu + lmu0);
 		}
 	}
 
@@ -101,7 +102,7 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 		tmpdyda = 0;
 		for (j = 0; j < incl_count; j++)
 		{
-			tmpdyda += dbr[j] * Dg[incl[j]][i - 1];
+			tmpdyda += dbr[j] * gl.Dg[incl[j]][i - 1];
 		}
 		dyda[i - 1] = Scale * tmpdyda;
 	}

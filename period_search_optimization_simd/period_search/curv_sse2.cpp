@@ -12,7 +12,7 @@
 #if defined(__GNUC__)
 __attribute__((target("sse2")))
 #endif
-void CalcStrategySse2::curv(double cg[])
+void CalcStrategySse2::curv(double cg[], globals &gl)
 {
 	int i, m, l, k;
 
@@ -43,19 +43,19 @@ void CalcStrategySse2::curv(double cg[])
 		}
 
 		g = exp(g);
-		Area[i - 1] = Darea[i - 1] * g;
+		gl.Area[i - 1] = gl.Darea[i - 1] * g;
 
 		__m128d avx_g = _mm_set1_pd(g);
 		for (k = 1; k < n; k += 2)
 		{
 			__m128d avx_pom = _mm_loadu_pd(&Dsph[i][k]);
 			avx_pom = _mm_mul_pd(avx_pom, avx_g);
-			_mm_store_pd(&Dg[i - 1][k - 1], avx_pom);
+			_mm_store_pd(&gl.Dg[i - 1][k - 1], avx_pom);
 		}
 
 		if (k == n)
 		{
-			Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
+			gl.Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
 		}
 	}
 }

@@ -57,10 +57,10 @@
 			avx_d1=_mm_add_pd(avx_d1,_mm_div_pd(_mm_mul_pd(_mm_mul_pd(avx_Area,avx_lmu),avx_lmu0),_mm_add_pd(avx_lmu,avx_lmu0)));
 // end of inner_calc
 #define INNER_CALC_DSMU \
-	  avx_Area=_mm_load_pd(&Area[i]); \
+	  avx_Area=_mm_load_pd(&gl.Area[i]); \
 	  avx_dnom=_mm_add_pd(avx_lmu,avx_lmu0); \
 	  avx_s=_mm_mul_pd(_mm_mul_pd(avx_lmu,avx_lmu0),_mm_add_pd(avx_cl,_mm_div_pd(avx_cls,avx_dnom))); \
-	  avx_pdbr=_mm_mul_pd(_mm_load_pd(&Darea[i]),avx_s); \
+	  avx_pdbr=_mm_mul_pd(_mm_load_pd(&gl.Darea[i]),avx_s); \
 	  avx_pbr=_mm_mul_pd(avx_Area,avx_s); \
 	  avx_powdnom=_mm_div_pd(avx_lmu0,avx_dnom); \
 	  avx_powdnom=_mm_mul_pd(avx_powdnom,avx_powdnom); \
@@ -74,7 +74,7 @@
 #if defined(__GNUC__)
 __attribute__((target("sse3")))
 #endif
-void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
 {
 	int i, j, k; // ncoef0,
 	incl_count = 0;
@@ -152,9 +152,9 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 	for (i = 0; i < Numfac; i += 2)
 	{
 		__m128d avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-		__m128d avx_Nor1 = _mm_load_pd(&Nor[0][i]);
-		__m128d avx_Nor2 = _mm_load_pd(&Nor[1][i]);
-		__m128d avx_Nor3 = _mm_load_pd(&Nor[2][i]);
+		__m128d avx_Nor1 = _mm_load_pd(&gl.Nor[0][i]);
+		__m128d avx_Nor2 = _mm_load_pd(&gl.Nor[1][i]);
+		__m128d avx_Nor3 = _mm_load_pd(&gl.Nor[2][i]);
 		__m128d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
 		__m128d avx_Area;
 
@@ -176,11 +176,11 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 				if (icmp & 2)
 				{
 					//0
-					Dg_row[incl_count] = (__m128d*) & Dg[i];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i];
 					dbr[incl_count++] = _mm_movedup_pd(avx_pdbr);
 
 					//1
-					Dg_row[incl_count] = (__m128d*) & Dg[i + 1];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i + 1];
 					dbr[incl_count++] = _mm_movedup_pd(_mm_shuffle_pd(avx_pdbr, avx_pdbr, 1));
 				}
 				else
@@ -191,7 +191,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 					avx_lmu = _mm_shuffle_pd(avx_lmu, _mm_setzero_pd(), 0);
 					avx_lmu0 = _mm_shuffle_pd(avx_lmu0, avx_11, 0); //abychom nedelili nulou
 					//0
-					Dg_row[incl_count] = (__m128d*) & Dg[i];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i];
 					dbr[incl_count++] = _mm_movedup_pd(avx_pdbr);
 				}
 
@@ -206,7 +206,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 			avx_lmu = _mm_shuffle_pd(_mm_setzero_pd(), avx_lmu, _MM_SHUFFLE2(1, 0));
 			avx_lmu0 = _mm_shuffle_pd(avx_11, avx_lmu0, _MM_SHUFFLE2(1, 0));
 			//1
-			Dg_row[incl_count] = (__m128d*) & Dg[i + 1];
+			Dg_row[incl_count] = (__m128d*)& gl.Dg[i + 1];
 			dbr[incl_count++] = _mm_movedup_pd(_mm_shuffle_pd(avx_pdbr, avx_pdbr, 1));
 
 			INNER_CALC

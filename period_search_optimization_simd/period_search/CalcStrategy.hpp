@@ -20,11 +20,11 @@ public:
 							double sig[], double a[], int ia[], int ma,
 							double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals &gl) = 0;
 
-	virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br) = 0;
+	virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl) = 0;
 
-	virtual void conv(int nc, double dres[], int ma, double &result) = 0;
+	virtual void conv(int nc, double dres[], int ma, double &result, globals &gl) = 0;
 
-	virtual void curv(double cg[]) = 0;
+	virtual void curv(double cg[], globals &gl) = 0;
 
 	virtual void gauss_errc(double** a, int n, double b[], int &error) = 0;
 };
@@ -76,11 +76,11 @@ public:
 		}
 	}
 
-	void CalculateBright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+	void CalculateBright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
 	{
 		if (strategy_)
 		{
-			strategy_->bright(ee, ee0, t, cg, dyda, ncoef, br);
+			strategy_->bright(ee, ee0, t, cg, dyda, ncoef, br, gl);
 		}
 		else
 		{
@@ -88,11 +88,11 @@ public:
 		}
 	}
 
-	void CalculateConv(int nc, double dres[], int ma, double &result)
+	void CalculateConv(int nc, double dres[], int ma, double &result, globals &gl)
 	{
 		if (strategy_)
 		{
-			strategy_->conv(nc, dres, ma, result);
+			strategy_->conv(nc, dres, ma, result, gl);
 		}
 		else
 		{
@@ -100,11 +100,11 @@ public:
 		}
 	}
 
-	void CalculateCurv(double cg[])
+	void CalculateCurv(double cg[], globals gl)
 	{
 		if (strategy_)
 		{
-			strategy_->curv(cg);
+			strategy_->curv(cg, gl);
 		}
 		else
 		{

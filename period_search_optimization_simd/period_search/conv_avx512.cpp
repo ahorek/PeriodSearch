@@ -10,12 +10,13 @@
 #include "declarations.h"
 #include <immintrin.h>
 #include "CalcStrategyAvx512.hpp"
+#include "arrayHelpers.hpp"
 
 #if defined(__GNUC__)
 __attribute__((target("avx512f")))
 #endif
 
-void CalcStrategyAvx512::conv(int nc, double dres[], int ma, double &result)
+void CalcStrategyAvx512::conv(int nc, double dres[], int ma, double &result, globals &gl)
 {
     int i, j;
 
@@ -25,10 +26,10 @@ void CalcStrategyAvx512::conv(int nc, double dres[], int ma, double &result)
 
     for (i = 0; i < Numfac; i++)
     {
-        result += Area[i] * Nor[nc - 1][i];
-        __m512d avx_Darea = _mm512_set1_pd(Darea[i]);
-        __m512d avx_Nor = _mm512_set1_pd(Nor[nc - 1][i]);
-        double *Dg_row = Dg[i];
+        result += gl.Area[i] * gl.Nor[nc - 1][i];
+        __m512d avx_Darea = _mm512_set1_pd(gl.Darea[i]);
+        __m512d avx_Nor = _mm512_set1_pd(gl.Nor[nc - 1][i]);
+        double *Dg_row = gl.Dg[i];
         for (j = 0; j < Ncoef; j += 8)
         {
             __m512d avx_dres = _mm512_load_pd(&dres[j]);

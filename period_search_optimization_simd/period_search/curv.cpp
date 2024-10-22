@@ -9,7 +9,7 @@
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
-void CalcStrategyNone::curv(double cg[])
+void CalcStrategyNone::curv(double cg[], globals &gl)
 {
    int i, m, l, k;
 
@@ -37,9 +37,9 @@ void CalcStrategyNone::curv(double cg[])
             g += Pleg[i][l][m] * fsum;
           }
       g = exp(g);
-      Area[i-1] = Darea[i-1] * g;
+	  gl.Area[i-1] = gl.Darea[i-1] * g;
 
       for (k = 1; k <= n; k++)
-         Dg[i - 1][k - 1] = g * Dsph[i][k];
+		  gl.Dg[i - 1][k - 1] = g * Dsph[i][k];
    }
 }

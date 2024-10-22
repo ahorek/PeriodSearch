@@ -20,14 +20,15 @@ Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
 	//Weight[MAX_N_OBS+1];
 
-#ifdef __GNUC__
-  extern double Nor[3][MAX_N_FAC+8] __attribute__ ((aligned (64))),
-	          Area[MAX_N_FAC+8] __attribute__ ((aligned (64))),
-			  Darea[MAX_N_FAC+8] __attribute__ ((aligned (64))),
-			  Dg[MAX_N_FAC+16][MAX_N_PAR+8] __attribute__ ((aligned (64)));
-#else
-  extern __declspec(align(64)) double Nor[3][MAX_N_FAC+8], Area[MAX_N_FAC+8], Darea[MAX_N_FAC+8],Dg[MAX_N_FAC+16][MAX_N_PAR+8]; //All are zero indexed
-#endif
+//#ifdef __GNUC__
+//  extern double Nor[3][MAX_N_FAC+8] __attribute__ ((aligned (64))),
+//	          Area[MAX_N_FAC+8] __attribute__ ((aligned (64))),
+//			  Darea[MAX_N_FAC+8] __attribute__ ((aligned (64))),
+//			  Dg[MAX_N_FAC+16][MAX_N_PAR+8] __attribute__ ((aligned (64)));
+//#else
+//  extern __declspec(align(64)) double //Nor[3][MAX_N_FAC+8],
+//	  Area[MAX_N_FAC+8], Darea[MAX_N_FAC+8],Dg[MAX_N_FAC+16][MAX_N_PAR+8]; //All are zero indexed
+//#endif
 
 	extern CalcContext calcCtx;
 
@@ -37,20 +38,14 @@ Dblm[3][4][4];
 	extern __declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
 #endif
 
-	extern double xx1[4], xx2[4], dy, sig2i, wt, ymod,
-		//ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1 + 4],
-		dave[MAX_N_PAR + 1 + 4],
-		dave2[MAX_N_PAR + 1 + 4],
-		coef, ave, wght;
-
-	extern struct SIMDSupport
-	{
-		bool hasAVX512dq = false;
-		bool hasAVX512 = false;
-		bool hasFMA = false;
-		bool hasAVX = false;
-		bool hasSSE3 = false;
-		bool hasSSE2 = false;
-		bool hasASIMD = false;
-		bool isBulldozer = false;
-	} CPUopt;
+extern struct SIMDSupport
+{
+	bool hasAVX512dq = false;
+	bool hasAVX512 = false;
+	bool hasFMA = false;
+	bool hasAVX = false;
+	bool hasSSE3 = false;
+	bool hasSSE2 = false;
+	bool hasASIMD = false;
+	bool isBulldozer = false;
+} CPUopt;

@@ -10,7 +10,7 @@
 
 void trifac(int nrows, int** ifp);
 void areanorm(double t[], double f[], int ndir, int nfac, int** ifp,
-	double at[], double af[]);
+	double at[], double af[], globals &gl);
 void sphfunc(int ndir, double at[], double af[]);
 void ellfit(double r[], double a, double b, double c,
 	int ndir, int ncoef, double at[], double af[]);
@@ -19,7 +19,7 @@ void ludcmp(double** a, int n, int indx[], double d[]);
 
 int mrqmin(double** x1, double** x2, double x3[], double y[],
 	double sig[], double a[], int ia[], int ma,
-	double** covar, double** alpha, struct globals &gl);
+	double** covar, double** alpha, globals &gl);
 
 void blmatrix(double bet, double lam);
 void covsrt(double** covar, int ma, int ia[], int mfit);
@@ -50,7 +50,4 @@ void GetSupportedSIMDs();
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd);
 void SetOptimizationStrategy(SIMDEnum useOptimization);
 const std::string getSIMDEnumName(SIMDEnum simdEnum);
-
-void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY);
-void delete2Darray(double **&ary, int sizeY);
 void prepareLcData(struct globals &gl, const char *filename);

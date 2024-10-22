@@ -12,7 +12,7 @@
 #if defined(__GNUC__)
 __attribute__((target("avx,fma")))
 #endif
-void CalcStrategyFma::curv(double cg[])
+void CalcStrategyFma::curv(double cg[], globals &gl)
 {
     int i, m, l, k;
 
@@ -40,7 +40,7 @@ void CalcStrategyFma::curv(double cg[])
                 g = g + Pleg[i][l][m] * fsum;
             }
         g = exp(g);
-        Area[i - 1] = Darea[i - 1] * g;
+		gl.Area[i - 1] = gl.Darea[i - 1] * g;
 
         __m256d avx_g = _mm256_set1_pd(g);
         int cyklus = (n >> 2) << 2;
@@ -48,11 +48,11 @@ void CalcStrategyFma::curv(double cg[])
         {
             __m256d avx_pom = _mm256_loadu_pd(&Dsph[i][k]);
             avx_pom = _mm256_mul_pd(avx_pom, avx_g);
-            _mm256_store_pd(&Dg[i - 1][k - 1], avx_pom);
+            _mm256_store_pd(&gl.Dg[i - 1][k - 1], avx_pom);
         }
-        if (k <= n) Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
-        if (k + 1 <= n) Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1]; //last odd value
-        if (k + 2 <= n) Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2]; //last odd value
+        if (k <= n) gl.Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
+        if (k + 1 <= n) gl.Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1]; //last odd value
+        if (k + 2 <= n) gl.Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2]; //last odd value
     }
 
     // For Unit tests

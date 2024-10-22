@@ -30,7 +30,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 	int i, j, k, l, m, np, np1, np2, jp, ic;
 
 	/* N.B. curv and blmatrix called outside bright because output same for all points */
-	CalcStrategyAsimd::curv(a);
+	CalcStrategyAsimd::curv(a, gl);
 
 	//   #ifdef YORP
 	//      blmatrix(a[ma-5-Nphpar],a[ma-4-Nphpar]);
@@ -56,41 +56,41 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 	{
 		if (gl.Inrel[i] == 1) /* is the LC relative? */
 		{
-			ave = 0;
+			gl.ave = 0;
 			for (l = 1; l <= ma; l++)
-				dave[l] = 0;
+				gl.dave[l] = 0;
 		}
 		for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 		{
 			np++;
 			for (ic = 1; ic <= 3; ic++) /* position vectors */
 			{
-				xx1[ic] = x1[np][ic];
-				xx2[ic] = x2[np][ic];
+				gl.xx1[ic] = x1[np][ic];
+				gl.xx2[ic] = x2[np][ic];
 			}
 
 			if (i < gl.Lcurves)
 			{
-				CalcStrategyAsimd::bright(xx1, xx2, x3[np], a, dyda, ma, ymod);
+				CalcStrategyAsimd::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
 			}
 			else
 			{
-				CalcStrategyAsimd::conv(jp, dyda, ma, ymod);
+				CalcStrategyAsimd::conv(jp, dyda, ma, gl.ymod, gl);
 			}
 
-			gl.ytemp[jp] = ymod;
+			gl.ytemp[jp] = gl.ymod;
 
 			if (gl.Inrel[i] == 1)
-                ave += ymod;
+                gl.ave += gl.ymod;
 
             for (l = 1; l <= ma; l += 2) {
         		float64x2_t avx_dyda = vld1q_f64(&dyda[l - 1]);
-        		float64x2_t avx_dave = vld1q_f64(&dave[l]);
+        		float64x2_t avx_dave = vld1q_f64(&gl.dave[l]);
 
         		avx_dave = vaddq_f64(avx_dave, avx_dyda);
 
         		vst1q_f64(&gl.dytemp[jp][l], avx_dyda);
-        		vst1q_f64(&dave[l], avx_dave);
+        		vst1q_f64(&gl.dave[l], avx_dave);
     		}
 		    /* save lightcurves */
 
@@ -101,29 +101,29 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 		if (Lastcall != 1)
 		{
 			float64x2_t avx_ave, avx_coef, avx_ytemp;
-     		avx_ave = vdupq_n_f64(ave);
+     		avx_ave = vdupq_n_f64(gl.ave);
 
 			for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 			{
 				np1++;
 				if (gl.Inrel[i] == 1)
 				{
-					coef = sig[np1] * gl.Lpoints[i] / ave;
+					gl.coef = sig[np1] * gl.Lpoints[i] / gl.ave;
 
-					float64x2_t avx_coef = vdupq_n_f64(coef);
+					float64x2_t avx_coef = vdupq_n_f64(gl.coef);
             		float64x2_t avx_ytemp = vld1q_dup_f64(&gl.ytemp[jp]);
 
             		for (l = 1; l <= ma; l += 2) {
                			float64x2_t avx_dytemp = vld1q_f64(&gl.dytemp[jp][l]);
-               			float64x2_t avx_dave = vld1q_f64(&dave[l]);
+               			float64x2_t avx_dave = vld1q_f64(&gl.dave[l]);
 
                			avx_dytemp = vsubq_f64(avx_dytemp, vdivq_f64(vmulq_f64(avx_ytemp, avx_dave), avx_ave));
                			avx_dytemp = vmulq_f64(avx_dytemp, avx_coef);
 
-               			vst1q_f64(&dytemp[jp][l], avx_dytemp);
+               			vst1q_f64(&gl.dytemp[jp][l], avx_dytemp);
             		}
 
-					gl.ytemp[jp] *= coef;
+					gl.ytemp[jp] *= gl.coef;
 					/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
 					gl.dytemp[jp][1] = 0;
 				}
@@ -133,29 +133,29 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 			{
 				for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 				{
-					ymod = gl.ytemp[jp];
+					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
 						dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
-					sig2i = 1 / (sig[np2] * sig[np2]);
-					wght = gl.Weight[np2];
-					dy = y[np2] - ymod;
+					gl.sig2i = 1 / (sig[np2] * sig[np2]);
+					gl.wght = gl.Weight[np2];
+					gl.dy = y[np2] - gl.ymod;
 					j = 0;
 					//
-					double sig2iwght = sig2i * wght;
+					double sig2iwght = gl.sig2i * gl.wght;
 					//l=0
-					wt = dyda[0] * sig2iwght;
-					alpha[j][0] += wt * dyda[0];
-					beta[j] += dy * wt;
+					gl.wt = dyda[0] * sig2iwght;
+					alpha[j][0] += gl.wt * dyda[0];
+					beta[j] += gl.dy * gl.wt;
 					j++;
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						wt = dyda[l] * sig2iwght;
-						float64x2_t avx_wt = vdupq_n_f64(wt);
+						gl.wt = dyda[l] * sig2iwght;
+						float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 						k = 0;
 						//m=0
-						alpha[j][k] += wt * dyda[0];
+						alpha[j][k] += gl.wt * dyda[0];
 						k++;
 						for (m = 1; m <= l; m += 2) {
                				float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
@@ -166,18 +166,18 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 
                				k += 2;
             			} /* m */
-						beta[j] += dy * wt;
+						beta[j] += gl.dy * gl.wt;
 						j++;
 					} /* l */
 					for (; l <= lastma; l++)  //rest parameters
 					{
 						if (ia[l])
 						{
-							wt = dyda[l] * sig2iwght;
-							float64x2_t avx_wt = vdupq_n_f64(wt);
+							gl.wt = dyda[l] * sig2iwght;
+							float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 							k = 0;
 							//m=0
-							alpha[j][k] += wt * dyda[0];
+							alpha[j][k] += gl.wt * dyda[0];
 							k++;
 							int kk = k;
 							for (m = 1; m <= lastone; m += 2) {
@@ -194,37 +194,37 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += wt * dyda[m];
+									alpha[j][k] += gl.wt * dyda[m];
 									k++;
 								}
 							} /* m */
-							beta[j] += dy * wt;
+							beta[j] += gl.dy * gl.wt;
 							j++;
 						}
 					} /* l */
-					trial_chisq += dy * dy * sig2iwght;
+					trial_chisq += gl.dy * gl.dy * sig2iwght;
 				} /* jp */
 			}
 			else //relative ia[0]==0
 			{
 				for (jp = 1; jp <= gl.Lpoints[i]; jp++)
 				{
-					ymod = gl.ytemp[jp];
+					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
 						dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
-					sig2i = 1 / (sig[np2] * sig[np2]);
-					wght = gl.Weight[np2];
-					dy = y[np2] - ymod;
+					gl.sig2i = 1 / (sig[np2] * sig[np2]);
+					gl.wght = gl.Weight[np2];
+					gl.dy = y[np2] - gl.ymod;
 					j = 0;
 					//
-					double sig2iwght = sig2i * wght;
+					double sig2iwght = gl.sig2i * gl.wght;
 					//l=0
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						wt = dyda[l] * sig2iwght;
-						float64x2_t avx_wt = vdupq_n_f64(wt);
+						gl.wt = dyda[l] * sig2iwght;
+						float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 						k = 0;
 						//m=0
 						//
@@ -237,15 +237,15 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 
                				k += 2;
             			} /* m */
-						beta[j] += dy * wt;
+						beta[j] += gl.dy * gl.wt;
 						j++;
 					} /* l */
 					for (; l <= lastma; l++)  //rest parameters
 					{
 						if (ia[l])
 						{
-							wt = dyda[l] * sig2iwght;
-							float64x2_t avx_wt = vdupq_n_f64(wt);
+							gl.wt = dyda[l] * sig2iwght;
+							float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 							//m=0
 							//
 							int kk = 0;
@@ -264,21 +264,21 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += wt * dyda[m];
+									alpha[j][k] += gl.wt * dyda[m];
 									k++;
 								}
 							} /* m */
-							beta[j] += dy * wt;
+							beta[j] += gl.dy * gl.wt;
 							j++;
 						}
 					} /* l */
-					trial_chisq += dy * dy * sig2iwght;
+					trial_chisq += gl.dy * gl.dy * sig2iwght;
 				} /* jp */
 			}
 		} /* Lastcall != 1 */
 
 		//if ((Lastcall == 1) && (Inrel[i] == 1))
-		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / ave;
+		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
 
 	} /* i,  lcurves */
 

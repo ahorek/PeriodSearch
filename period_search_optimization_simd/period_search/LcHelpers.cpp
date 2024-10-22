@@ -68,10 +68,10 @@ void prepareLcData(struct globals &gl, const char *filename)
 		int dytemp_siszeX = gl.maxLcPoints + 1;
 		init2Darray(gl.dytemp, dytemp_siszeX, gl.dytemp_sizeY);
 
-		//gl.maxDataPoints = std::accumulate(gl.Lpoints, gl.Lpoints + (gl.maxLcPoints + 1 + gl.Lcurves + 1), 0);
 		gl.maxDataPoints = std::accumulate(gl.Lpoints, gl.Lpoints + gl.Lcurves, 0);
 		gl.Weight = new double[gl.maxDataPoints + 1 + gl.Lcurves];
 		gl.Inrel = new int[gl.Lcurves + 1 + gl.Lcurves];
+		gl.ave = 0.0;
 	}
 	else
 	{

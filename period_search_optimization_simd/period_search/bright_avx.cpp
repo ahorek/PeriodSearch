@@ -57,10 +57,10 @@
 			avx_d1=_mm256_add_pd(avx_d1,_mm256_div_pd(_mm256_mul_pd(_mm256_mul_pd(avx_Area,avx_lmu),avx_lmu0),_mm256_add_pd(avx_lmu,avx_lmu0)));
 // end of inner_calc
 #define INNER_CALC_DSMU \
-	  avx_Area=_mm256_load_pd(&Area[i]); \
+	  avx_Area=_mm256_load_pd(&gl.Area[i]); \
 	  avx_dnom=_mm256_add_pd(avx_lmu,avx_lmu0); \
 	  avx_s=_mm256_mul_pd(_mm256_mul_pd(avx_lmu,avx_lmu0),_mm256_add_pd(avx_cl,_mm256_div_pd(avx_cls,avx_dnom))); \
-	  avx_pdbr=_mm256_mul_pd(_mm256_load_pd(&Darea[i]),avx_s); \
+	  avx_pdbr=_mm256_mul_pd(_mm256_load_pd(&gl.Darea[i]),avx_s); \
 	  avx_pbr=_mm256_mul_pd(avx_Area,avx_s); \
 	  avx_powdnom=_mm256_div_pd(avx_lmu0,avx_dnom); \
 	  avx_powdnom=_mm256_mul_pd(avx_powdnom,avx_powdnom); \
@@ -74,7 +74,7 @@
 #if defined(__GNUC__)
 __attribute__((target("avx")))
 #endif
-void CalcStrategyAvx::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+void CalcStrategyAvx::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
 {
 	int  i, j, k;
     incl_count = 0;
@@ -151,9 +151,9 @@ void CalcStrategyAvx::bright(double ee[], double ee0[], double t, double cg[], d
     for (i = 0; i < Numfac; i += 4)
     {
         __m256d avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-        __m256d avx_Nor1 = _mm256_load_pd(&Nor[0][i]);
-        __m256d avx_Nor2 = _mm256_load_pd(&Nor[1][i]);
-        __m256d avx_Nor3 = _mm256_load_pd(&Nor[2][i]);
+        __m256d avx_Nor1 = _mm256_load_pd(&gl.Nor[0][i]);
+        __m256d avx_Nor2 = _mm256_load_pd(&gl.Nor[1][i]);
+        __m256d avx_Nor3 = _mm256_load_pd(&gl.Nor[2][i]);
         __m256d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
         __m256d avx_Area;
 
@@ -182,22 +182,22 @@ void CalcStrategyAvx::bright(double ee[], double ee0[], double t, double cg[], d
             _mm256_store_pd(g, avx_pdbr);
             if (icmp & 1)
             {
-                Dg_row[incl_count] = (__m256d*)&Dg[i];
+                Dg_row[incl_count] = (__m256d*)& gl.Dg[i];
                 dbr[incl_count++] = _mm256_broadcast_sd(&g[0]);
             }
             if (icmp & 2)
             {
-                Dg_row[incl_count] = (__m256d*)&Dg[i + 1];
+                Dg_row[incl_count] = (__m256d*)& gl.Dg[i + 1];
                 dbr[incl_count++] = _mm256_broadcast_sd(&g[1]);
             }
             if (icmp & 4)
             {
-                Dg_row[incl_count] = (__m256d*)&Dg[i + 2];
+                Dg_row[incl_count] = (__m256d*)& gl.Dg[i + 2];
                 dbr[incl_count++] = _mm256_broadcast_sd(&g[2]);
             }
             if (icmp & 8)
             {
-                Dg_row[incl_count] = (__m256d*)&Dg[i + 3];
+                Dg_row[incl_count] = (__m256d*)& gl.Dg[i + 3];
                 dbr[incl_count++] = _mm256_broadcast_sd(&g[3]);
             }
             INNER_CALC

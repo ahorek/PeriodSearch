@@ -10,12 +10,13 @@
 #include "declarations.h"
 #include <immintrin.h>
 #include "CalcStrategyFma.hpp"
+#include "arrayHelpers.hpp"
 
 #if defined(__GNUC__)
 __attribute__((target("avx,fma")))
 #endif
 
-void CalcStrategyFma::conv(int nc, double dres[], int ma, double &result)
+void CalcStrategyFma::conv(int nc, double dres[], int ma, double &result, globals &gl)
 {
     int i, j;
 
@@ -25,10 +26,10 @@ void CalcStrategyFma::conv(int nc, double dres[], int ma, double &result)
 
     for (i = 0; i < Numfac; i++)
     {
-        result += Area[i] * Nor[nc - 1][i];
-        __m256d avx_Darea = _mm256_set1_pd(Darea[i]);
-        __m256d avx_Nor = _mm256_set1_pd(Nor[nc - 1][i]);
-        double *Dg_row = Dg[i];
+        result += gl.Area[i] * gl.Nor[nc - 1][i];
+        __m256d avx_Darea = _mm256_set1_pd(gl.Darea[i]);
+        __m256d avx_Nor = _mm256_set1_pd(gl.Nor[nc - 1][i]);
+        double *Dg_row = gl.Dg[i];
         for (j = 0; j < Ncoef; j += 4)
         {
             __m256d avx_dres = _mm256_load_pd(&dres[j]);

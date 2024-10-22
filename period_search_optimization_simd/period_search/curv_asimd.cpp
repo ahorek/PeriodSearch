@@ -16,7 +16,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::curv(double cg[])
+void CalcStrategyAsimd::curv(double cg[], globals &gl)
 {
    int i, m, l, k;
 
@@ -44,14 +44,14 @@ void CalcStrategyAsimd::curv(double cg[])
             g = g + Pleg[i][l][m] * fsum;
           }
       g = exp(g);
-      Area[i-1] = Darea[i-1] * g;
+	  gl.Area[i-1] = gl.Darea[i-1] * g;
 
       float64x2_t avx_g = vdupq_n_f64(g);
       for (k = 1; k < n; k += 2) {
         float64x2_t avx_pom = vld1q_f64(&Dsph[i][k]);
         avx_pom = vmulq_f64(avx_pom, avx_g);
-        vst1q_f64(&Dg[i-1][k-1], avx_pom);
+        vst1q_f64(&gl.Dg[i-1][k-1], avx_pom);
       }
-      if (k==n) Dg[i-1][k-1] = g * Dsph[i][k]; //last odd value
+      if (k==n) gl.Dg[i-1][k-1] = g * Dsph[i][k]; //last odd value
    }
 }

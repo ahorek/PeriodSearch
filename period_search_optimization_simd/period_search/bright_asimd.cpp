@@ -58,10 +58,10 @@
 // end of inner_calc
 
 #define INNER_CALC_DSMU \
-    avx_Area = vld1q_f64(&Area[i]); \
+    avx_Area = vld1q_f64(&gl.Area[i]); \
     avx_dnom = vaddq_f64(avx_lmu, avx_lmu0); \
     avx_s = vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), vaddq_f64(avx_cl, vdivq_f64(avx_cls, avx_dnom))); \
-    avx_pdbr = vmulq_f64(vld1q_f64(&Darea[i]), avx_s); \
+    avx_pdbr = vmulq_f64(vld1q_f64(&gl.Darea[i]), avx_s); \
     avx_pbr = vmulq_f64(avx_Area, avx_s); \
     avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
@@ -79,7 +79,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
 {
    int i, j, k;
    incl_count = 0;
@@ -158,9 +158,9 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
    for (i = 0; i < Numfac; i += 2)
    {
       float64x2_t avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-      float64x2_t avx_Nor1 = vld1q_f64(&Nor[0][i]);
-      float64x2_t avx_Nor2 = vld1q_f64(&Nor[1][i]);
-      float64x2_t avx_Nor3 = vld1q_f64(&Nor[2][i]);
+      float64x2_t avx_Nor1 = vld1q_f64(&gl.Nor[0][i]);
+      float64x2_t avx_Nor2 = vld1q_f64(&gl.Nor[1][i]);
+      float64x2_t avx_Nor3 = vld1q_f64(&gl.Nor[2][i]);
       float64x2_t avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
       float64x2_t avx_Area;
 
@@ -181,13 +181,13 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
       {
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i];
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i + 1];
 
          float64_t tmp2;
          vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -199,7 +199,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
          avx_lmu = vcombine_f64(vget_low_f64(avx_lmu), vdup_n_f64(0.0));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_lmu0), vget_high_f64(avx_11));
 
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i];
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
@@ -217,7 +217,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
          avx_lmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_lmu));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
 
-         Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+         Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i + 1];
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
