@@ -74,7 +74,8 @@
 #if defined(__GNUC__)
 __attribute__((target("sse3")))
 #endif
-void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
+//void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
+void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k; // ncoef0,
 	incl_count = 0;
@@ -223,7 +224,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 	Dg_row[incl_count + 3] = Dg_row[0];
 
 	res_br = _mm_hadd_pd(res_br, res_br);
-	br = _mm_cvtsd_f64(res_br);
+	gl.ymod = _mm_cvtsd_f64(res_br);
 
 	/* Derivatives of brightness w.r.t. g-coeffs */
 	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 10) * 10;
@@ -272,15 +273,15 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 
 		dgi += 5;
 		tmp1 = _mm_mul_pd(tmp1, avx_Scale);
-		_mm_store_pd(&dyda[i], tmp1);
+		_mm_store_pd(&gl.dyda[i], tmp1);
 		tmp2 = _mm_mul_pd(tmp2, avx_Scale);
-		_mm_store_pd(&dyda[i + 2], tmp2);
+		_mm_store_pd(&gl.dyda[i + 2], tmp2);
 		tmp3 = _mm_mul_pd(tmp3, avx_Scale);
-		_mm_store_pd(&dyda[i + 4], tmp3);
+		_mm_store_pd(&gl.dyda[i + 4], tmp3);
 		tmp4 = _mm_mul_pd(tmp4, avx_Scale);
-		_mm_store_pd(&dyda[i + 6], tmp4);
+		_mm_store_pd(&gl.dyda[i + 6], tmp4);
 		tmp5 = _mm_mul_pd(tmp5, avx_Scale);
-		_mm_store_pd(&dyda[i + 8], tmp5);
+		_mm_store_pd(&gl.dyda[i + 8], tmp5);
 	}
 
 	for (; i < ncoef03; i += 4) //2 * 2doubles
@@ -319,29 +320,29 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 
 		dgi += 2;
 		tmp1 = _mm_mul_pd(tmp1, avx_Scale);
-		_mm_store_pd(&dyda[i], tmp1);
+		_mm_store_pd(&gl.dyda[i], tmp1);
 		tmp2 = _mm_mul_pd(tmp2, avx_Scale);
-		_mm_store_pd(&dyda[i + 2], tmp2);
+		_mm_store_pd(&gl.dyda[i + 2], tmp2);
 	}
 
 	/* Ders. of brightness w.r.t. rotation parameters */
 	avx_dyda1 = _mm_hadd_pd(avx_dyda1, avx_dyda2);
 	avx_dyda1 = _mm_mul_pd(avx_dyda1, avx_Scale);
-	_mm_storeu_pd(&dyda[ncoef0 - 3 + 1 - 1], avx_dyda1); //unaligned memory because of odd index
+	_mm_storeu_pd(&gl.dyda[ncoef0 - 3 + 1 - 1], avx_dyda1); //unaligned memory because of odd index
 	avx_dyda3 = _mm_hadd_pd(avx_dyda3, avx_dyda3);
 	avx_dyda3 = _mm_mul_pd(avx_dyda3, avx_Scale);
-	dyda[ncoef0 - 3 + 3 - 1] = _mm_cvtsd_f64(avx_dyda3);
+	gl.dyda[ncoef0 - 3 + 3 - 1] = _mm_cvtsd_f64(avx_dyda3);
 
 	/* Ders. of br. w.r.t. cl, cls */
 	avx_d = _mm_hadd_pd(avx_d, avx_d1);
 	avx_d = _mm_mul_pd(avx_d, avx_Scale);
 	avx_d = _mm_mul_pd(avx_d, avx_cl1);
-	_mm_storeu_pd(&dyda[ncoef - 1 - 1], avx_d); //unaligned memory because of odd index
+	_mm_storeu_pd(&gl.dyda[ncoef - 1 - 1], avx_d); //unaligned memory because of odd index
 
 	/* Ders. of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
-		dyda[ncoef0 + i - 1] = br * dphp[i];
+		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
 
 	/* Scaled brightness */
-	br *= Scale;
+	gl.ymod *= Scale;
 }

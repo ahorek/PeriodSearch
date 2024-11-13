@@ -11,21 +11,22 @@
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
-void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result, globals &gl)
+//void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result, globals &gl)
+void CalcStrategyNone::conv(int nc, int ma, globals &gl)
 {
 	int i, j;
 
-	result = 0;
+	gl.ymod = 0;
 	for (j = 1; j <= ma; j++)
-		dres[j] = 0;
+		gl.dyda[j] = 0;
 
 	for (i = 0; i < Numfac; i++)
 	{
-		result += gl.Area[i] * gl.Nor[nc - 1][i];
+		gl.ymod += gl.Area[i] * gl.Nor[nc - 1][i];
 
 		for (j = 0; j < Ncoef; j++)
 		{
-			dres[j] += gl.Darea[i] * gl.Dg[i][j] * gl.Nor[nc - 1][i];
+			gl.dyda[j] += gl.Darea[i] * gl.Dg[i][j] * gl.Nor[nc - 1][i];
 		}
 	}
 }

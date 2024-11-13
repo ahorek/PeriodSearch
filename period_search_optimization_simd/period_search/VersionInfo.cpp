@@ -2,7 +2,7 @@
 #if defined __GNUC__
 // TODO: This has be extracted in a header file!
 const int _major = 102;
-const int _minor = 21;
+const int _minor = 22;
 const int _build = 1;
 const int _revision = 1;
 #else

@@ -20,7 +20,7 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 	static double* atry, * beta, * da; //beta, da are zero indexed
 	double trial_chisq;
 
-	/* dealocates memory when usen in period_search */
+	/* deallocates memory when used in period_search */
 	if (Deallocate == 1)
 	{
 		deallocate_vector((void*)atry);

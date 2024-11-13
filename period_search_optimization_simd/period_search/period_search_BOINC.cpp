@@ -195,11 +195,11 @@ Dblm[3][4][4];
 //			Dg[MAX_N_FAC + 16][MAX_N_PAR + 8]; //Nor,Dg ARE ZERO INDEXED
 //#endif
 
-#ifdef __GNUC__
-double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-#else
-__declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
-#endif
+//#ifdef __GNUC__
+//double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
+//#else
+//__declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
+//#endif
 
 // NOTE: RPi related:
 //void blinkLed(int count) {

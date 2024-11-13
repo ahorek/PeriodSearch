@@ -71,11 +71,13 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 
 			if (i < gl.Lcurves)
 			{
-				CalcStrategyAsimd::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				//CalcStrategyAsimd::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				CalcStrategyAsimd::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
 			}
 			else
 			{
-				CalcStrategyAsimd::conv(jp, dyda, ma, gl.ymod, gl);
+				//CalcStrategyAsimd::conv(jp, dyda, ma, gl.ymod, gl);
+				CalcStrategyAsimd::conv(jp, ma, gl);
 			}
 
 			gl.ytemp[jp] = gl.ymod;
@@ -84,7 +86,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
                 gl.ave += gl.ymod;
 
             for (l = 1; l <= ma; l += 2) {
-        		float64x2_t avx_dyda = vld1q_f64(&dyda[l - 1]);
+        		float64x2_t avx_dyda = vld1q_f64(&gl.dyda[l - 1]);
         		float64x2_t avx_dave = vld1q_f64(&gl.dave[l]);
 
         		avx_dave = vaddq_f64(avx_dave, avx_dyda);
@@ -135,7 +137,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -144,22 +146,22 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 					//
 					double sig2iwght = gl.sig2i * gl.wght;
 					//l=0
-					gl.wt = dyda[0] * sig2iwght;
-					alpha[j][0] += gl.wt * dyda[0];
+					gl.wt = gl.dyda[0] * sig2iwght;
+					alpha[j][0] += gl.wt * gl.dyda[0];
 					beta[j] += gl.dy * gl.wt;
 					j++;
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 						k = 0;
 						//m=0
-						alpha[j][k] += gl.wt * dyda[0];
+						alpha[j][k] += gl.wt * gl.dyda[0];
 						k++;
 						for (m = 1; m <= l; m += 2) {
                				float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
-               				float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               				float64x2_t avx_dyda = vld1q_f64(&gl.dyda[m]);
                				float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
 
                				vst1q_f64(&alpha[j][k], avx_result);
@@ -173,16 +175,16 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 							k = 0;
 							//m=0
-							alpha[j][k] += gl.wt * dyda[0];
+							alpha[j][k] += gl.wt * gl.dyda[0];
 							k++;
 							int kk = k;
 							for (m = 1; m <= lastone; m += 2) {
                					float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
-               					float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               					float64x2_t avx_dyda = vld1q_f64(&gl.dyda[m]);
                					float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
 
                					vst1q_f64(&alpha[j][kk], avx_result);
@@ -194,7 +196,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							} /* m */
@@ -211,7 +213,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -223,14 +225,14 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 						k = 0;
 						//m=0
 						//
 						for (m = 1; m <= l; m += 2) {
                				float64x2_t avx_alpha = vld1q_f64(&alpha[j][k]);
-               				float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               				float64x2_t avx_dyda = vld1q_f64(&gl.dyda[m]);
                				float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
 
                				vst1q_f64(&alpha[j][k], avx_result);
@@ -244,14 +246,14 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							float64x2_t avx_wt = vdupq_n_f64(gl.wt);
 							//m=0
 							//
 							int kk = 0;
 							for (m = 1; m <= lastone; m += 2) {
                					float64x2_t avx_alpha = vld1q_f64(&alpha[j][kk]);
-               					float64x2_t avx_dyda = vld1q_f64(&dyda[m]);
+               					float64x2_t avx_dyda = vld1q_f64(&gl.dyda[m]);
                					float64x2_t avx_result = vmlaq_f64(avx_alpha, avx_wt, avx_dyda);
 
                					vst1q_f64(&alpha[j][kk], avx_result);
@@ -264,7 +266,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							} /* m */

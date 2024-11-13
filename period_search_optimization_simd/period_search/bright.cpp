@@ -13,7 +13,8 @@
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
-void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
+//void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
+void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
@@ -37,7 +38,7 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 
 	matrix(cg[ncoef0], t, tmat, dtm);
 
-	br = 0;
+	gl.ymod = 0;
 	/* Directions (and ders.) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
@@ -67,7 +68,7 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 		{
 			dnom = lmu + lmu0;
 			s = lmu * lmu0 * (cl + cls / dnom);
-			br += gl.Area[i] * s;
+			gl.ymod += gl.Area[i] * s;
 			//
 			incl[incl_count] = i;
 			dbr[incl_count++] = gl.Darea[i] * s;
@@ -104,22 +105,22 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 		{
 			tmpdyda += dbr[j] * gl.Dg[incl[j]][i - 1];
 		}
-		dyda[i - 1] = Scale * tmpdyda;
+		gl.dyda[i - 1] = Scale * tmpdyda;
 	}
 
 	/* Ders. of brightness w.r.t. rotation parameters */
-	dyda[ncoef0 - 3 + 1 - 1] = Scale * tmpdyda1;
-	dyda[ncoef0 - 3 + 2 - 1] = Scale * tmpdyda2;
-	dyda[ncoef0 - 3 + 3 - 1] = Scale * tmpdyda3;
+	gl.dyda[ncoef0 - 3 + 1 - 1] = Scale * tmpdyda1;
+	gl.dyda[ncoef0 - 3 + 2 - 1] = Scale * tmpdyda2;
+	gl.dyda[ncoef0 - 3 + 3 - 1] = Scale * tmpdyda3;
 
 	/* Ders. of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
-		dyda[ncoef0 + i - 1] = br * dphp[i];
+		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
 
 	/* Ders. of br. w.r.t. cl, cls */
-	dyda[ncoef - 1 - 1] = Scale * tmpdyda4 * cl;
-	dyda[ncoef - 1] = Scale * tmpdyda5;
+	gl.dyda[ncoef - 1 - 1] = Scale * tmpdyda4 * cl;
+	gl.dyda[ncoef - 1] = Scale * tmpdyda5;
 
 	/* Scaled brightness */
-	br *= Scale;
+	gl.ymod *= Scale;
 }

@@ -63,11 +63,13 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			if (i < gl.Lcurves)
 			{
-				CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				//CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
 			}
 			else
 			{
-				CalcStrategyNone::conv(jp, dyda, ma, gl.ymod, gl);
+				//CalcStrategyNone::conv(jp, dyda, ma, gl.ymod, gl);
+				CalcStrategyNone::conv(jp, ma, gl);
 			}
 
 			gl.ytemp[jp] = gl.ymod;
@@ -77,8 +79,8 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			for (l = 1; l <= ma; l++)
 			{
-				gl.dytemp[jp][l] = dyda[l - 1];
-				gl.dave[l] += dyda[l - 1];
+				gl.dytemp[jp][l] = gl.dyda[l - 1];
+				gl.dave[l] += gl.dyda[l - 1];
 			}
 			/* save lightcurves */
 
@@ -113,7 +115,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -122,21 +124,21 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 					//
 					double sig2iwght = gl.sig2i * gl.wght;
 					//l=0
-					gl.wt = dyda[0] * sig2iwght;
-					alpha[j][0] += gl.wt * dyda[0];
+					gl.wt = gl.dyda[0] * sig2iwght;
+					alpha[j][0] += gl.wt * gl.dyda[0];
 					beta[j] += gl.dy * gl.wt;
 					j++;
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						k = 0;
 						//m=0
-						alpha[j][k] += gl.wt * dyda[0];
+						alpha[j][k] += gl.wt * gl.dyda[0];
 						k++;
 						for (m = 1; m <= l; m++)
 						{
-							alpha[j][k] += gl.wt * dyda[m];
+							alpha[j][k] += gl.wt * gl.dyda[m];
 							k++;
 						} /* m */
 						beta[j] += gl.dy * gl.wt;
@@ -146,15 +148,15 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							k = 0;
 							//m=0
-							alpha[j][k] += gl.wt * dyda[0];
+							alpha[j][k] += gl.wt * gl.dyda[0];
 							k++;
 							int kk = k;
 							for (m = 1; m <= lastone; m++)
 							{
-								alpha[j][k] = alpha[j][kk] + gl.wt * dyda[m];
+								alpha[j][k] = alpha[j][kk] + gl.wt * gl.dyda[m];
 								kk++;
 							} /* m */
 							k += lastone;
@@ -162,7 +164,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							} /* m */
@@ -180,7 +182,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -192,13 +194,13 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						k = 0;
 						//m=0
 						//
 						for (m = 1; m <= l; m++)
 						{
-							alpha[j][k] += gl.wt * dyda[m];
+							alpha[j][k] += gl.wt * gl.dyda[m];
 							k++;
 						} /* m */
 						beta[j] += gl.dy * gl.wt;
@@ -208,13 +210,13 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							//m=0
 							//
 							int kk = 0;
 							for (m = 1; m <= lastone; m++)
 							{
-								alpha[j][kk] += gl.wt * dyda[m];
+								alpha[j][kk] += gl.wt * gl.dyda[m];
 								kk++;
 							} /* m */
 							// k += lastone;
@@ -223,7 +225,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 							{
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							} /* m */

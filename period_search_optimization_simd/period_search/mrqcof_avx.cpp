@@ -72,11 +72,13 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			if (i < gl.Lcurves)
 			{
-				CalcStrategyAvx::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				//CalcStrategyAvx::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
+				CalcStrategyAvx::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
 			}
 			else
 			{
-				CalcStrategyAvx::conv(jp, dyda, ma, gl.ymod, gl);
+				//CalcStrategyAvx::conv(jp, dyda, ma, gl.ymod, gl);
+				CalcStrategyAvx::conv(jp, ma, gl);
 			}
 
 			gl.ytemp[jp] = gl.ymod;
@@ -86,7 +88,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 				gl.ave += gl.ymod;
 				for (l = 1; l <= ma; l += 4) //last odd value is not problem
 				{
-					__m256d avx_dyda = _mm256_load_pd(&dyda[l - 1]);
+					__m256d avx_dyda = _mm256_load_pd(&gl.dyda[l - 1]);
 					__m256d avx_dave = _mm256_loadu_pd(&gl.dave[l]);
 					avx_dave = _mm256_add_pd(avx_dave, avx_dyda);
 					_mm256_storeu_pd(&gl.dave[l], avx_dave);
@@ -95,7 +97,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			for (l = 1; l <= ma; l++)
 			{
-				gl.dytemp[jp][l] = dyda[l - 1];
+				gl.dytemp[jp][l] = gl.dyda[l - 1];
 			}
 			/* save lightcurves */
 
@@ -135,7 +137,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -144,23 +146,23 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 					//
 					double sig2iwght = gl.sig2i * gl.wght;
 					//l=0
-					gl.wt = dyda[0] * sig2iwght;
-					alpha[j][0] += gl.wt * dyda[0];
+					gl.wt = gl.dyda[0] * sig2iwght;
+					alpha[j][0] += gl.wt * gl.dyda[0];
 					beta[j] += gl.dy * gl.wt;
 					j++;
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						__m256d avx_wt = _mm256_set1_pd(gl.wt);
 						k = 0;
 						//m=0
-						alpha[j][k] += gl.wt * dyda[0];
+						alpha[j][k] += gl.wt * gl.dyda[0];
 						k++;
 						for (m = 1; m <= l; m += 4)
 						{
 							__m256d avx_alpha = _mm256_loadu_pd(&alpha[j][k]);
-							__m256d avx_dyda = _mm256_loadu_pd(&dyda[m]);
+							__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
 							avx_alpha = _mm256_add_pd(avx_alpha, _mm256_mul_pd(avx_wt, avx_dyda));
 							_mm256_storeu_pd(&alpha[j][k], avx_alpha);
 							k += 4;
@@ -172,17 +174,17 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							__m256d avx_wt = _mm256_set1_pd(gl.wt);
 							k = 0;
 							//m=0
-							alpha[j][k] += gl.wt * dyda[0];
+							alpha[j][k] += gl.wt * gl.dyda[0];
 							k++;
 							int kk = k;
 							for (m = 1; m <= lastone; m += 4)
 							{
 								__m256d avx_alpha = _mm256_loadu_pd(&alpha[j][kk]);
-								__m256d avx_dyda = _mm256_loadu_pd(&dyda[m]);
+								__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
 								avx_alpha = _mm256_add_pd(avx_alpha, _mm256_mul_pd(avx_wt, avx_dyda));
 								_mm256_storeu_pd(&alpha[j][kk], avx_alpha);
 								kk += 4;
@@ -191,7 +193,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 							for (m = lastone + 1; m <= l; m++)
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							beta[j] += gl.dy * gl.wt;
@@ -208,7 +210,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 				{
 					gl.ymod = gl.ytemp[jp];
 					for (l = 1; l <= ma; l++)
-						dyda[l - 1] = gl.dytemp[jp][l];
+						gl.dyda[l - 1] = gl.dytemp[jp][l];
 					np2++;
 					gl.sig2i = 1 / (sig[np2] * sig[np2]);
 					gl.wght = gl.Weight[np2];
@@ -220,7 +222,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
 					{
-						gl.wt = dyda[l] * sig2iwght;
+						gl.wt = gl.dyda[l] * sig2iwght;
 						__m256d avx_wt = _mm256_set1_pd(gl.wt);
 						k = 0;
 						//m=0
@@ -228,7 +230,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 						for (m = 1; m <= l; m += 4)
 						{
 							__m256d avx_alpha = _mm256_load_pd(&alpha[j][k]);
-							__m256d avx_dyda = _mm256_loadu_pd(&dyda[m]);
+							__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
 							avx_alpha = _mm256_add_pd(avx_alpha, _mm256_mul_pd(avx_wt, avx_dyda));
 							_mm256_store_pd(&alpha[j][k], avx_alpha);
 							k += 4;
@@ -240,7 +242,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 					{
 						if (ia[l])
 						{
-							gl.wt = dyda[l] * sig2iwght;
+							gl.wt = gl.dyda[l] * sig2iwght;
 							__m256d avx_wt = _mm256_set1_pd(gl.wt);
 							//m=0
 							//
@@ -248,7 +250,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 							for (m = 1; m <= lastone; m += 4)
 							{
 								__m256d avx_alpha = _mm256_load_pd(&alpha[j][kk]);
-								__m256d avx_dyda = _mm256_loadu_pd(&dyda[m]);
+								__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
 								avx_alpha = _mm256_add_pd(avx_alpha, _mm256_mul_pd(avx_wt, avx_dyda));
 								_mm256_store_pd(&alpha[j][kk], avx_alpha);
 								kk += 4;
@@ -257,7 +259,7 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 							for (m = lastone + 1; m <= l; m++)
 								if (ia[m])
 								{
-									alpha[j][k] += gl.wt * dyda[m];
+									alpha[j][k] += gl.wt * gl.dyda[m];
 									k++;
 								}
 							beta[j] += gl.dy * gl.wt;
