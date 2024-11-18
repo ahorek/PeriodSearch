@@ -21,7 +21,7 @@ public:
 							double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals &gl) = 0;
 
 	//virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl) = 0;
-	virtual void bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl) = 0;
+	virtual void bright(double t, double cg[], int ncoef, globals &gl) = 0;
 
 	//virtual void conv(int nc, double dres[], int ma, double &result, globals &gl) = 0;
 	virtual void conv(int nc, int ma, globals &gl) = 0;
@@ -79,12 +79,12 @@ public:
 	}
 
 	//void CalculateBright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-	void CalculateBright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+	void CalculateBright(double t, double cg[], int ncoef, globals &gl)
 	{
 		if (strategy_)
 		{
 			//strategy_->bright(ee, ee0, t, cg, dyda, ncoef, br, gl);
-			strategy_->bright(ee, ee0, t, cg, ncoef, gl);
+			strategy_->bright(t, cg, ncoef, gl);
 		}
 		else
 		{
@@ -106,7 +106,7 @@ public:
 		}
 	}
 
-	void CalculateCurv(double cg[], globals gl)
+	void CalculateCurv(double cg[], globals &gl)
 	{
 		if (strategy_)
 		{

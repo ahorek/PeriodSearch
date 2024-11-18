@@ -75,10 +75,13 @@
 __attribute__((target("sse2")))
 #endif
 //void CalcStrategySse2::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br, globals &gl)
-void CalcStrategySse2::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+void CalcStrategySse2::bright(double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
+	
 	ncoef0 = ncoef - 2 - Nphpar;
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
 	cls = cg[ncoef];						/* Lommel-Seeliger */

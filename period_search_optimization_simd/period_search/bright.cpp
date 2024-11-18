@@ -14,10 +14,12 @@
 #include "arrayHelpers.hpp"
 
 //void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
 	tmpdyda1 = 0;
 	tmpdyda2 = 0;
@@ -57,7 +59,7 @@ void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], 
 			}
 		}
 	}
-
+	
 	/*Integrated brightness (phase coeff. used later) */
 	double lmu, lmu0, dsmu, dsmu0;
 	for (i = 0; i < Numfac; i++)

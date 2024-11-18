@@ -112,10 +112,12 @@ inline static double reduce_pd(__m512d a) {
 __attribute__((target("avx512dq,avx512f")))
 #endif
 //void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br, globals &gl)
-void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
 	ncoef0 = ncoef - 2 - Nphpar;
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
@@ -186,7 +188,12 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 	__m512d avx_dyda3 = _mm512_setzero_pd();
 	__m512d avx_d = _mm512_setzero_pd();
 	__m512d avx_d1 = _mm512_setzero_pd();
-	double g[8];
+
+#ifdef __GNUC__
+	double g[8] __attribute__((aligned(64)));
+#else
+	alignas(64) double g[8];
+#endif
 
 	for (i = 0; i < Numfac; i += 8)
 	{
@@ -217,7 +224,7 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 			avx_dsmu = blendv_pd(_mm512_setzero_pd(), avx_dsmu, cmp);
 			avx_dsmu0 = blendv_pd(_mm512_setzero_pd(), avx_dsmu0, cmp);
 			avx_lmu = blendv_pd(_mm512_setzero_pd(), avx_lmu, cmp);
-			avx_lmu0 = blendv_pd(avx_11, avx_lmu0, cmp); //abychom nedelili nulou
+			avx_lmu0 = blendv_pd(avx_11, avx_lmu0, cmp); // Note: So that it is not divisible by zero (abychom nedelili nulou)
 
 			_mm512_store_pd(g, avx_pdbr);
 			if (icmp & 1)

@@ -1,9 +1,9 @@
 #include <cstdio>
 #include <algorithm>
 
-void delete2Darray(double **&ary, int sizeY)
+void delete2Darray(double **&ary, int sizeX)
 {
-	for (int i = 0; i < sizeY; ++i) {
+	for (int i = 0; i < sizeX; ++i) {
 		delete[] ary[i];
 	}
 

@@ -668,6 +668,7 @@ int main(int argc, char** argv)
 		: CheckSupportedSIMDs(useOptimization);
 
 	SetOptimizationStrategy(useOptimization);
+
 	// -------------
 
 	while ((new_conw != 1) && ((conw_r * escl * escl) < 10.0))
@@ -1270,7 +1271,7 @@ int main(int argc, char** argv)
 	delete[] gl.Lpoints;
 	delete[] gl.ytemp;
 	delete[] gl.Weight;
-	delete2Darray(gl.dytemp, gl.dytemp_sizeY);
+	delete2Darray(gl.dytemp, gl.dytemp_sizeX);
 
 	free(str_temp);
 

@@ -2,23 +2,27 @@
 #include <fstream>
 #include <numeric>
 #include <cstdio>
+// #include <stdio.h>
+#include <algorithm>
+#include <bits/stdc++.h>
 
 #include "constants.h"
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
-///<summary>
-///Performes the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
+///< summary>
+/// Performes the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
 ///</summary>
-///<param name="gl"></param>
-///<param name="filename"></param>
+///< param name="gl"></param>
+///< param name="filename"></param>
 void prepareLcData(struct globals &gl, const char *filename)
 {
 	int err = 0;
 	int i_temp;
 
 	std::ifstream file(filename);
-	std::string line;
+	std::string lineStr;
+	char line[MAX_LINE_LENGTH];
 	gl.Lcurves = 0;
 
 	if (file.is_open())
@@ -27,21 +31,33 @@ void prepareLcData(struct globals &gl, const char *filename)
 		int offset = 0;
 		int i = 0;
 
-		while (std::getline(file, line))
+		// char *a;
+		// char *b;
+		// char *x;
+
+		while (std::getline(file, lineStr))
 		{
+			std::strcpy(line, lineStr.c_str());
 			lineNumber++;
 			switch (lineNumber)
 			{
 				case 15:
-					err = sscanf_s(line.c_str(), "%d", &gl.Lcurves);
+					err = sscanf(line, "%d", &gl.Lcurves);
+					// err = sscanf(line.c_str(), "%s", x);
+					// fprintf(stderr, "%s Line 15 was red", x);
+					// gl.Lcurves = std::stoi(x);
 					gl.Lpoints = new int[gl.Lcurves + 1 + 1];
-					//continue;
+					std::fill_n(gl.Lpoints, gl.Lcurves + 1 + 1, 0);
+					// continue;
 					break;
 				case 16:
-					sscanf_s(line.c_str(), "%d %d", &gl.Lpoints[0], &i_temp);
+					err = sscanf(line, "%d %d", &gl.Lpoints[0], &i_temp);
+					// err = sscanf(line.c_str(), "%s %s", a, b);
+					// gl.Lpoints[0] = std::stoi(a);
+					// i_temp = std::stoi(b);
 					offset = lineNumber;
 					i++;
-					//continue;
+					// continue;
 					break;
 			}
 
@@ -52,10 +68,15 @@ void prepareLcData(struct globals &gl, const char *filename)
 
 			if (lineNumber == offset + 1 + gl.Lpoints[i - 1])
 			{
-				sscanf_s(line.c_str(), "%d %d", &gl.Lpoints[i], &i_temp);
+				err = sscanf(line, "%d %d", &gl.Lpoints[i], &i_temp);
+				// err = sscanf(line.c_str(), "%s %s", a, b);
+
+				// gl.Lpoints[0] = std::stoi(a);
+				// i_temp = std::stoi(b);
 				offset = lineNumber;
 				i++;
-				if (i == gl.Lcurves) break;
+				if (i == gl.Lcurves)
+					break;
 			}
 		}
 
@@ -65,8 +86,8 @@ void prepareLcData(struct globals &gl, const char *filename)
 		gl.ytemp = new double[gl.maxLcPoints + 1];
 
 		gl.dytemp_sizeY = MAX_N_PAR + 1 + 4;
-		int dytemp_siszeX = gl.maxLcPoints + 1;
-		init2Darray(gl.dytemp, dytemp_siszeX, gl.dytemp_sizeY);
+		gl.dytemp_sizeX = gl.maxLcPoints + 1;
+		init2Darray(gl.dytemp, gl.dytemp_sizeX, gl.dytemp_sizeY);
 
 		gl.maxDataPoints = std::accumulate(gl.Lpoints, gl.Lpoints + gl.Lcurves, 0);
 		gl.Weight = new double[gl.maxDataPoints + 1 + gl.Lcurves];

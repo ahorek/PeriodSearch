@@ -28,6 +28,7 @@ struct globals
 	int Lcurves;
 	int maxLcPoints;	// replaces MAX_LC_POINTS
 	int maxDataPoints;	// replaces MAX_N_OBS
+	int dytemp_sizeX;
 	int dytemp_sizeY;
 	int* Lpoints;
 	int* Inrel;

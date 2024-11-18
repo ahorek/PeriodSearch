@@ -3,7 +3,7 @@
 
    8.11.2006
 
-   Numerical recipes: Nonlinear least-squares fit, Marquardt’s method
+   Numerical recipes: Nonlinear least-squares fit, Marquardtï¿½s method
 */
 
 #include "globals.h"
