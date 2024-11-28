@@ -4,7 +4,10 @@
 #include <cstdio>
 // #include <stdio.h>
 #include <algorithm>
+
+#if defined __GNU__
 #include <bits/stdc++.h>
+#endif
 
 #include "constants.h"
 #include "declarations.h"
