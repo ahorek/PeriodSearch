@@ -75,10 +75,13 @@
 __attribute__((target("avx,fma")))
 #endif
 //void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+// void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
 	ncoef0 = ncoef - 2 - Nphpar;
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
@@ -93,7 +96,6 @@ void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], i
 	matrix(cg[ncoef0], t, tmat, dtm);
 
     /* Directions (and ders.) in the rotating system */
-
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -147,7 +149,12 @@ void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], i
 	__m256d avx_dyda3 = _mm256_setzero_pd();
 	__m256d avx_d = _mm256_setzero_pd();
 	__m256d avx_d1 = _mm256_setzero_pd();
-	double g[4];
+
+#ifdef __GNUC__
+	double g[4] __attribute__((aligned(64)));
+#else
+	alignas(64) double g[4];
+#endif
 
 	for (i = 0; i < Numfac; i += 4)
 	{
@@ -155,7 +162,8 @@ void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], i
 		__m256d avx_Nor1 = _mm256_load_pd(&gl.Nor[0][i]);
 		__m256d avx_Nor2 = _mm256_load_pd(&gl.Nor[1][i]);
 		__m256d avx_Nor3 = _mm256_load_pd(&gl.Nor[2][i]);
-		__m256d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
+		__m256d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pbr;
+		__m256d avx_pdbr = _mm256_setzero_pd();
 		__m256d avx_Area;
 
 		avx_lmu = _mm256_mul_pd(avx_e1, avx_Nor1);
@@ -178,8 +186,8 @@ void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], i
 			avx_dsmu = _mm256_blendv_pd(_mm256_setzero_pd(), avx_dsmu, cmp);
 			avx_dsmu0 = _mm256_blendv_pd(_mm256_setzero_pd(), avx_dsmu0, cmp);
 			avx_lmu = _mm256_blendv_pd(_mm256_setzero_pd(), avx_lmu, cmp);
-			avx_lmu0 = _mm256_blendv_pd(avx_11, avx_lmu0, cmp); //abychom nedelili nulou
-
+			avx_lmu0 = _mm256_blendv_pd(avx_11, avx_lmu0, cmp); // Note: So that it is not divisible by zero (abychom nedelili nulou)
+			
 			_mm256_store_pd(g, avx_pdbr);
 			if (icmp & 1)
 			{

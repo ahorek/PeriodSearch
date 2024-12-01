@@ -69,7 +69,7 @@ void CalcStrategyAvx512::mrqcof(double **x1, double **x2, double x3[], double y[
 			if (i < gl.Lcurves)
 			{
 				//CalcStrategyAvx512::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
-				CalcStrategyAvx512::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
+				CalcStrategyAvx512::bright(x3[np], a, ma, gl);
 			}
 			else
 			{

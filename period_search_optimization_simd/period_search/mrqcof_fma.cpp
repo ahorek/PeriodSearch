@@ -74,13 +74,14 @@ void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
             if (i < gl.Lcurves)
 			{
                 //CalcStrategyFma::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
-                CalcStrategyFma::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
+                CalcStrategyFma::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
 				//CalcStrategyFma::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategyFma::conv(jp, ma, gl);
 			}
+            
 
             gl.ytemp[jp] = gl.ymod;
 

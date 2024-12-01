@@ -64,7 +64,7 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 			if (i < gl.Lcurves)
 			{
 				//CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
-				CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, ma, gl);
+				CalcStrategyNone::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
