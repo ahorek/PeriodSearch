@@ -18,6 +18,7 @@ std::string GetCpuInfo()
 	return "";
 }
 
+#if !defined(_WIN32)
 void DetectArmv8CpuFeatures(long hwcaps)
 {
     if(hwcaps & HWCAP_AES)
@@ -65,10 +66,13 @@ void DetectArmv8CpuFeatures(long hwcaps)
 		std::cerr << "HWCAP_SHA2: SHA2 instructions are NOT available." << std::endl;
 	}
 }
+#endif
 
 void GetSupportedSIMDs()
 {
-	#if defined(__linux__)
+	#if defined(_WIN32) // ARM win, snapdragon...
+      CPUopt.hasASIMD = true;
+	#elif defined(__linux__)
 	  #if (defined(__aarch64__) || defined(_M_ARM64))
 	    uint64_t hwcap = getauxval(AT_HWCAP);
 		// NOTE: For debug purposes:

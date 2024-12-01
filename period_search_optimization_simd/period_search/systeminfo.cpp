@@ -23,7 +23,7 @@ using namespace std;
 using std::string;
 constexpr auto MAXC = 2048;
 
-#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
+#if !defined(_WIN32) && (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64))
 
 void printCerr(string line)
 {
@@ -115,7 +115,7 @@ void getCpuInfoByArch(ifstream &cpuinfo)
 }
 #endif // _WIN32 || macOS
 
-#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)) && !defined __APPLE__
+#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)) && !defined __APPLE__ && !defined _WIN32
 void getSystemInfo()
 {
 	auto cpuinfo = getIfstream("/proc/cpuinfo");
