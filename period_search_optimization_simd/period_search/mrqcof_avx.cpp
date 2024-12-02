@@ -1,4 +1,4 @@
-/* slighly changed code from Numerical Recipes
+/* slightly changed code from Numerical Recipes
    converted from Mikko's fortran code
 
    8.11.2006
@@ -6,11 +6,8 @@
    Numerical recipes: 'mrqcof' is used by 'mrqmin' to evaluate coefficients
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
 #include <immintrin.h>
 #include "CalcStrategyAvx.hpp"
 #include "arrayHelpers.hpp"
@@ -72,12 +69,10 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			if (i < gl.Lcurves)
 			{
-				//CalcStrategyAvx::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
 				CalcStrategyAvx::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
-				//CalcStrategyAvx::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategyAvx::conv(jp, ma, gl);
 			}
 
@@ -100,9 +95,6 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 				gl.dytemp[jp][l] = gl.dyda[l - 1];
 			}
 			/* save lightcurves */
-
-			//if (Lastcall == 1)
-			//	Yout[np] = ymod;
 		} /* jp, lpoints */
 
 		if (Lastcall != 1)
@@ -271,9 +263,6 @@ void CalcStrategyAvx::mrqcof(double** x1, double** x2, double x3[], double y[],
 				} /* jp */
 			}
 		} /* Lastcall != 1 */
-
-		//if ((Lastcall == 1) && (Inrel[i] == 1))
-		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
 
 	} /* i,  lcurves */
 

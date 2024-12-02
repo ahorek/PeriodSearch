@@ -5,38 +5,19 @@
 #include "CalcStrategy.hpp"
 
 extern int Lmax, Mmax, Niter, Lastcall,
-	Ncoef, Numfac, Nphpar,		//Lcurves,
-	//Lpoints[MAX_LC+1], Inrel[MAX_LC+1],
+	Ncoef, Numfac, Nphpar,
 	Deallocate;
 
 extern double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
-//Sclnw[MAX_LC + 1],	// unused
-//Yout[MAX_N_OBS + 1],	// unused
+
 Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1],
 Tc[MAX_N_FAC + 1][MAX_LM + 1], Ts[MAX_N_FAC + 1][MAX_LM + 1],
 Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
 Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
-	//Weight[MAX_N_OBS+1];
 
 extern CalcContext calcCtx;
-
-//#ifdef __GNUC__
-//  extern double Nor[3][MAX_N_FAC+8] __attribute__ ((aligned (64))),
-//	          Area[MAX_N_FAC+8] __attribute__ ((aligned (64))),
-//			  Darea[MAX_N_FAC+8] __attribute__ ((aligned (64))),
-//			  Dg[MAX_N_FAC+16][MAX_N_PAR+8] __attribute__ ((aligned (64)));
-//#else
-//  extern __declspec(align(64)) double //Nor[3][MAX_N_FAC+8],
-//	  Area[MAX_N_FAC+8], Darea[MAX_N_FAC+8],Dg[MAX_N_FAC+16][MAX_N_PAR+8]; //All are zero indexed
-//#endif
-
-//#ifdef __GNUC__
-//	extern double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-//#else
-//	extern __declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
-//#endif
 
 extern struct SIMDSupport
 {

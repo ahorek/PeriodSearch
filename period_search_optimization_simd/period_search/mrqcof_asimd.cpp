@@ -1,14 +1,11 @@
-/* slighly changed code from Numerical Recipes
+/* slightly changed code from Numerical Recipes
    converted from Mikko's fortran code
 
    8.11.2006
 */
 
-#include <cstdio>
-#include <cstdlib>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
 #include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
 #include <arm_neon.h>
@@ -71,12 +68,10 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 
 			if (i < gl.Lcurves)
 			{
-				//CalcStrategyAsimd::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
 				CalcStrategyAsimd::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
-				//CalcStrategyAsimd::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategyAsimd::conv(jp, ma, gl);
 			}
 
@@ -278,10 +273,6 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 				} /* jp */
 			}
 		} /* Lastcall != 1 */
-
-		//if ((Lastcall == 1) && (Inrel[i] == 1))
-		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
-
 	} /* i,  lcurves */
 
 	for (j = 1; j < mfit; j++)

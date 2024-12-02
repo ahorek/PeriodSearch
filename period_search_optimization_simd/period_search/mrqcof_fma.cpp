@@ -1,4 +1,4 @@
-/* slighly changed code from Numerical Recipes
+/* slightly changed code from Numerical Recipes
    converted from Mikko's fortran code
 
    8.11.2006
@@ -6,11 +6,8 @@
    Numerical recipes: 'mrqcof' is used by 'mrqmin' to evaluate coefficients
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
 #include <immintrin.h>
 #include "CalcStrategyFma.hpp"
 #include "arrayHelpers.hpp"
@@ -73,15 +70,12 @@ void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
 
             if (i < gl.Lcurves)
 			{
-                //CalcStrategyFma::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
                 CalcStrategyFma::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
-				//CalcStrategyFma::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategyFma::conv(jp, ma, gl);
 			}
-            
 
             gl.ytemp[jp] = gl.ymod;
 
@@ -102,9 +96,6 @@ void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
                 gl.dytemp[jp][l] = gl.dyda[l - 1];
             }
             /* save lightcurves */
-
-            //if (Lastcall == 1)
-            //    Yout[np] = ymod;
         } /* jp, lpoints */
 
         if (Lastcall != 1)
@@ -274,10 +265,6 @@ void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
                 } /* jp */
             }
         } /* Lastcall != 1 */
-
-        //if ((Lastcall == 1) && (Inrel[i] == 1))
-        //    Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
-
     } /* i,  lcurves */
 
 	//printf("np: %d\n", np);

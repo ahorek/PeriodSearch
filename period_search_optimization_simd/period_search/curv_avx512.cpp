@@ -3,9 +3,7 @@
    8.11.2006
 */
 
-#include <math.h>
 #include "globals.h"
-#include "constants.h"
 #include <immintrin.h>
 #include "CalcStrategyAvx512.hpp"
 
@@ -14,45 +12,47 @@ __attribute__((target("avx512f")))
 #endif
 void CalcStrategyAvx512::curv(double cg[], globals &gl)
 {
-    int i, m, l, k;
+    int k;
 
-    for (i = 1; i <= Numfac; i++)
+    for (auto i = 1; i <= Numfac; i++)
     {
         double g = 0;
         int n = 0;
         //m=0
-        for (l = 0; l <= Lmax; l++)
+        for (auto l = 0; l <= Lmax; l++)
         {
-            double fsum;
             n++;
-            fsum = cg[n] * Fc[i][0];
+            const double fsum = cg[n] * Fc[i][0];
             g = g + Pleg[i][l][0] * fsum;
         }
         //
-        for (m = 1; m <= Mmax; m++)
-            for (l = m; l <= Lmax; l++)
+        for (auto m = 1; m <= Mmax; m++)
+        {
+            for (auto l = m; l <= Lmax; l++)
             {
-                double fsum;
                 n++;
-                fsum = cg[n] * Fc[i][m];
+                double fsum = cg[n] * Fc[i][m];
                 n++;
                 fsum = fsum + cg[n] * Fs[i][m];
                 g = g + Pleg[i][l][m] * fsum;
             }
+        }
+
         g = exp(g);
 		gl.Area[i - 1] = gl.Darea[i - 1] * g;
+        const __m512d avx_g = _mm512_set1_pd(g);
 
-        __m512d avx_g = _mm512_set1_pd(g);
-        int cyklus = (n >> 2) << 2;
-        for (k = 1; k <= cyklus; k += 8)
+        const int cycle = (n >> 2) << 2;
+        for (k = 1; k <= cycle; k += 8)
         {
             __m512d avx_pom = _mm512_loadu_pd(&Dsph[i][k]);
             avx_pom = _mm512_mul_pd(avx_pom, avx_g);
             _mm512_store_pd(&gl.Dg[i - 1][k - 1], avx_pom);
         }
-        if (k <= n) gl.Dg[i - 1][k - 1] = g * Dsph[i][k]; //last odd value
-        if (k + 1 <= n) gl.Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1]; //last odd value
-        if (k + 2 <= n) gl.Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2]; //last odd value
+
+        if (k <= n) gl.Dg[i - 1][k - 1] = g * Dsph[i][k];               //last odd value
+        if (k + 1 <= n) gl.Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1];   //last odd value
+        if (k + 2 <= n) gl.Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2];   //last odd value
     }
 
     // For Unit tests

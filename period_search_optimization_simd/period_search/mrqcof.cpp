@@ -1,14 +1,11 @@
-/* slighly changed code from Numerical Recipes
+/* slightly changed code from Numerical Recipes
    converted from Mikko's fortran code
 
    8.11.2006
 */
 
-#include <cstdio>
-#include <cstdlib>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
@@ -63,12 +60,10 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			if (i < gl.Lcurves)
 			{
-				//CalcStrategyNone::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
 				CalcStrategyNone::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
-				//CalcStrategyNone::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategyNone::conv(jp, ma, gl);
 			}
 
@@ -83,11 +78,6 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 				gl.dave[l] += gl.dyda[l - 1];
 			}
 			/* save lightcurves */
-
-			//if (Lastcall == 1)
-			//{
-			//	Yout[np] = ymod;
-			//}
 		} /* jp, lpoints */
 
 		if (Lastcall != 1)
@@ -239,8 +229,9 @@ void CalcStrategyNone::mrqcof(double** x1, double** x2, double x3[], double y[],
 			}
 		} /* Lastcall != 1 */
 
+		// TODO: Remove this:
 		//if ((Lastcall == 1) && (Inrel[i] == 1))
-		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
+		//    Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
 
 	} /* i,  lcurves */
 

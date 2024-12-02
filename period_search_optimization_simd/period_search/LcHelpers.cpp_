@@ -2,7 +2,6 @@
 #include <fstream>
 #include <numeric>
 #include <cstdio>
-// #include <stdio.h>
 #include <algorithm>
 
 #if defined __GNU__
@@ -14,19 +13,18 @@
 #include "arrayHelpers.hpp"
 
 ///< summary>
-/// Performes the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
+/// Performs the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
 ///</summary>
 ///< param name="gl"></param>
 ///< param name="filename"></param>
 void prepareLcData(struct globals &gl, const char *filename)
 {
+    int i_temp;
 	int err = 0;
-	int i_temp;
 
 	std::ifstream file(filename);
 	std::string lineStr;
-	char line[MAX_LINE_LENGTH];
-	gl.Lcurves = 0;
+    gl.Lcurves = 0;
 
 	if (file.is_open())
 	{
@@ -34,34 +32,24 @@ void prepareLcData(struct globals &gl, const char *filename)
 		int offset = 0;
 		int i = 0;
 
-		// char *a;
-		// char *b;
-		// char *x;
-
 		while (std::getline(file, lineStr))
 		{
-			std::strcpy(line, lineStr.c_str());
+            char line[MAX_LINE_LENGTH];
+
+            std::strcpy(line, lineStr.c_str());
 			lineNumber++;
 			switch (lineNumber)
 			{
 				case 15:
 					err = sscanf(line, "%d", &gl.Lcurves);
-					// err = sscanf(line.c_str(), "%s", x);
-					// fprintf(stderr, "%s Line 15 was red", x);
-					// gl.Lcurves = std::stoi(x);
 					gl.Lpoints = new int[gl.Lcurves + 1 + 1];
 					std::fill_n(gl.Lpoints, gl.Lcurves + 1 + 1, 0);
-					// continue;
 					break;
 				case 16:
 					err = sscanf(line, "%d %d", &gl.Lpoints[0], &i_temp);
-					// err = sscanf(line.c_str(), "%s %s", a, b);
-					// gl.Lpoints[0] = std::stoi(a);
-					// i_temp = std::stoi(b);
 					offset = lineNumber;
 					i++;
-					// continue;
-					break;
+			        break;
 			}
 
 			if (lineNumber <= 16)
@@ -72,14 +60,12 @@ void prepareLcData(struct globals &gl, const char *filename)
 			if (lineNumber == offset + 1 + gl.Lpoints[i - 1])
 			{
 				err = sscanf(line, "%d %d", &gl.Lpoints[i], &i_temp);
-				// err = sscanf(line.c_str(), "%s %s", a, b);
-
-				// gl.Lpoints[0] = std::stoi(a);
-				// i_temp = std::stoi(b);
 				offset = lineNumber;
 				i++;
 				if (i == gl.Lcurves)
-					break;
+				{
+				    break;
+				}
 			}
 		}
 
@@ -99,8 +85,8 @@ void prepareLcData(struct globals &gl, const char *filename)
 	}
 	else
 	{
-		fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", filename);
-		fflush(stderr);
+		err = fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", filename);
+		err = fflush(stderr);
 
 		exit(2);
 	}

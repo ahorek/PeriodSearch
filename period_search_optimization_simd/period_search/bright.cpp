@@ -1,22 +1,18 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
 */
 
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
-//void CalcStrategyNone::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyNone::bright(const double t, double cg[], const int ncoef, globals &gl)
 {
-	int i, j, k;
+	int i, j;
 	incl_count = 0;
 	double *ee = gl.xx1;
 	double *ee0 = gl.xx2;
@@ -41,7 +37,8 @@ void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 	matrix(cg[ncoef0], t, tmat, dtm);
 
 	gl.ymod = 0;
-	/* Directions (and ders.) in the rotating system */
+
+	/* Directions (and derivatives) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -52,20 +49,19 @@ void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 			e0[i] += tmat[i][j] * ee0[j];
 			de[i][j] = 0;
 			de0[i][j] = 0;
-			for (k = 1; k <= 3; k++)
+			for (int k = 1; k <= 3; k++)
 			{
 				de[i][j] += dtm[j][i][k] * ee[k];
 				de0[i][j] += dtm[j][i][k] * ee0[k];
 			}
 		}
 	}
-	
-	/*Integrated brightness (phase coeff. used later) */
-	double lmu, lmu0, dsmu, dsmu0;
-	for (i = 0; i < Numfac; i++)
+
+	/*Integrated brightness (phase coefficients used later) */
+    for (i = 0; i < Numfac; i++)
 	{
-		lmu = e[1] * gl.Nor[0][i] + e[2] * gl.Nor[1][i] + e[3] * gl.Nor[2][i];
-		lmu0 = e0[1] * gl.Nor[0][i] + e0[2] * gl.Nor[1][i] + e0[3] * gl.Nor[2][i];
+        const double lmu = e[1] * gl.Nor[0][i] + e[2] * gl.Nor[1][i] + e[3] * gl.Nor[2][i];
+        const double lmu0 = e0[1] * gl.Nor[0][i] + e0[2] * gl.Nor[1][i] + e0[3] * gl.Nor[2][i];
 		if ((lmu > TINY) && (lmu0 > TINY))
 		{
 			dnom = lmu + lmu0;
@@ -75,8 +71,8 @@ void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 			incl[incl_count] = i;
 			dbr[incl_count++] = gl.Darea[i] * s;
 			//
-			dsmu = cls * pow(lmu0 / dnom, 2) + cl * lmu0;
-			dsmu0 = cls * pow(lmu / dnom, 2) + cl * lmu;
+            const double dsmu = cls * pow(lmu0 / dnom, 2) + cl * lmu0;
+            const double dsmu0 = cls * pow(lmu / dnom, 2) + cl * lmu;
 
 			double sum1 = 0, sum2 = 0, sum3 = 0;
 			double sum10 = 0, sum20 = 0, sum30 = 0;
@@ -99,7 +95,7 @@ void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 		}
 	}
 
-	/* Derivatives of brightness w.r.t. g-coeffs */
+	/* Derivatives of brightness w.r.t. g-coefficients */
 	for (i = 1; i <= ncoef0 - 3; i++)
 	{
 		tmpdyda = 0;
@@ -110,16 +106,16 @@ void CalcStrategyNone::bright(double t, double cg[], int ncoef, globals &gl)
 		gl.dyda[i - 1] = Scale * tmpdyda;
 	}
 
-	/* Ders. of brightness w.r.t. rotation parameters */
+	/* Derivatives of brightness w.r.t. rotation parameters */
 	gl.dyda[ncoef0 - 3 + 1 - 1] = Scale * tmpdyda1;
 	gl.dyda[ncoef0 - 3 + 2 - 1] = Scale * tmpdyda2;
 	gl.dyda[ncoef0 - 3 + 3 - 1] = Scale * tmpdyda3;
 
-	/* Ders. of br. w.r.t. phase function params. */
+	/* Derivatives of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
 		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
 
-	/* Ders. of br. w.r.t. cl, cls */
+	/* Derivatives of br. w.r.t. cl, cls */
 	gl.dyda[ncoef - 1 - 1] = Scale * tmpdyda4 * cl;
 	gl.dyda[ncoef - 1] = Scale * tmpdyda5;
 

@@ -1,4 +1,4 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
@@ -111,8 +111,7 @@ inline static double reduce_pd(__m512d a) {
 #if defined(__GNUC__)
 __attribute__((target("avx512dq,avx512f")))
 #endif
-//void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br, globals &gl)
-void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyAvx512::bright(const double t, double cg[], const int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
@@ -131,8 +130,7 @@ void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
 
 	matrix(cg[ncoef0], t, tmat, dtm);
 
-	/* Directions (and ders.) in the rotating system */
-
+	/* Directions (and derivatives) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -151,7 +149,7 @@ void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
 		}
 	}
 
-	/*Integrated brightness (phase coeff. used later) */
+	/*Integrated brightness (phase coefficients used later) */
 	__m512d avx_e1 = _mm512_set1_pd(e[1]);
 	__m512d avx_e2 = _mm512_set1_pd(e[2]);
 	__m512d avx_e3 = _mm512_set1_pd(e[3]);
@@ -275,7 +273,7 @@ void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
 	Dg_row[incl_count] = Dg_row[0];
 	gl.ymod = reduce_pd(res_br);
 
-	/* Derivatives of brightness w.r.t. g-coeffs */
+	/* Derivatives of brightness w.r.t. g-coefficients */
 	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 16) * 16;
 
 	for (i = 0; i < cyklus1; i += 16) //2 * 8 doubles
@@ -322,18 +320,20 @@ void CalcStrategyAvx512::bright(double t, double cg[], int ncoef, globals &gl)
 		_mm512_store_pd(&gl.dyda[i], tmp1);
 	}
 
-	/* Ders. of brightness w.r.t. rotation parameters */
+	/* Derivatives of brightness w.r.t. rotation parameters */
 	gl.dyda[ncoef0 - 3 + 1 - 1] = reduce_pd(avx_dyda1) * Scale;
 	gl.dyda[ncoef0 - 3 + 2 - 1] = reduce_pd(avx_dyda2) * Scale;
 	gl.dyda[ncoef0 - 3 + 3 - 1] = reduce_pd(avx_dyda3) * Scale;
 
-	/* Ders. of br. w.r.t. cl, cls */
+	/* Derivatives of br. w.r.t. cl, cls */
 	gl.dyda[ncoef - 1 - 1] = reduce_pd(avx_d) * Scale * cl;
 	gl.dyda[ncoef - 1] = reduce_pd(avx_d1) * Scale;
 
-	/* Ders. of br. w.r.t. phase function params. */
+	/* Derivatives of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
+	{
 		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
+	}
 
 	/* Scaled brightness */
 	gl.ymod *= Scale;

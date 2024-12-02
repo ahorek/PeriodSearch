@@ -1,14 +1,11 @@
-/* slighly changed code from Numerical Recipes
+/* slightly changed code from Numerical Recipes
    converted from Mikko's fortran code
 
    8.11.2006
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
 #include <emmintrin.h>
 #include "CalcStrategySse2.hpp"
 #include "arrayHelpers.hpp"
@@ -68,12 +65,10 @@ void CalcStrategySse2::mrqcof(double** x1, double** x2, double x3[], double y[],
 
 			if (i < gl.Lcurves)
 			{
-				//CalcStrategySse2::bright(gl.xx1, gl.xx2, x3[np], a, dyda, ma, gl.ymod, gl);
 				CalcStrategySse2::bright(x3[np], a, ma, gl);
 			}
 			else
 			{
-				//CalcStrategySse2::conv(jp, dyda, ma, gl.ymod, gl);
 				CalcStrategySse2::conv(jp, ma, gl);
 			}
 
@@ -98,9 +93,6 @@ void CalcStrategySse2::mrqcof(double** x1, double** x2, double x3[], double y[],
 				}
 			}
 			/* save lightcurves */
-
-			//if (Lastcall == 1)
-			//	Yout[np] = ymod;
 		} /* jp, lpoints */
 
 		if (Lastcall != 1)
@@ -264,10 +256,6 @@ void CalcStrategySse2::mrqcof(double** x1, double** x2, double x3[], double y[],
 				} /* jp */
 			}
 		} /* Lastcall != 1 */
-
-		//if ((Lastcall == 1) && (Inrel[i] == 1))
-		//	Sclnw[i] = Scale * Lpoints[i] * sig[np] / gl.ave;
-
 	} /* i,  lcurves */
 
 	for (j = 1; j < mfit; j++)

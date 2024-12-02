@@ -8,21 +8,18 @@
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
-void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[], double af[], globals &gl)
+void areanorm(double t[], double f[], const int ndir, const int nfac, int **ifp, double at[], double af[], globals &gl)
 {
-    int i, j;
+    int i;
+    double c[4]{}, vx[4]{}, vy[4]{}, vz[4]{};
 
-    double  st, clen2, clen;
-
-	double c[4]{}, vx[4]{}, vy[4]{}, vz[4]{}, * x, * y, * z;
-
-    x = vector_double(ndir);
-    y = vector_double(ndir);
-    z = vector_double(ndir);
+    double* x = vector_double(ndir);
+    double* y = vector_double(ndir);
+    double* z = vector_double(ndir);
 
     for (i = 1; i <= ndir; i++)
     {
-        st = sin(t[i]);
+        const double st = sin(t[i]);
         x[i] = st * cos(f[i]);
         y[i] = st * sin(f[i]);
         z[i] = cos(t[i]);
@@ -32,7 +29,7 @@ void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[]
     for (i = 1; i <= nfac; i++)
     {
         /* vectors of triangle edges */
-        for (j = 2; j <= 3; j++)
+        for (int j = 2; j <= 3; j++)
         {
             vx[j] = x[ifp[i][j]] - x[ifp[i][1]];
             vy[j] = y[ifp[i][j]] - y[ifp[i][1]];
@@ -45,8 +42,8 @@ void areanorm(double t[], double f[], int ndir, int nfac, int **ifp, double at[]
         c[3] = vx[2] * vy[3] - vx[3] * vy[2];
 
         /* Areas (on the unit sphere) and normals */
-        clen2 = c[1] * c[1] + c[2] * c[2] + c[3] * c[3];
-        clen = sqrt(clen2);
+        const double clen2 = c[1] * c[1] + c[2] * c[2] + c[3] * c[3];
+        const double clen = sqrt(clen2);
 		//printf("[%3d] % 0.6f\n", i, clen);
 
         /* normal */

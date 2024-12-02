@@ -1,12 +1,12 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
    29.2.2024 - Georgi Vidinski
 */
 
+//#include <stdlib.h>
 #include <cmath>
-#include <stdlib.h>
 #include <stdio.h>
 #include "globals.h"
 #include "declarations.h"
@@ -74,8 +74,7 @@
 #if defined(__GNUC__)
 __attribute__((target("avx")))
 #endif
-//void CalcStrategyAvx::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyAvx::bright(const double t, double cg[], const int ncoef, globals &gl)
 {
 	int  i, j, k;
     incl_count = 0;
@@ -94,8 +93,7 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
 
     matrix(cg[ncoef0], t, tmat, dtm);
 
-    /* Directions (and ders.) in the rotating system */
-
+    /* Directions (and derivatives) in the rotating system */
     for (i = 1; i <= 3; i++)
     {
         e[i] = 0;
@@ -114,7 +112,7 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
         }
     }
 
-    /*Integrated brightness (phase coeff. used later) */
+    /*Integrated brightness (phase coefficients used later) */
     __m256d avx_e1 = _mm256_broadcast_sd(&e[1]);
     __m256d avx_e2 = _mm256_broadcast_sd(&e[2]);
     __m256d avx_e3 = _mm256_broadcast_sd(&e[3]);
@@ -220,7 +218,7 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
     _mm256_storeu_pd(g, res_br);
 	gl.ymod = g[0];
 
-    /* Derivatives of brightness w.r.t. g-coeffs */
+    /* Derivatives of brightness w.r.t. g-coefficients */
     int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 12) * 12;
 
     for (i = 0; i < cyklus1; i += 12) //3 * 4doubles
@@ -270,7 +268,7 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
         _mm256_store_pd(&gl.dyda[i], tmp1);
     }
 
-    /* Ders. of brightness w.r.t. rotation parameters */
+    /* Derivatives of brightness w.r.t. rotation parameters */
     avx_dyda1 = _mm256_hadd_pd(avx_dyda1, avx_dyda2);
     avx_dyda1 = _mm256_add_pd(avx_dyda1, _mm256_permute2f128_pd(avx_dyda1, avx_dyda1, 1));
     avx_dyda1 = _mm256_mul_pd(avx_dyda1, avx_Scale);
@@ -283,7 +281,7 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
     _mm256_store_pd(g, avx_dyda3);
     gl.dyda[ncoef0 - 3 + 3 - 1] = g[0];
 
-    /* Ders. of br. w.r.t. cl, cls */
+    /* Derivatives of br. w.r.t. cl, cls */
     avx_d = _mm256_hadd_pd(avx_d, avx_d1);
     __m256d avx_dperm = _mm256_permute2f128_pd(avx_d, avx_d, 1);
     avx_d = _mm256_add_pd(avx_d, avx_dperm);
@@ -293,9 +291,11 @@ void CalcStrategyAvx::bright(double t, double cg[], int ncoef, globals &gl)
     gl.dyda[ncoef - 1 - 1] = g[0];
     gl.dyda[ncoef - 1] = g[1];
 
-    /* Ders. of br. w.r.t. phase function params. */
+    /* Derivatives of br. w.r.t. phase function params. */
     for (i = 1; i <= Nphpar; i++)
+    {
         gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
+    }
 
     /* Scaled brightness */
 	gl.ymod *= Scale;

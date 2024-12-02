@@ -1,4 +1,4 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
@@ -79,8 +79,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-//void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyAsimd::bright(const double t, double cg[], const int ncoef, globals &gl)
 {
    int i, j, k;
    incl_count = 0;
@@ -99,7 +98,7 @@ void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
 
    matrix(cg[ncoef0],t,tmat,dtm);
 
-   /* Directions (and ders.) in the rotating system */
+   /* Directions (and derivatives) in the rotating system */
 
    for (i = 1; i <= 3; i++)
    {
@@ -119,7 +118,7 @@ void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
       }
    }
 
-   /*Integrated brightness (phase coeff. used later) */
+   /*Integrated brightness (phase coefficients used later) */
    float64x2_t avx_e1 = vdupq_n_f64(e[1]);
    float64x2_t avx_e2 = vdupq_n_f64(e[2]);
    float64x2_t avx_e3 = vdupq_n_f64(e[3]);
@@ -242,7 +241,7 @@ void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
    res_br = vpaddq_f64(res_br, res_br);
    vst1q_lane_f64(&gl.ymod, res_br, 0);
 
-   /* Derivatives of brightness w.r.t. g-coeffs */
+   /* Derivatives of brightness w.r.t. g-coefficients */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
 
    for (i = 0; i < cyklus1; i+=10) //5 * 2doubles
@@ -333,7 +332,7 @@ void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
 	  vst1q_f64(&gl.dyda[i+2],tmp2);
    }
 
-   /* Ders. of brightness w.r.t. rotation parameters */
+   /* Derivatives of brightness w.r.t. rotation parameters */
 	avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda2);
    avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
    vst1q_f64(&gl.dyda[ncoef0-3+1-1], avx_dyda1);  //unaligned memory because of odd index
@@ -341,15 +340,17 @@ void CalcStrategyAsimd::bright(double t, double cg[], int ncoef, globals &gl)
    avx_dyda3 = vpaddq_f64(avx_dyda3, avx_dyda3);
    avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
    vst1q_f64(&gl.dyda[ncoef0-3+3-1], avx_dyda3); //unaligned memory because of odd index
-   /* Ders. of br. w.r.t. cl, cls */
+
+   /* Derivatives of br. w.r.t. cl, cls */
    avx_d = vpaddq_f64(avx_d, avx_d1);
    avx_d = vmulq_f64(avx_d, avx_Scale);
    avx_d = vmulq_f64(avx_d, avx_cl1);
    vst1q_f64(&gl.dyda[ncoef-1-1], avx_d); //unaligned memory because of odd index
 
- /* Ders. of br. w.r.t. phase function params. */
+ /* Derivatives of br. w.r.t. phase function params. */
      for(i = 1; i <= Nphpar; i++)
        gl.dyda[ncoef0+i-1] = gl.ymod * dphp[i];
+
 /*     dyda[ncoef0+1-1] = br * dphp[1];
      dyda[ncoef0+2-1] = br * dphp[2];
      dyda[ncoef0+3-1] = br * dphp[3];*/

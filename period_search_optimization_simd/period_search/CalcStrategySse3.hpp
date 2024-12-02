@@ -8,28 +8,26 @@
 #ifndef CSS3
 #define CSS3
 
-class CalcStrategySse3 : public CalcStrategy
+class CalcStrategySse3 final : public CalcStrategy
 {
 public:
 #if defined _WIN32
 #pragma warning(disable:26495)
 #endif
 
-	CalcStrategySse3() {};
+	CalcStrategySse3() = default;
 
-	virtual void mrqcof(double** x1, double** x2, double x3[], double y[],
+	void mrqcof(double** x1, double** x2, double x3[], double y[],
 		double sig[], double a[], int ia[], int ma,
-		double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl);
+		double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl) override;
 
-	//virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl);
-	virtual void bright(double t, double cg[], int ncoef, globals &gl);
+	void bright(double t, double cg[], int ncoef, globals &gl) override;
 
-	//virtual void conv(int nc, double dres[], int ma, double &result, globals &gl);
-	virtual void conv(int nc, int ma, globals &gl);
+	void conv(int nc, int ma, globals &gl) override;
 
-	virtual void curv(double cg[], globals &gl);
+	void curv(double cg[], globals &gl) override;
 
-	virtual void gauss_errc(double** a, int n, double b[], int &error);
+	void gauss_errc(double** a, int n, double b[], int &error) override;
 
 private:
 	__m128d* Dg_row[MAX_N_FAC + 3];

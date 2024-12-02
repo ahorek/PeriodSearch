@@ -1,4 +1,4 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
@@ -74,9 +74,7 @@
 #if defined(__GNUC__)
 __attribute__((target("avx,fma")))
 #endif
-//void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br, globals &gl)
-// void CalcStrategyFma::bright(double ee[], double ee0[], double t, double cg[], int ncoef, globals &gl)
-void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
+void CalcStrategyFma::bright(const double t, double cg[], const int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
@@ -95,7 +93,7 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 
 	matrix(cg[ncoef0], t, tmat, dtm);
 
-    /* Directions (and ders.) in the rotating system */
+    /* Directions (and derivatives) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -114,7 +112,7 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 		}
 	}
 
-	/*Integrated brightness (phase coeff. used later) */
+	/*Integrated brightness (phase coefficients used later) */
 	__m256d avx_e1 = _mm256_broadcast_sd(&e[1]);
 	__m256d avx_e2 = _mm256_broadcast_sd(&e[2]);
 	__m256d avx_e3 = _mm256_broadcast_sd(&e[3]);
@@ -187,11 +185,12 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 			avx_dsmu0 = _mm256_blendv_pd(_mm256_setzero_pd(), avx_dsmu0, cmp);
 			avx_lmu = _mm256_blendv_pd(_mm256_setzero_pd(), avx_lmu, cmp);
 			avx_lmu0 = _mm256_blendv_pd(avx_11, avx_lmu0, cmp); // Note: So that it is not divisible by zero (abychom nedelili nulou)
-			
+
+			// TODO: try replacing the C-style cast (__m256d*) with the C++ reinterpret_cast<__m256d*>(...)
 			_mm256_store_pd(g, avx_pdbr);
 			if (icmp & 1)
 			{
-				Dg_row[incl_count] = (__m256d*)& gl.Dg[i];
+				Dg_row[incl_count] = (__m256d*) &gl.Dg[i];
 				dbr[incl_count++] = _mm256_broadcast_sd(&g[0]);
 			}
 			if (icmp & 2)
@@ -220,7 +219,7 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 	_mm256_storeu_pd(g, res_br);
 	gl.ymod = g[0];
 
-	/* Derivatives of brightness w.r.t. g-coeffs */
+	/* Derivatives of brightness w.r.t. g-coefficients */
 	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 12) * 12;
 
 	for (i = 0; i < cyklus1; i += 12) //3 * 4doubles
@@ -270,7 +269,7 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 		tmp1 = _mm256_mul_pd(tmp1, avx_Scale);
 		_mm256_store_pd(&gl.dyda[i], tmp1);
 	}
-	/* Ders. of brightness w.r.t. rotation parameters */
+	/* Derivatives of brightness w.r.t. rotation parameters */
 	avx_dyda1 = _mm256_hadd_pd(avx_dyda1, avx_dyda2);
 	avx_dyda1 = _mm256_add_pd(avx_dyda1, _mm256_permute2f128_pd(avx_dyda1, avx_dyda1, 1));
 	avx_dyda1 = _mm256_mul_pd(avx_dyda1, avx_Scale);
@@ -283,7 +282,7 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 	_mm256_store_pd(g, avx_dyda3);
 	gl.dyda[ncoef0 - 3 + 3 - 1] = g[0];
 
-	/* Ders. of br. w.r.t. cl, cls */
+	/* Derivatives of br. w.r.t. cl, cls */
 	avx_d = _mm256_hadd_pd(avx_d, avx_d1);
 	__m256d avx_dperm = _mm256_permute2f128_pd(avx_d, avx_d, 1);
 	avx_d = _mm256_add_pd(avx_d, avx_dperm);
@@ -294,14 +293,17 @@ void CalcStrategyFma::bright(double t, double cg[], int ncoef, globals &gl)
 	gl.dyda[ncoef - 1 - 1] = g[0];
 	gl.dyda[ncoef - 1] = g[1];
 
-	/* Ders. of br. w.r.t. phase function params. */
+	/* Derivatives of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
+	{
 		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
+	}
+
 	/*     dyda[ncoef0+1-1] = br * dphp[1];
 		 dyda[ncoef0+2-1] = br * dphp[2];
 		 dyda[ncoef0+3-1] = br * dphp[3];*/
 
-		 /* Scaled brightness */
+    /* Scaled brightness */
 	gl.ymod *= Scale;
 
 	/*printf("\ndyda[208]:\n");
