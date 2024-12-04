@@ -19,7 +19,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
 void CalcStrategyAsimd::gauss_errc(double** a, int n, double b[], int &error)
 {
 	int *indxc, *indxr, *ipiv;
-	int i, icol = 0, irow = 0, j, k, l, ll, ipivsize;
+	int i, icol = 0, irow = 0, j, k, l, ll;
 	double big, dum, pivinv, temp;
 
 	indxc = vector_int(n + 1);

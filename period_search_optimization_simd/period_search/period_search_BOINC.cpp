@@ -53,8 +53,8 @@
 #ifdef _WIN32
 #include "boinc_win.h"
 #include "VersionInfo.h"
-#include <shlwapi.h>
-#include "winbase.h"
+#include <Shlwapi.h>
+#include "WinBase.h"
 #else
 #include "config.h"
 #include <cstdio>
@@ -625,7 +625,7 @@ int main(int argc, char** argv)
 		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
 	}
 
-#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__) && !defined _WIN32
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__
 	getSystemInfo();
 #else
 	std::cerr << "CPU: " << GetCpuInfo() << std::endl;

@@ -100,7 +100,7 @@ void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[]
 
 		if (Lastcall != 1)
 		{
-			float64x2_t avx_ave, avx_coef, avx_ytemp;
+			float64x2_t avx_ave, avx_coef{}, avx_ytemp{};
      		avx_ave = vdupq_n_f64(ave);
 
 			for (jp = 1; jp <= Lpoints[i]; jp++)
