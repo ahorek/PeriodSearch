@@ -18,6 +18,12 @@
 *.vspscc
 *.vssscc
 
+#VSCode files
+.vscode/
+.vscode/*.*
+/.vscode/c_cpp_properties.json
+/.vscode/settings.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -53,7 +59,7 @@ bld/
 **/packages/*
 # except build/, which is used as an MSBuild target.
 !**/packages/build/
-!/input_period_search/
+!input_period_search/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/packages/repositories.config
 
@@ -115,18 +121,23 @@ init_data*.xml
 period_search_in*
 period_search_out*
 # But keep test data
-!*/input_period_search/period_search_*
+!input_period_search/*.*
 period_search_state*
 test_*.txt
 test_values*.txt
 
-# Files build unde Linux
+# Files build under Linux
 *.o
 *.so
 *.a
 period_search_BOINC*
 
+# Keep main cpp file
+!period_search_BOINC.cpp
+
 # Profiler directories
 /*/DawnCache
 /*/*Profiler Results
 /*/GPUCache
+diag/
+

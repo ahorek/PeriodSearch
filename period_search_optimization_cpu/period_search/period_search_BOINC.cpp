@@ -26,17 +26,17 @@
    This file is part of BOINC.
    http://boinc.berkeley.edu
    Copyright (C) 2008 University of California
-   
+
    BOINC is free software; you can redistribute it and/or modify it
    under the terms of the GNU Lesser General Public License
    as published by the Free Software Foundation,
    either version 3 of the License, or (at your option) any later version.
-   
+
    BOINC is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
    See the GNU Lesser General Public License for more details.
-   
+
    You should have received a copy of the GNU Lesser General Public License
    along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -90,6 +90,7 @@ UC_SHMEM* shmem;
 //#include <wiringPi.h>
 //#define	LED	17
 //#endif
+#include "arrayHelpers.hpp"
 
 using std::string;
 
@@ -245,11 +246,12 @@ int main(int argc, char** argv) {
 
 	if (argc > 1)
 	{
-		std::cout << "args: " << argc << " | " << argv[0] << " | " << argv[1] << std::endl;
+		//std::cout << "args: " << argc << " | " << argv[0] << " | " << argv[1] << std::endl;
 		if (std::strcmp(argv[1], "-v") == 0)
 		{
 			verboseMode = true;
-			std::cout << "verbose: " << std::boolalpha << verboseMode << std::endl;
+			//std::cout << "verbose: " << std::boolalpha << verboseMode << std::endl;
+			//printf("verbose: true\n");
 		}
 
 		if (std::strcmp(argv[1], "-h") == 0)
@@ -407,9 +409,9 @@ int main(int argc, char** argv) {
 		if (Inrel[i] == 0)
 			onlyrel = 0;
 
-		if (Lpoints[i] > POINTS_MAX)
+		if (Lpoints[i] > MAX_LC_POINTS)
 		{
-			fprintf(stderr, "\nError: Number of lc points is greater than POINTS_MAX = %d\n", POINTS_MAX); fflush(stderr); exit(2);
+			fprintf(stderr, "\nError: Number of lc points is greater than MAX_LC_POINTS = %d\n", MAX_LC_POINTS); fflush(stderr); exit(2);
 		}
 
 		/* loop over one lightcurve */
@@ -572,22 +574,24 @@ int main(int argc, char** argv) {
 
 		fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
 
+int major, minor, build, revision;
 #if !defined __GNUC__ && defined _WIN32
-		int major, minor, build, revision;
 		TCHAR filepath[MAX_PATH]; // = getenv("_");
 		GetModuleFileName(nullptr, filepath, MAX_PATH);
 		auto filename = PathFindFileName(filepath);
 		GetVersionInfo(filename, major, minor, build, revision);
 		std::cerr << "Application: " << filename << std::endl;
 #else
+		GetVersionInfo(major, minor, build, revision);
 		std::cerr << "Application: " << argv[0] << std::endl;
 #endif
 		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
 
-#if defined(ARM) || defined(ARM32) || defined(ARM64)
+#if defined(ARM) || defined(ARM32) || defined(ARM64) || defined __APPLE__
 		getSystemInfo();
 #else
 		std::cerr << "CPU: " << GetCpuInfo() << std::endl;
+		std::cerr << "RAM: " << getTotalSystemMemory() << "GB" << std::endl;
 #endif
 	}
 
@@ -662,6 +666,9 @@ int main(int argc, char** argv) {
 		freq_end = 1 / per_end;
 		freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
 
+		//printf("jd_max: %.6f\n", jd_max);
+		//printf("jd_min: %.6f\n", jd_min);
+
 		/* Give ia the value 0/1 if it's fixed/free */
 		ia[Ncoef + 1] = ia_beta_pole;
 		ia[Ncoef + 2] = ia_lambda_pole;
@@ -701,7 +708,7 @@ int main(int argc, char** argv) {
 		}
 
 		if (verboseMode) {
-			std::cout << "Gatering initial poles..." << std::endl;
+			//std::cout << "Gatering initial poles..." << std::endl;
 		}
 
 		for (; n <= max_test_periods; n++)
@@ -773,6 +780,9 @@ int main(int argc, char** argv) {
 				while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
 				{
 					mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+					//printArray(aalpha, 25, 25, "aalpha");
+					//printArray(covar, 25, 25, "covar");
+
 					Niter++;
 
 					if ((Niter == 1) || (Chisq < Ochisq))
@@ -788,6 +798,8 @@ int main(int argc, char** argv) {
 						rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
 					}
 					dev_new = sqrt(rchisq / (ndata - 3));
+					//printf("% 0.6f\n", dev_new);
+
 					/* only if this step is better than the previous,
 					   1e-10 is for numeric errors */
 					if (dev_old - dev_new > 1e-10)

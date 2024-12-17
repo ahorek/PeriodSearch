@@ -1,0 +1,101 @@
+# This should work on Linux.  Modify as needed for other platforms.
+#
+#	The following Makefile produces armv7 32bit period-search application. Tested on RPi CM4 2GB running 64-bit Buster distro.
+#	Try to use environment based on GLIBC v2.28
+#   Before you start you might need to install the following packages:
+#		binutils-arm-linux-gnueabihf | 2.31.1-16
+#		g++-arm-linux-gnueabihf | 4:8.3.0-1
+#
+#	Prepare BOINC API as follows:	
+#		./_autosetup # Only first time
+#		./configure --disable-server --disable-client --disable-manager --build=aarch64-unknown-linux-gnu
+#		make
+#
+#	To check for the supported macroses use:
+#		echo | g++ -dM -E -
+#		echo | clang++ -dM -E -
+#
+
+BOINC_DIR = ../../../boinc_src
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+
+# CXXFLAGS = -march=armv8-a -O3 -std=c++17 -frecord-gcc-switches\
+#     -DARM64 \
+#     -I$(BOINC_DIR) \
+#     -I$(BOINC_LIB_DIR) \
+#     -I$(BOINC_API_DIR) \
+#     -L /usr/lib \
+#     -L.
+
+CXXFLAGS = -march=armv8-a -O3 -std=c++17 -grecord-gcc-switches\
+    -DARM64 \
+    -I$(BOINC_DIR) \
+    -I$(BOINC_LIB_DIR) \
+    -I$(BOINC_API_DIR)
+
+CC=clang++
+CXX=clang++
+OPTFLAGS=-march=armv8-a -O3 -std=c++17 -grecord-gcc-switches
+CFLAGS=$(OPTFLAGS) -Wall
+LDFLAGS=-lm
+
+MY_LIBS=areanorm.o arrayHelpers.o blmatrix.o bright.o \
+    conv.o \
+    covsrt.o CpuInfoArm64.o curv.o \
+    bright_asimd.o conv_asimd.o curv_asimd.o gauss_errc_asimd.o mrqcof_asimd.o \
+    dot_product.o ellfit.o EnumHelpers.o gauss_errc.o \
+    lubksb.o ludcmp.o matrix.o \
+    memory.o mrqcof.o \
+    mrqmin.o phasec.o sphfunc.o systeminfo.o \
+    trifac.o VersionInfo.o
+	
+# the following should be freeglut; use nm to check
+# you may have to change the paths for your system
+
+ifeq ($(wildcard /usr/local/lib/libglut.a),)
+	LIBGLUT = /usr/lib/libglut.a
+	LIBGLU = /usr/lib/libGLU.a
+	LIBJPEG = /usr/lib/libjpeg.a
+else
+	LIBGLUT = /usr/local/lib/libglut.a
+	LIBGLU = /usr/local/lib/libGLU.a
+	LIBJPEG = /usr/local/lib/libjpeg.a
+endif
+
+PROGS = period_search_rpi_armv8_arm64 
+# uc2_graphics
+# make this optional so compile doesn't break on systems without OpenGL
+
+all: $(PROGS)
+
+# libstdc++.a:
+# 	ln -s `g++ -print-file-name=libstdc++.a`
+
+clean:
+	/bin/rm -f $(PROGS) *.o
+
+# /bin/rm -f $(PROGS) *.o libstdc++.a
+
+distclean:
+	/bin/rm -f $(PROGS) *.o
+
+# /bin/rm -f $(PROGS) *.o libstdc++.a
+
+install: period_search_rpi_armv8_arm64
+
+# specify library paths explicitly (rather than -l)
+# because otherwise you might get a version in /usr/lib etc.
+
+#uc2: uc2.o libstdc++.a $(BOINC_API_DIR)/libboinc_api.a #$(BOINC_LIB_DIR)/libboinc.a
+#	$(CXX) $(CXXFLAGS) -o uc2 uc2.o libstdc++.a -pthread \
+#	$(BOINC_API_DIR)/libboinc_api.a \
+#	$(BOINC_LIB_DIR)/libboinc.a
+
+period_search_rpi_armv8_arm64: period_search_BOINC.o $(MY_LIBS) $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
+	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< -pthread \
+	$(BOINC_API_DIR)/libboinc_api.a \
+	$(BOINC_LIB_DIR)/libboinc.a -lm 
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<

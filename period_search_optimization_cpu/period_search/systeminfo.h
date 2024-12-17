@@ -3,9 +3,12 @@
 //#include <sstream>
 //#include <string>
 
-#if defined(ARM) || defined(ARM32) || defined(ARM64)
+#if defined(ARM) || defined(ARM32) || defined(ARM64) || defined __APPLE__
 void getSystemInfo();
-void getCpuInfoByArch(std::ifstream &cpuinfo);
-#else
-float getTotalSystemMemory();
 #endif
+
+#if defined(ARM) || defined(ARM32) || defined(ARM64)
+void getCpuInfoByArch(std::ifstream &cpuinfo);
+#endif
+
+float getTotalSystemMemory();

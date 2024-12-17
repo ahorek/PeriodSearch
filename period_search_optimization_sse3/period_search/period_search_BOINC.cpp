@@ -61,7 +61,7 @@
 #include <Windows.h>
 //#include <Shlwapi.h>
 #else
-#include "config.h"
+#include "config.h" // <- freebsd
 #include <cstdio>
 #include <cctype>
 #include <ctime>
@@ -70,13 +70,19 @@
 #include <csignal>
 #include <unistd.h>
 #include <limits>
+#include <iostream>
 #endif
 
-#include "str_util.h"
-#include "util.h"
+#ifdef __GNUC__
+#include <filesystem>
+#endif
+
+#include "str_util.h"  // <- freebsd
+#include "util.h"      // <- freebsd
 #include "filesys.h"
 #include "boinc_api.h"
 #include "mfile.h"
+#include "systeminfo.h"
 
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
@@ -530,16 +536,26 @@ int main(int argc, char **argv) {
 
 		fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
 
+int major, minor, build, revision;
 #if defined _WIN32 && !WINXP && !defined __GNUC__
-		int major, minor, build, revision;
 		TCHAR filepath[MAX_PATH]; // = getenv("_");
 		GetModuleFileName(nullptr, filepath, MAX_PATH);
 		auto filename = PathFindFileName(filepath);
 		GetVersionInfo(filename, major, minor, build, revision);
-		fprintf(stderr, "Application: %s\n", filename);
-		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
+		std::cerr << "Application: " << filename << std::endl;
+#elif defined __GNUC__
+		GetVersionInfo(major, minor, build, revision);
+		#if !defined __APPLE__
+			auto path = std::filesystem::current_path();
+		#endif
+		std::cerr << "Application: " << argv[0] << std::endl;
 #endif
+		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
 	}
+
+	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
+	std::cerr << "Target instruction set: " << GetTargetInstructionSet() << std::endl;
+	std::cerr << "RAM: " << getTotalSystemMemory() << "GB" << std::endl;
 
 	while ((new_conw != 1) && ((conw_r * escl * escl) < 10.0))
 	{
