@@ -1,19 +1,22 @@
 /* Numerical Recipes */
 
 #include "stdafx.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include "declarations.h"
-#include <math.h>
+#include <cmath>
 constexpr auto tiny = 1.0e-20;
 
-void ludcmp(double** a, int n, int indx[], double d[])
+//void ludcmp(double** a, int n, int indx[], double d[])
+void ludcmp(std::vector<std::vector<double>>& a, const int n, std::vector<int>& indx, std::vector<double>& d)
 {
 	int i, imax = -999, j, k;
 	double big, dum, sum, temp;
-	auto v = vector_double(n);
+	//auto v = vector_double(n);
+	std::vector<double> v(n + 1);
 
-	*d = 1.0;
+	//*d = 1.0;
+	d[0] = 1.0;
 	for (i = 1; i <= n; i++)
 	{
 		big = 0.0;
@@ -73,7 +76,8 @@ void ludcmp(double** a, int n, int indx[], double d[])
 				a[j][k] = dum;
 			}
 
-			*d = -(*d);
+			//*d = -(*d);
+			d[0] = -(d[0]);
 			v[imax] = v[j];
 		}
 
@@ -93,5 +97,5 @@ void ludcmp(double** a, int n, int indx[], double d[])
 		}
 	}
 
-	deallocate_vector((void*)v);
+	//deallocate_vector((void*)v);
 }

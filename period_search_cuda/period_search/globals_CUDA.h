@@ -1,5 +1,6 @@
 #pragma once
 #include <cuda_runtime_api.h>
+#include <vector>
 
 //  NOTE Fake declaration to satisfy intellisense. See https://stackoverflow.com/questions/39980645/enable-code-indexing-of-cuda-in-clion/39990500
 #ifndef __CUDACC__
@@ -46,6 +47,8 @@ __device__ __device_builtin__ double __hiloint2double(int hi, int lo);
 
 #include "constants.h"
 
+//MUST BE 128 or 64
+#define CUDA_BLOCK_DIM 128
 
 //NOTE: https://devtalk.nvidia.com/default/topic/517801/-34-texture-is-not-a-template-34-error-mvs-2010/
 
@@ -53,7 +56,7 @@ __device__ __device_builtin__ double __hiloint2double(int hi, int lo);
 __constant__ extern int /*CUDA_n,*/CUDA_Ncoef, CUDA_Nphpar, CUDA_Numfac, CUDA_Numfac1, CUDA_Dg_block;
 __constant__ extern int CUDA_ia[MAX_N_PAR + 1];
 __constant__ extern int CUDA_ma, CUDA_mfit, CUDA_mfit1, CUDA_lastone, CUDA_lastma, CUDA_ncoef0;
-__device__ extern double CUDA_cg_first[MAX_N_PAR + 1];
+__device__ extern double* CUDA_cg_first; //[MAX_N_PAR + 1];
 __device__ extern double CUDA_beta_pole[N_POLES + 1];
 __device__ extern double CUDA_lambda_pole[N_POLES + 1];
 __device__ extern double CUDA_par[4];
@@ -71,7 +74,8 @@ __device__ extern double CUDA_Darea[MAX_N_FAC + 1]; //not constant access in cur
 __device__ extern double CUDA_Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1];
 __device__ extern double* CUDA_ee/*[MAX_N_OBS+1][3]*/;
 __device__ extern double* CUDA_ee0/*[MAX_N_OBS+1][3]*/;
-__device__ extern double CUDA_tim[MAX_N_OBS + 1];
+//__device__ extern double CUDA_tim[MAX_N_OBS + 1];
+__device__ extern double* CUDA_tim;
 __device__ extern double *CUDA_brightness/*[MAX_N_OBS+1]*/;
 __device__ extern double *CUDA_sig/*[MAX_N_OBS+1]*/;
 __device__ extern double *CUDA_Weight/*[MAX_N_OBS+1]*/;
@@ -79,13 +83,13 @@ __constant__ extern double CUDA_Phi_0;
 __device__ extern int CUDA_End;
 __device__ extern int CUDA_Is_Precalc;
 
+extern double* d_CUDA_tim;
+
 //__device__ extern int icol;
 //__device__ extern double pivinv;
 //__shared__ extern int sh_icol[CUDA_BLOCK_DIM];
 //__shared__ extern int sh_irow[CUDA_BLOCK_DIM];
 //__shared__ extern double sh_big[CUDA_BLOCK_DIM];
-
-
 
 //extern texture<int2, 1> texWeight;
 //extern texture<int2, 1> texbrightness;
@@ -94,6 +98,7 @@ __device__ extern int CUDA_Is_Precalc;
 //global to one thread
 struct freq_context
 {
+	// NOTE: Keep the following pointer members in this exact sequence!
 	//	double Area[MAX_N_FAC+1];
 	double* Area;
 	//	double Dg[(MAX_N_FAC+1)*(MAX_N_PAR+1)];
@@ -106,6 +111,23 @@ struct freq_context
 	double* dytemp;
 	//	double ytemp[POINTS_MAX+1],
 	double* ytemp;
+
+	//bright
+	double* e_1;
+	double* e_2;
+	double* e_3;
+	double* e0_1;
+	double* e0_2;
+	double* e0_3;
+	double* jp_Scale;
+	double* jp_dphp_1;
+	double* jp_dphp_2;
+	double* jp_dphp_3;
+	double* de;
+	double* de0;
+
+	// End of pointer members sequence
+
 	double cg[MAX_N_PAR + 1];
 	double Ochisq, Chisq, Alamda;
 	double atry[MAX_N_PAR + 1], beta[MAX_N_PAR + 1], da[MAX_N_PAR + 1];
@@ -116,9 +138,10 @@ struct freq_context
 	double trial_chisq, ave;
 	int np, np1, np2;
 	//bright
-	double e_1[POINTS_MAX + 1], e_2[POINTS_MAX + 1], e_3[POINTS_MAX + 1], e0_1[POINTS_MAX + 1], e0_2[POINTS_MAX + 1], e0_3[POINTS_MAX + 1], de[POINTS_MAX + 1][4][4], de0[POINTS_MAX + 1][4][4];
-	double jp_Scale[POINTS_MAX + 1];
-	double jp_dphp_1[POINTS_MAX + 1], jp_dphp_2[POINTS_MAX + 1], jp_dphp_3[POINTS_MAX + 1];
+	//double e_1[POINTS_MAX + 1], e_2[POINTS_MAX + 1], e_3[POINTS_MAX + 1], e0_1[POINTS_MAX + 1], e0_2[POINTS_MAX + 1], e0_3[POINTS_MAX + 1];
+	//double jp_Scale[POINTS_MAX + 1];
+	//double jp_dphp_1[POINTS_MAX + 1], jp_dphp_2[POINTS_MAX + 1], jp_dphp_3[POINTS_MAX + 1];
+    //double de[POINTS_MAX + 1][4][4], de0[POINTS_MAX + 1][4][4];
 	// gaus
 	int indxc[MAX_N_PAR + 1], indxr[MAX_N_PAR + 1], ipiv[MAX_N_PAR + 1];
 	//global

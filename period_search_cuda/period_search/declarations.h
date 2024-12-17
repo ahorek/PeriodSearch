@@ -1,19 +1,31 @@
 #pragma once
-void trifac(int nrows, int **ifp);
-void areanorm(double t[], double f[], int ndir, int nfac, int **ifp,
-			  double at[], double af[]);
-void sphfunc(int ndir, double at[], double af[]);
-void ellfit(double r[], double a, double b, double c,
-			int ndir, int ncoef, double at[], double af[]);
-void lubksb(double **a, int n, int indx[], double b[]);
-void ludcmp(double **a, int n, int indx[], double d[]);
+#include <vector>
+
+void trifac(int nrows, std::vector<std::vector<int>>& ifp);
+
+void areanorm(const std::vector<double>& t, const std::vector<double>& f, const int ndir, const int nfac,
+	const std::vector<std::vector<int>>& ifp, std::vector<double>& at, std::vector<double>& af);
+
+void sphfunc(const int ndir, const std::vector<double>& at, const std::vector<double>& af);
+
+void ellfit(std::vector<double>& cg, const double a, const double b, const double c, const int ndir, const int ncoef,
+	const std::vector<double>& at, const std::vector<double>& af);
+
+//void ludcmp(double **a, int n, int indx[], double d[]);
+void ludcmp(std::vector<std::vector<double>>& a, const int n, std::vector<int>& indx, std::vector<double>& d);
+
+//void lubksb(double **a, int n, int indx[], double b[]);
+void lubksb(const std::vector<std::vector<double>>& a, const int n, const std::vector<int>& indx, std::vector<double>& b);
+
 int mrqmin(double **x1, double **x2, double x3[], double y[],
 			double sig[], double a[], int ia[], int ma,
 		double **covar, double **alpha);
+
 double mrqcof(double **x1, double **x2, double x3[], double y[],
 			  double sig[], double a[], int ia[], int ma,
 		  double **alpha, double beta[], int mfit, int lastone, int lastma);
 void curv(double cg[]);
+
 void blmatrix(double bet, double lam);
 double conv(int nc, double dres[], int ma);
 void gauss_1(double **aa, int n, double b[]);

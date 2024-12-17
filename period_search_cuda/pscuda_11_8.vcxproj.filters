@@ -74,9 +74,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="period_search\constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="period_search\ComputeCapability.h">
       <Filter>Header Files</Filter>
     </ClInclude>

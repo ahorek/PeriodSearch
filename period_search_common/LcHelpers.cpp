@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #if defined __GNU__
 #include <bits/stdc++.h>
@@ -15,22 +16,25 @@
 #include "constants.h"
 #include "arrayHelpers.hpp"
 
-void processLine15(struct globals& gl, const char* line, int& err) {
+void processLine15(struct globals& gl, const char* line, int& err)
+{
     err = sscanf(line, "%d", &gl.Lcurves);
     if (err != 1) {
         err = -1;
         return;
     }
-    gl.Lpoints = std::make_unique<int[]>(gl.Lcurves + 2); // +2 instead of +1+1
-    std::fill_n(gl.Lpoints.get(), gl.Lcurves + 2, 0);
+    
+    gl.Lpoints.resize(gl.Lcurves + 2, 0);
 }
 
-void processLine16(struct globals& gl, const char* line, int& err, int& offset, int& i, int& i_temp, int lineNumber) {
+void processLine16(struct globals& gl, const char* line, int& err, int& offset, int& i, int& i_temp, int lineNumber)
+{
     err = sscanf(line, "%d %d", &gl.Lpoints[0], &i_temp);
     if (err != 2) {
         err = -1;
         return;
     }
+
     offset = lineNumber;
     i++;
 }
@@ -43,6 +47,34 @@ void processSubsequentLines(struct globals& gl, const char* line, int& err, int&
     }
     offset = lineNumber;
     i++;
+}
+
+//// Template function to initialize a 2D vector (matrix) in any structure
+//template <typename T>
+//void init_matrix(std::vector<std::vector<T>>& matrix, int rows, int cols, T init_value = T{})
+//{
+//    matrix.resize(rows + 1); // Resize the outer vector
+//
+//    for (int i = 0; i < rows + 1; ++i) {
+//        matrix[i].resize(cols + 1, init_value); // Resize and initialize each inner vector with the specified value
+//    }
+//}
+
+/// Convexity regularization: make one last 'lightcurve' that
+/// consists of the three comps.of the residual non-convex vectors
+/// that should all be zero
+/// @param gl struct of globals
+void MakeConvexityRegularization(struct globals& gl)
+{
+    gl.Lcurves = gl.Lcurves + 1;
+    gl.Lpoints[gl.Lcurves] = 3;
+    gl.Inrel[gl.Lcurves] = 0;
+
+    // keep it '+ 1' instead of ' + 2' as the gl.Lcurves has been incremented by 1 already!7
+    gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0); 
+
+    //for (auto q = 0; q <= gl.Lcurves; q++)
+    //    fprintf(stderr, "Lpoints[%d] %d\n", q, gl.Lpoints[q]);
 }
 
 ///< summary>
@@ -107,15 +139,18 @@ int PrepareLcData(struct globals& gl, const char* filename)
 
     file.close();
 
-    gl.maxLcPoints = *(std::max_element(gl.Lpoints.get(), gl.Lpoints.get() + gl.Lcurves + 1)) + 1;
-    gl.ytemp = std::make_unique<double[]>(gl.maxLcPoints + 1);
+    gl.Inrel.resize(gl.Lcurves + 2, 0);
+    gl.maxLcPoints = *(std::max_element(gl.Lpoints.begin(), gl.Lpoints.end()));
+
+    gl.ytemp.resize(gl.maxLcPoints + 2, 0.0);        // Not used in CUDA
 
     gl.dytemp_sizeY = MAX_N_PAR + 1 + 4;
-    gl.dytemp_sizeX = gl.maxLcPoints + 1;
-    init2Darray(gl.dytemp, gl.dytemp_sizeX, gl.dytemp_sizeY);
-    gl.maxDataPoints = std::accumulate(gl.Lpoints.get(), gl.Lpoints.get() + gl.Lcurves, 0);
-    gl.Weight = std::make_unique<double[]>(gl.maxDataPoints + 1 + gl.Lcurves);
-    gl.Inrel = std::make_unique<int[]>(gl.Lcurves + 1 + gl.Lcurves);
+    gl.dytemp_sizeX = gl.maxLcPoints + 2;
+    init_matrix(gl.dytemp, gl.dytemp_sizeX, gl.dytemp_sizeY, 0.0);  // Not used in CUDA
+
+    gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0);   // OK
+
+    gl.Weight.resize(gl.maxDataPoints + 1 + 4, 0.0);
     gl.ave = 0.0;
 
     return 1;

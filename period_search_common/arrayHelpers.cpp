@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
-#include "arrayHelpers.hpp"
 
 void init2Darray(std::vector<std::unique_ptr<double[]>>& matrix, const int xSize, const int ySize)
 {
