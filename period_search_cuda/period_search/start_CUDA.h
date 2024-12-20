@@ -15,6 +15,6 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 
 int DoCheckpoint(MFILE& mf, int nlines, int newConw, double conwr);
 
-void CUDAFree(void);
+void CUDAFree();
 
 void GetCUDAOccupancy(const int cudaDevice);

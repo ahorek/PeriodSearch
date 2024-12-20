@@ -1,20 +1,25 @@
-/* Form the vertex triplets of standard triangulation facets
-   converted from Mikko's fortran code
-
-   8.11.2006
-*/
-
 #include "stdafx.h"
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
+/**
+ * @brief Forms the vertex triplets of standard triangulation facets.
+ *
+ * This function constructs the vertex triplets for standard triangulation facets,
+ * converted from Mikko's original Fortran code (J.Durech, 8.11.2006).
+ * It operates by initializing and filling matrix of nodal points and then determining the triangular facets for both the
+ * upper and lower hemispheres.
+ *
+ * @param nrows The number of rows in the triangulation.
+ * @param ifp A 2D vector that will be filled with the vertex indices of the triangular facets.
+ *            The vector should be properly initialized to accommodate the required size.
+ */
 void trifac(const int nrows, std::vector<std::vector<int>>& ifp)
 {
     int i, j, j0, j1, j2, j3;
 
-    //int** nod = matrix_int(2 * nrows, 4 * nrows);
     std::vector<std::vector<int>> nod;
-    init_matrix(nod, 2 * nrows, 4 * nrows, 0);
+    init_matrix(nod, 2 * nrows + 1, 4 * nrows + 1, 0);
 
     int nnod = 1; /* index from 1 to number of vertices */
     nod[0][0] = nnod;
@@ -78,6 +83,4 @@ void trifac(const int nrows, std::vector<std::vector<int>>& ifp)
                 ifp[ntri][3] = nod[j1 - 1][j2 + (j3 - 1)];
             }
         }
-
-    //deallocate_matrix_int(nod, 2 * nrows);
 }

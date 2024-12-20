@@ -2,9 +2,9 @@
 
 #if defined __GNUC__
 	const int _major = 102;
-	const int _minor = 18;
+	const int _minor = 22;
 	const int _build = 1;
-	const int _revision = 3;
+	const int _revision = 1;
 #else // _WIN32
 #include "Windows.h"
 #endif

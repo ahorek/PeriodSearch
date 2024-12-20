@@ -12,34 +12,34 @@
 #include "globals.h"
 #include "declarations.h"
 
-//void ellfit(double cg[], double a, double b, double c, int ndir, int ncoef, double at[], double af[])
+/**
+ * @brief Finds the curvature function Laplace series for a given ellipsoid.
+ *
+ * This function computes the curvature function Laplace series for a given ellipsoid
+ * by fitting spherical harmonics. It converts the original Fortran code from Mikko (J.Durech, 8.11.2006).
+ *
+ * @param cg A vector to store the coefficients of the fitted series.
+ * @param a The semi-major axis of the ellipsoid.
+ * @param b The semi-minor axis of the ellipsoid.
+ * @param c The vertical axis of the ellipsoid.
+ * @param ndir The number of directions.
+ * @param ncoef The number of coefficients in the series.
+ * @param at A vector of theta angles (in radians) for the directions.
+ * @param af A vector of phi angles (in radians) for the directions.
+ */
 void ellfit(std::vector<double>& cg, const double a, const double b, const double c, const int ndir, const int ncoef,
     const std::vector<double>& at, const std::vector<double>& af)
 {
-    //int i, j;
-    //int *indx;
-
-    // double ** fmat, ** fitmat; //*fitvec, *er, * d,
-
-    //indx = vector_int(ncoef);
     std::vector<int> indx(ncoef + 1, 0);
-
-    //fitvec = vector_double(ncoef);
     std::vector<double> fitvec(ncoef + 1, 0.0);
-
-    //er = vector_double(ndir);
     std::vector<double> er(ndir + 1, 0.0);
-
-    //d = vector_double(1);
     std::vector<double> d(2, 0.0);
 
-    //fmat = matrix_double(ndir, ncoef);
     std::vector<std::vector<double>> fmat;
-    init_matrix(fmat, ndir, ncoef, 0.0);
+    init_matrix(fmat, ndir + 1, ncoef + 1, 0.0);
 
-    //fitmat = matrix_double(ncoef, ncoef);
     std::vector<std::vector<double>> fitmat;
-    init_matrix(fitmat, ncoef, ncoef, 0.0);
+    init_matrix(fitmat, ncoef +  1, ncoef + 1, 0.0);
 
     /* Compute the LOGcurv.func. of the ellipsoid */
     for (int i = 1; i <= ndir; i++)
@@ -102,12 +102,5 @@ void ellfit(std::vector<double>& cg, const double a, const double b, const doubl
     {
         cg[i] = fitvec[i];
     }
-
-    //deallocate_matrix_double(fitmat, ncoef);
-    //deallocate_matrix_double(fmat, ndir);
-    //deallocate_vector((void*)fitvec);
-    //deallocate_vector((void*)d);
-    //deallocate_vector((void *) indx);
-    //deallocate_vector((void*)er);
 }
 

@@ -31,31 +31,11 @@
     <CudaCompile Include="period_search\start_CUDA.cu">
       <Filter>Source files</Filter>
     </CudaCompile>
+    <CudaCompile Include="period_search\ComputeCapability.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="period_search\period_search_BOINC.cpp" />
-    <ClCompile Include="period_search\areanorm.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\dot_product.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\lubksb.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\ludcmp.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\ellfit.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\memory.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\sphfunc.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\trifac.c">
       <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\stdfax.cpp">
@@ -67,11 +47,14 @@
     <ClCompile Include="period_search\VersionInfo.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="period_search\areanorm.cpp" />
+    <ClCompile Include="period_search\ellfit.cpp" />
+    <ClCompile Include="period_search\lubksb.cpp" />
+    <ClCompile Include="period_search\ludcmp.cpp" />
+    <ClCompile Include="period_search\sphfunc.cpp" />
+    <ClCompile Include="period_search\trifac.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="period_search\constants.h">
-      <Filter>Header files</Filter>
-    </ClInclude>
     <ClInclude Include="period_search\declarations.h">
       <Filter>Header files</Filter>
     </ClInclude>
@@ -90,24 +73,26 @@
     <ClInclude Include="period_search\globals_CUDA.h">
       <Filter>Header files</Filter>
     </ClInclude>
-    <ClInclude Include="period_search\resource.h">
-      <Filter>Header files</Filter>
-    </ClInclude>
     <ClInclude Include="period_search\stdafx.h">
-      <Filter>Header files</Filter>
-    </ClInclude>
-    <ClInclude Include="period_search\Intellisense_cuda_intrinsics.h">
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\Start.cuh">
       <Filter>Header files</Filter>
     </ClInclude>
+    <ClInclude Include="period_search\ComputeCapability.h" />
+    <ClInclude Include="period_search\deprecated_macro.h" />
+    <ClInclude Include="period_search\resource.h" />
+    <ClInclude Include="period_search\resource118.h" />
+    <ClInclude Include="period_search\Version.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
     <None Include="period_search\clear_files.bat" />
     <None Include="period_search\cpp.hint" />
-    <None Include="period_search\origin1.bin" />
+    <None Include="period_search\Makefile" />
+    <None Include="period_search\Makefile_CUDAv10.2" />
+    <None Include="period_search\Makefile_CUDAv11.1" />
+    <None Include="period_search\Makefile_CUDAv11.8" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header files">
@@ -121,11 +106,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="period_search\pscuda.rc">
-      <Filter>Resource files</Filter>
-    </ResourceCompile>
+    <Image Include="period_search\logo_Nta_icon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="period_search\logo_Nta_icon.ico" />
+    <ResourceCompile Include="period_search\pscuda118.rc" />
   </ItemGroup>
 </Project>

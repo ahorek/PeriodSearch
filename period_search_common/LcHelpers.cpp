@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <unordered_map>
 #include <functional>
-#include <memory>
 #include <vector>
 
 #if defined __GNU__
@@ -49,39 +48,37 @@ void processSubsequentLines(struct globals& gl, const char* line, int& err, int&
     i++;
 }
 
-//// Template function to initialize a 2D vector (matrix) in any structure
-//template <typename T>
-//void init_matrix(std::vector<std::vector<T>>& matrix, int rows, int cols, T init_value = T{})
-//{
-//    matrix.resize(rows + 1); // Resize the outer vector
-//
-//    for (int i = 0; i < rows + 1; ++i) {
-//        matrix[i].resize(cols + 1, init_value); // Resize and initialize each inner vector with the specified value
-//    }
-//}
-
-/// Convexity regularization: make one last 'lightcurve' that
-/// consists of the three comps.of the residual non-convex vectors
-/// that should all be zero
-/// @param gl struct of globals
+/**
+ * @brief Performs convexity regularization to create a final 'lightcurve'.
+ *
+ * This function generates a final 'lightcurve' that consists of the three components
+ * of the residual non-convex vectors. These vectors should all be zero.
+ *
+ * @param gl A struct containing global variables.
+ */
 void MakeConvexityRegularization(struct globals& gl)
 {
     gl.Lcurves = gl.Lcurves + 1;
     gl.Lpoints[gl.Lcurves] = 3;
     gl.Inrel[gl.Lcurves] = 0;
 
-    // keep it '+ 1' instead of ' + 2' as the gl.Lcurves has been incremented by 1 already!7
     gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0); 
 
     //for (auto q = 0; q <= gl.Lcurves; q++)
     //    fprintf(stderr, "Lpoints[%d] %d\n", q, gl.Lpoints[q]);
 }
 
-///< summary>
-/// Performs the first loop over lightcurves to find all data points (replacing MAX_LC_POINTS, MAX_N_OBS, etc.)
-///</summary>
-///< param name="gl"></param>
-///< param name="filename"></param>
+/**
+ * @brief Performs the first loop over lightcurves to find all data points.
+ *
+ * This function performs the initial loop over lightcurves to locate all data points,
+ * replacing MAX_LC_POINTS, MAX_N_OBS, etc. It processes the lightcurve data based on
+ * the provided global structure and the filename.
+ *
+ * @param gl A struct containing global variables.
+ * @param filename A constant character pointer representing the filename.
+ * @return An integer indicating the success or failure of the operation.
+ */
 int PrepareLcData(struct globals& gl, const char* filename)
 {
     int i_temp;
@@ -146,7 +143,7 @@ int PrepareLcData(struct globals& gl, const char* filename)
 
     gl.dytemp_sizeY = MAX_N_PAR + 1 + 4;
     gl.dytemp_sizeX = gl.maxLcPoints + 2;
-    init_matrix(gl.dytemp, gl.dytemp_sizeX, gl.dytemp_sizeY, 0.0);  // Not used in CUDA
+    init_matrix(gl.dytemp, gl.dytemp_sizeX + 1, gl.dytemp_sizeY + 1, 0.0);  // Not used in CUDA
 
     gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0);   // OK
 

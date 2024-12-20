@@ -1,6 +1,15 @@
 #pragma once
 #include <vector>
 
+#if _MSC_VER >= 1900 // Visual Studio 2015 or later
+#define DEPRECATED(msg) [[deprecated(msg)]]
+#elif _MSC_VER >= 1300 // Visual Studio 2012
+#define DEPRECATED(msg) __declspec(deprecated(msg))
+#else
+#define DEPRECATED(msg)
+#endif
+
+
 void trifac(int nrows, std::vector<std::vector<int>>& ifp);
 
 void areanorm(const std::vector<double>& t, const std::vector<double>& f, const int ndir, const int nfac,
@@ -11,10 +20,9 @@ void sphfunc(const int ndir, const std::vector<double>& at, const std::vector<do
 void ellfit(std::vector<double>& cg, const double a, const double b, const double c, const int ndir, const int ncoef,
 	const std::vector<double>& at, const std::vector<double>& af);
 
-//void ludcmp(double **a, int n, int indx[], double d[]);
+
 void ludcmp(std::vector<std::vector<double>>& a, const int n, std::vector<int>& indx, std::vector<double>& d);
 
-//void lubksb(double **a, int n, int indx[], double b[]);
 void lubksb(const std::vector<std::vector<double>>& a, const int n, const std::vector<int>& indx, std::vector<double>& b);
 
 int mrqmin(double **x1, double **x2, double x3[], double y[],
@@ -24,7 +32,7 @@ int mrqmin(double **x1, double **x2, double x3[], double y[],
 double mrqcof(double **x1, double **x2, double x3[], double y[],
 			  double sig[], double a[], int ia[], int ma,
 		  double **alpha, double beta[], int mfit, int lastone, int lastma);
-void curv(double cg[]);
+//void curv(double cg[]);
 
 void blmatrix(double bet, double lam);
 double conv(int nc, double dres[], int ma);
@@ -36,17 +44,33 @@ double bright(double ee[], double ee0[], double t, double cg[],
 			double dyda[], int ncoef);
 void shell(int n, double a[], int index[]);
 
+DEPRECATED("Use std::vector<T> and init_vector() instead")
 double *vector_double(int length);
+
+DEPRECATED("Use std::vector<T> and init_vector() instead")
 int *vector_int(int length);
+
+DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
 double **matrix_double(int rows, int columns);
+
+DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
 int **matrix_int(int rows, int columns);
+
+DEPRECATED("")
 double ***matrix_3_double(int n_1, int n_2, int n_3);
+
+DEPRECATED("")
 void deallocate_vector(void *p_x);
+
+DEPRECATED("")
 void deallocate_matrix_double(double **p_x, int rows);
+
+DEPRECATED("")
 void deallocate_matrix_int(int **p_x, int rows);
+
+DEPRECATED("")
 void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
 
-double host_dot_product(double a[], double b[]);
 double hapke(double mi0, double mi, double alfa, double sc_param[]);
 
 void sph2cart(double *vektor);
@@ -77,7 +101,7 @@ int mrqmin_ell(double **x1, double **x2, double x3[], double y[],
 double mrqcof_ell(double **x1, double **x2, double x3[], double y[],
 			  double sig[], double a[], int ia[], int ma,
 		  double **alpha, double beta[], double (*funcs)());
-//int gauss_errc(double **aa, int n, double b[]);
+
 void matrix_ell(double omg, double fi0, double t, double tmat[][4], double dtm[][4][4]);
 double bright_ell(double ee[], double ee0[], double t, double cg[],
 			double dyda[], int ncoef);

@@ -2,74 +2,71 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <CudaCompile Include="period_search\blmatrix.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\bright.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\ComputeCapability.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\conv.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\curv.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\curve2_CUDA.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\gauss_errc.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\mrqcof.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\mrqmin.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\Start.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="period_search\start_CUDA.cu">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files CUDA</Filter>
     </CudaCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="period_search\areanorm.c">
+    <ClCompile Include="period_search\areanorm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\dot_product.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\ellfit.c">
+    <ClCompile Include="period_search\ellfit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\error.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\lubksb.c">
+    <ClCompile Include="period_search\lubksb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\ludcmp.c">
+    <ClCompile Include="period_search\ludcmp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\memory.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\sphfunc.c">
+    <ClCompile Include="period_search\sphfunc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\stdfax.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\trifac.c">
+    <ClCompile Include="period_search\trifac.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\VersionInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\period_search_BOINC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\memory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,7 +86,7 @@
     <ClInclude Include="period_search\globals_CUDA.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="period_search\resource.h">
+    <ClInclude Include="period_search\resource118.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\Start.cuh">
@@ -107,6 +104,10 @@
     <ClInclude Include="period_search\Version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="period_search\deprecated_macro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
@@ -126,6 +127,9 @@
     </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{1757aea2-5919-4d5e-8537-cdb88bb44f3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files CUDA">
+      <UniqueIdentifier>{b2cbdae7-8389-4f03-89ac-c3af692ffd6c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

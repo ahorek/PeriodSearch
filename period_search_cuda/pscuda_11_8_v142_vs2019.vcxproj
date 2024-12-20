@@ -68,7 +68,7 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <PropertyGroup Label="Globals">
-    <ProjectName>pscuda_11_8_v142</ProjectName>
+    <ProjectName>pscuda_11_8_v142_vs2019</ProjectName>
     <ProjectGuid>{91667A4A-DA49-4CF7-949B-A8C6FA174432}</ProjectGuid>
     <CudaToolkitCustomDir>$(CUDA_PATH_V11_8)</CudaToolkitCustomDir>
   </PropertyGroup>
@@ -452,7 +452,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PreprocessorDefinitions>_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;APP_GRAPHICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CompileAs>CompileAsCpp</CompileAs>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -465,6 +465,7 @@
       <OmitFramePointers>false</OmitFramePointers>
       <MinimalRebuild>false</MinimalRebuild>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <FloatingPointModel>Precise</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -486,7 +487,7 @@
       <PtxAsOptionV>true</PtxAsOptionV>
       <Optimization>InheritFromHost</Optimization>
       <GPUDebugInfo>false</GPUDebugInfo>
-      <MaxRegCount>32</MaxRegCount>
+      <MaxRegCount>255</MaxRegCount>
       <CompileOut>$(IntDir)%(Filename)%(Extension).obj</CompileOut>
     </CudaCompile>
     <CudaLink>
@@ -687,6 +688,7 @@
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <RemoveUnreferencedCodeData>true</RemoveUnreferencedCodeData>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <FloatingPointModel>Precise</FloatingPointModel>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -706,7 +708,7 @@
     </CudaCompile>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_61,sm_61;</CodeGeneration>
+      <CodeGeneration>compute_50,sm_50;compute_52,sm_52;compute_53,sm_53;compute_60,sm_60;compute_61,sm_61;compute_62,sm_62;compute_70,sm_70;compute_72,sm_72;compute_75,sm_75;compute_80,sm_80;compute_86,sm_86;compute_87,sm_87;compute_89,sm_89;compute_90,sm_90</CodeGeneration>
       <MaxRegCount>255</MaxRegCount>
       <PtxAsOptionV>true</PtxAsOptionV>
       <CudaRuntime>Static</CudaRuntime>
@@ -771,9 +773,11 @@
     <ClInclude Include="period_search\ComputeCapability.h" />
     <ClInclude Include="period_search\declarations.h" />
     <ClInclude Include="period_search\declarations_CUDA.h" />
+    <ClInclude Include="period_search\deprecated_macro.h" />
     <ClInclude Include="period_search\globals.h" />
     <ClInclude Include="period_search\globals_CUDA.h" />
     <ClInclude Include="period_search\resource.h" />
+    <ClInclude Include="period_search\resource118.h" />
     <ClInclude Include="period_search\Start.cuh" />
     <ClInclude Include="period_search\start_CUDA.h" />
     <ClInclude Include="period_search\stdafx.h" />
@@ -781,7 +785,10 @@
     <ClInclude Include="period_search\Version.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="period_search\areanorm.c" />
+    <ClCompile Include="period_search\areanorm.cpp" />
+    <ClCompile Include="period_search\memory.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="period_search\VersionInfo.cpp" />
     <CudaCompile Include="period_search\blmatrix.cu">
       <FileType>CppCode</FileType>
@@ -796,8 +803,7 @@
     <CudaCompile Include="period_search\curv.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
-    <ClCompile Include="period_search\dot_product.c" />
-    <ClCompile Include="period_search\ellfit.c" />
+    <ClCompile Include="period_search\ellfit.cpp" />
     <CudaCompile Include="period_search\curve2_CUDA.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
@@ -805,9 +811,8 @@
       <FileType>CppCode</FileType>
     </CudaCompile>
     <ClCompile Include="period_search\error.cpp" />
-    <ClCompile Include="period_search\lubksb.c" />
-    <ClCompile Include="period_search\ludcmp.c" />
-    <ClCompile Include="period_search\memory.c" />
+    <ClCompile Include="period_search\lubksb.cpp" />
+    <ClCompile Include="period_search\ludcmp.cpp" />
     <CudaCompile Include="period_search\mrqcof.cu">
       <FileType>CppCode</FileType>
     </CudaCompile>
@@ -815,9 +820,9 @@
       <FileType>CppCode</FileType>
     </CudaCompile>
     <ClCompile Include="period_search\period_search_BOINC.cpp" />
-    <ClCompile Include="period_search\sphfunc.c" />
+    <ClCompile Include="period_search\sphfunc.cpp" />
     <ClCompile Include="period_search\stdfax.cpp" />
-    <ClCompile Include="period_search\trifac.c" />
+    <ClCompile Include="period_search\trifac.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="period_search\Start.cu" />
