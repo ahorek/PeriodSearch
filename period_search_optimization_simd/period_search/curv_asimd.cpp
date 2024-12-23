@@ -1,11 +1,6 @@
-/* Curvature function (and hence facet area) from Laplace series
-
-   8.11.2006
-*/
-
-#include <math.h>
+#include <cmath>
+#include <vector>
 #include "globals.h"
-#include "constants.h"
 #include "CalcStrategyAsimd.hpp"
 #include "arrayHelpers.hpp"
 
@@ -16,7 +11,20 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::curv(double cg[], globals& gl)
+/**
+ * @brief Computes the curvature function and facet area from the Laplace series.
+ *
+ * This function calculates the curvature function and hence the facet area based on the Laplace series
+ * using the provided coefficients and global data. The results are stored in the global variables.
+ *
+ * @param cg A reference to a vector of doubles containing the coefficients for the Laplace series.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `Area` and `Dg`.
+ *
+ * @date 8.11.2006
+ */
+void CalcStrategyAsimd::curv(std::vector<double>& cg, globals& gl)
 {
     int k;
 

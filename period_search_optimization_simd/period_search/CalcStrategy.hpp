@@ -1,6 +1,8 @@
+// ReSharper disable CppInconsistentNaming
 #pragma once
 #include <memory>
 #include <iostream>
+#include <vector>
 #include "arrayHelpers.hpp"
 
 /**
@@ -16,17 +18,17 @@ public:
 	CalcStrategy() = default;
 	virtual ~CalcStrategy() = default;
 
-	virtual void mrqcof(double** x1, double** x2, double x3[], double y[],
-							double sig[], double a[], int ia[], int ma,
-							double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals &gl) = 0;
+	virtual void mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
+		std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar) = 0;
 
-	virtual void bright(double t, double cg[], int ncoef, globals &gl) = 0;
+	virtual void bright(double t, std::vector<double>& cg, int ncoef, globals &gl) = 0;
 
 	virtual void conv(int nc, int ma, globals &gl) = 0;
 
-	virtual void curv(double cg[], globals &gl) = 0;
+	virtual void curv(std::vector<double>& cg, globals &gl) = 0;
 
-	virtual void gauss_errc(double** a, int n, double b[], int &error) = 0;
+	virtual void gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error) = 0;
 };
 
 /**
@@ -41,7 +43,6 @@ class CalcContext
 	 * should work with all strategies via the Strategy interface.
 	 */
 private:
-	//std::unique_ptr<CalcStrategy> strategy_;
 	std::shared_ptr<CalcStrategy> strategy_;
 
 	/**
@@ -49,9 +50,6 @@ private:
 	 * provides a setter to change it at runtime.
 	 */
 public:
-	//explicit CalcContext(std::unique_ptr<CalcStrategy>&& strategy = {}) : strategy_(std::move(strategy))
-	//{
-	//}
 	explicit CalcContext(std::shared_ptr<CalcStrategy>&& strategy = {}) : strategy_(std::move(strategy))
 	{
 	}
@@ -60,13 +58,6 @@ public:
 	 * Usually, the Context allows replacing a Strategy object at runtime.
 	 */
 	//void set_strategy(std::unique_ptr<CalcStrategy>&& strategy)
-	//{
-	//	strategy_ = std::move(strategy);
-	//}
- //   void set_strategy(std::shared_ptr<CalcStrategy>&& strategy)
-	//{
-	//	strategy_ = std::move(strategy);
-	//}
 	void SetStrategy(std::shared_ptr<CalcStrategy> strategy)
 	{
 		strategy_ = std::move(strategy);
@@ -77,13 +68,13 @@ public:
 	 * implementing +multiple versions of the algorithm on its own.
 	 */
 
-	void CalculateMrqcof(double** x1, double** x2, double x3[], double y[],
-							double sig[], double a[], int ia[], int ma,
-							double** alpha, double beta[], int mfit, int lastone, int lastma, double &mrq, globals &gl) const
+	void CalculateMrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
+		std::vector<double>& beta, int mfit, int lastone, int lastma, double& mrq, globals& gl, const bool isCovar) const
 	{
 		if (strategy_)
 		{
-			strategy_->mrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, mrq, gl);
+			strategy_->mrqcof(x1, x2, x3, y, sig, a, ia, ma, beta, mfit, lastone, lastma, mrq, gl, isCovar);
 		}
 		else
 		{
@@ -91,7 +82,7 @@ public:
 		}
 	}
 
-	void CalculateBright(const double t, double cg[], const int ncoef, globals &gl) const
+	void CalculateBright(const double t, std::vector<double>& cg, const int ncoef, globals &gl) const
     {
 		if (strategy_)
 		{
@@ -115,7 +106,7 @@ public:
 		}
 	}
 
-	void CalculateCurv(double cg[], globals &gl) const
+	void CalculateCurv(std::vector<double>& cg, globals &gl) const
     {
 		if (strategy_)
 		{
@@ -127,11 +118,11 @@ public:
 		}
 	}
 
-	void CalculateGaussErrc(double** a, int n, double b[], int &error) const
+	void CalculateGaussErrc(struct globals& gl, const int n, std::vector<double>& b, int &error) const
     {
 		if (strategy_)
 		{
-			strategy_->gauss_errc(a, n, b, error);
+			strategy_->gauss_errc(gl, n, b, error);
 		}
 		else
 		{

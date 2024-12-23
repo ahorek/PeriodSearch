@@ -1,12 +1,20 @@
-/* Convexity regularization function
-
-   8.11.2006
-*/
-
 #include "globals.h"
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
+/**
+ * @brief Computes the convexity regularization function.
+ *
+ * This function calculates the convexity regularization function, updating the global variables `ymod` and `dyda` based on the given parameters and the global data.
+ *
+ * @param nc An integer representing the current coefficient index.
+ * @param ma An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ */
 void CalcStrategyNone::conv(const int nc, const int ma, globals &gl)
 {
 	gl.ymod = 0;

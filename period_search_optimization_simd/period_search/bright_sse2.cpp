@@ -1,13 +1,7 @@
-/* computes integrated brightness of all visible and illuminated areas
-   and its derivatives
-
-   8.11.2006 - Josef Durec
-   29.2.2024 - Georgi Vidinski
-*/
-
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
@@ -74,7 +68,26 @@
 #if defined(__GNUC__)
 __attribute__((target("sse2")))
 #endif
-void CalcStrategySse2::bright(const double t, double cg[], const int ncoef, globals &gl)
+
+/**
+ * @brief Computes integrated brightness of all visible and illuminated areas and its derivatives.
+ *
+ * This function calculates the integrated brightness of all visible and illuminated areas based on the provided time `t`,
+ * coefficient vector `cg`, and global data. It also computes the derivatives of the brightness with respect to the coefficients.
+ *
+ * @param t The time at which the brightness is evaluated.
+ * @param cg A reference to a vector of doubles containing the coefficients for the brightness calculation.
+ * @param ncoef An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ * @author Josef Durec
+ *
+ * @date 29.2.2024 modified by Georgi Vidinski
+ */
+void CalcStrategySse2::bright(const double t, std::vector<double>& cg, const int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;

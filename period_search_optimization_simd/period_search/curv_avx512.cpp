@@ -1,16 +1,26 @@
-/* Curvature function (and hence facet area) from Laplace series
-
-   8.11.2006
-*/
-
-#include "globals.h"
+#include <vector>
 #include <immintrin.h>
+#include "globals.h"
 #include "CalcStrategyAvx512.hpp"
 
 #if defined(__GNUC__)
 __attribute__((target("avx512f")))
 #endif
-void CalcStrategyAvx512::curv(double cg[], globals &gl)
+
+/**
+ * @brief Computes the curvature function and facet area from the Laplace series.
+ *
+ * This function calculates the curvature function and hence the facet area based on the Laplace series
+ * using the provided coefficients and global data. The results are stored in the global variables.
+ *
+ * @param cg A reference to a vector of doubles containing the coefficients for the Laplace series.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `Area` and `Dg`.
+ *
+ * @date 8.11.2006
+ */
+void CalcStrategyAvx512::curv(std::vector<double>& cg, globals &gl)
 {
     int k;
 

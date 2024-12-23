@@ -1,9 +1,9 @@
 #pragma once
 //#include <iostream>
 
-#include "constants.h"
 #include <vector>
 #include <memory>
+#include "constants.h"
 
 /**
  * @brief Initializes a vector with a specified size and initial value.
@@ -23,7 +23,7 @@ void init_vector(std::vector<T>& vector, const int size, T init_value = T())
 {
     vector.resize(size, init_value); //Resize and initialize the vector with the specified value
 }
-#else 
+#else
 template <typename T>
 void init_vector(std::vector<T>& vector, const int size, T init_value = T{})
 {
@@ -147,7 +147,6 @@ std::vector<T> flatten2Dvector(const std::vector<std::vector<T>>& matrix)
 double dot_product(const double a[], const double b[]);
 double optimized_dot_product(const double a[], const double b[]);
 
-void init2Darray(std::vector<std::unique_ptr<double[]>>& matrix, int xSize, int ySize);
 void init2Darray(double**& matrix, int dytemp_siszeX, int dytemp_sizeY);
 void delete2Darray(double**& ary, int sizeY);
 void printArray(int array[], int iMax, char msg[]);
@@ -158,11 +157,13 @@ void printArray(double*** array, int iMax, int jMax, int kMax, char msg[]);
 struct globals
 {
 #ifdef __GNUC__
-    double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64))),
-        Area[MAX_N_FAC + 8] __attribute__((aligned(64))),
-        Darea[MAX_N_FAC + 8] __attribute__((aligned(64))),
-        Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
+    double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Area[MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
     double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
+    std::vector<std::vector<double>> covar __attribute__((aligned(64)));
+    std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
 #else
 #if _MSC_VER >= 1900 // Visual Studio 2015 or later
     // NOTE: About MSVC - https://learn.microsoft.com/en-us/cpp/cpp/alignment-cpp-declarations?view=msvc-170
@@ -171,12 +172,16 @@ struct globals
     alignas(64) double Darea[MAX_N_FAC + 8];
     alignas(64) double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8];
     alignas(64) double dyda[MAX_N_PAR + 16];
+    alignas(64) std::vector<std::vector<double>> covar;
+    alignas(64) std::vector<std::vector<double>> alpha;
 #else
     __declspec(align(64)) double Nor[3][MAX_N_FAC + 8];
     __declspec(align(64)) double Area[MAX_N_FAC + 8];
     __declspec(align(64)) double Darea[MAX_N_FAC + 8];
     __declspec(align(64)) double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8];
     __declspec(align(64)) double dyda[MAX_N_PAR + 16];
+    __declspec(align(64)) std::vector<std::vector<double>> covar;
+    __declspec(align(64)) std::vector<std::vector<double>> alpha;
 #endif
 #endif
 
@@ -186,7 +191,7 @@ struct globals
     int dytemp_sizeX;
     int dytemp_sizeY;
 
-    // points in every lightcurve 
+    // points in every lightcurve
     std::vector<int> Lpoints;
     std::vector<int> Inrel;
 

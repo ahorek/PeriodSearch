@@ -181,6 +181,10 @@ Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
 
+std::vector<double> atry;
+std::vector<double> beta;
+std::vector<double> da;
+
 // NOTE: RPi related:
 //void blinkLed(int count) {
 //	for (int i = 0; i < count; i++) {
@@ -201,7 +205,8 @@ int main(int argc, char** argv)
         n_iter_max, n_iter_min,
         ia_prd, ia_par[4]{}, ia_cl,
         lc_number,
-        new_conw, max_test_periods;
+        new_conw, max_test_periods,
+        ma = 0;
 
     double per_start, per_step_coef, per_end,
         freq, freq_start, freq_step, freq_end,
@@ -212,24 +217,11 @@ int main(int argc, char** argv)
     double jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95,
         prd, cl, e0len, elen, cos_alpha,
         dth, dph, rfit, escl,
-        e[4]{}, e0[4]{},
+        //e[4]{}, e0[4]{},
         chck[4]{},
         par[4]{}, rchisq;
 
     auto* str_temp = static_cast<char*>(malloc(MAX_LINE_LENGTH));
-
-    double** covar = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR);
-    double** aalpha = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR + 8);
-
-    double* cg = vector_double(MAX_N_PAR);
-    double* cg_first = vector_double(MAX_N_PAR);
-    double* t = vector_double(MAX_N_FAC);
-    double* f = vector_double(MAX_N_FAC);
-    double* at = vector_double(MAX_N_FAC);
-    double* af = vector_double(MAX_N_FAC);
-
-    int** ifp = matrix_int(MAX_N_FAC, 4);
-    int* ia = vector_int(MAX_N_PAR); //ia is zero indexed
 
     double lambda_pole[N_POLES + 1] = { 0.0, 0.0, 90.0, 180.0, 270.0, 60.0, 180.0, 300.0, 60.0, 180.0, 300.0 };
     double beta_pole[N_POLES + 1] = { 0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, -60.0, -60.0, -60.0 };
@@ -255,11 +247,56 @@ int main(int argc, char** argv)
         fflush(stderr);
     }
 
-    double** ee = matrix_double(gl.maxDataPoints + 4, 3);
-    double** ee0 = matrix_double(gl.maxDataPoints + 4, 3);
-    double* tim = vector_double(gl.maxDataPoints + 4);
-    double* brightness = vector_double(gl.maxDataPoints + 4);
-    double* sig = vector_double(gl.maxDataPoints + 4);
+    /* Time in JD*/
+    //double* tim = vector_double(gl.maxDataPoints + 4);
+    std::vector<double> tim(gl.maxDataPoints + 4 + 1, 0.0);
+    /* Brightness*/
+    //double* brightness = vector_double(gl.maxDataPoints + 4);
+    std::vector<double> brightness(gl.maxDataPoints + 4 + 1);
+    /* Solar phase angle */
+    //double* al = vector_double(gl.Lcurves);
+    std::vector<double> al(gl.Lcurves + 1, 0.0);
+    /* Weights...*/
+    //double* weight_lc = vector_double(gl.Lcurves);
+    std::vector<double> weight_lc(gl.Lcurves + 1, 0.0);
+    /* Ecliptic astronomical tempo-centric coordinates of the Sun in AU*/
+    double e0[4]{};
+    /* Ecliptic astronomical centric coordinates of the Earth in AU*/
+    double e[4]{};
+    /* Normalization of distance vectors*/
+    //double** ee = matrix_double(gl.maxDataPoints + 4, 3);
+    //double** ee0 = matrix_double(gl.maxDataPoints + 4, 3);
+    std::vector<std::vector<double>> ee;
+    init_matrix(ee, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
+    std::vector<std::vector<double>> ee0;
+    init_matrix(ee0, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
+
+    //double* sig = vector_double(gl.maxDataPoints + 4);
+    std::vector<double> sig(gl.maxDataPoints + 4 + 1, 0.0);
+    //double* cg_first = vector_double(MAX_N_PAR);
+    std::vector<double> cg_first(MAX_N_PAR + 1, 0.0);
+    //double* cg = vector_double(MAX_N_PAR);
+    std::vector<double> cg(MAX_N_PAR + 1, 0.0);
+
+    //double* t = vector_double(MAX_N_FAC);
+    std::vector<double> t(MAX_N_FAC + 1, 0.0);
+    //double* f = vector_double(MAX_N_FAC);
+    std::vector<double> f(MAX_N_FAC + 1, 0.0);
+    //double* at = vector_double(MAX_N_FAC);
+    std::vector<double> at(MAX_N_FAC + 1, 0.0);
+    //double* af = vector_double(MAX_N_FAC);
+    std::vector<double> af(MAX_N_FAC + 1, 0.0);
+    //int* ia = vector_int(MAX_N_PAR); //ia is zero indexed
+    std::vector<int> ia(MAX_N_PAR + 1, 0);
+    //int** ifp = matrix_int(MAX_N_FAC, 4);
+    std::vector<std::vector<int>> ifp;
+    init_matrix(ifp, MAX_N_FAC + 1, 4 + 1, 0);
+
+    //double** covar = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR);
+    //double** aalpha = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR + 8);
+    init_matrix(gl.covar, MAX_N_PAR + 1, MAX_N_PAR + 1, 0.0);
+    init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
+
 
     // open the input file (resolve logical name first)
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -380,17 +417,14 @@ int main(int argc, char** argv)
     /* number of lightcurves and the first realtive one */
     err = fscanf_s(infile, "%d", &gl.Lcurves);
 
-    double* al = vector_double(gl.Lcurves);
-    double* weight_lc = vector_double(gl.Lcurves);
-
     int ndata = 0;			/* total number of data */
     int k2 = 0;				/* index */
     double al0 = PI;		/* the smallest solar phase angle */
     double al0_abs = PI;
     int ial0 = -1;			/* initialization, index of al0 */
     int ial0_abs = -1;
-    double jd_min = 1e20;	/* initial minimum JD (Julian date)*/
-    double jd_max = -1e40;	/* initial maximum JD (Julian date)*/
+    double jdMin = 1e20;	/* initial minimum JD (Julian date)*/
+    double jdMax = -1e40;	/* initial maximum JD (Julian date)*/
     int onlyrel = 1;
     double jd_0 = jd_00;
     double a = a0;
@@ -418,8 +452,8 @@ int main(int argc, char** argv)
             err = fscanf_s(infile, "%lf %lf %lf", &e[1], &e[2], &e[3]); /* ecliptic astrocentric coord. of the Earth in AU */
 
             /* selects the minimum and maximum JD */
-            if (tim[ndata] < jd_min) jd_min = tim[ndata];
-            if (tim[ndata] > jd_max) jd_max = tim[ndata];
+            if (tim[ndata] < jdMin) jdMin = tim[ndata];
+            if (tim[ndata] > jdMax) jdMax = tim[ndata];
 
             /* normals of distance vectors */
             e0len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
@@ -493,7 +527,7 @@ int main(int argc, char** argv)
     /* If input jd_0 <= 0 then the jd_0 is set to the day before the lowest JD in the data */
     if (jd_0 <= 0)
     {
-        jd_0 = static_cast<int>(jd_min);
+        jd_0 = static_cast<int>(jdMin);
         if (boinc_is_standalone())
             printf("\nNew epoch of zero time  %f\n", jd_0);
     }
@@ -700,7 +734,7 @@ int main(int argc, char** argv)
 
         freq_start = 1 / per_start;
         freq_end = 1 / per_end;
-        freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+        freq_step = 0.5 / (jdMax - jdMin) / 24 * per_step_coef;
 
         // For Unit tests ref only
         //printf("jd_max: %.6f\n", jd_max);
@@ -713,6 +747,11 @@ int main(int argc, char** argv)
 
         /* phase function parameters */
         Nphpar = 3;
+        ma = Ncoef + 5 + Nphpar;
+
+        atry.resize(ma + 1, 0.0);
+        beta.resize(ma + 1, 0.0);
+        da.resize(ma + 1, 0.0);
 
         /* shape is free to be optimized */
         for (i = 0; i < Ncoef; i++)
@@ -821,7 +860,9 @@ int main(int argc, char** argv)
 
                 while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
                 {
-                    mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                    mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
 
                     // For Unite test reference only
                     //printArray(aalpha, 25, 25, "aaplha");
@@ -856,7 +897,9 @@ int main(int argc, char** argv)
 
                 /* deallocates variables used in mrqmin */
                 Deallocate = 1;
-                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
                 Deallocate = 0;
 
                 totarea = 0;
@@ -998,7 +1041,7 @@ int main(int argc, char** argv)
 
     freq_start = 1 / per_start;
     freq_end = 1 / per_end;
-    freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+    freq_step = 0.5 / (jdMax - jdMin) / 24 * per_step_coef;
 
     /* Give ia the value 0/1 if it's fixed/free */
     ia[Ncoef + 1 - 1] = ia_beta_pole;
@@ -1007,6 +1050,11 @@ int main(int argc, char** argv)
 
     /* phase function parameters */
     Nphpar = 3;
+    ma = Ncoef + 5 + Nphpar;
+
+    atry.resize(ma + 1, 0.0);
+    beta.resize(ma + 1, 0.0);
+    da.resize(ma + 1, 0.0);
 
     /* shape is free to be optimized */
     for (i = 0; i < Ncoef; i++)
@@ -1106,7 +1154,9 @@ int main(int argc, char** argv)
 
             while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
             {
-                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
                 Niter++;
 
                 if ((Niter == 1) || (Chisq < Ochisq))
@@ -1136,7 +1186,9 @@ int main(int argc, char** argv)
 
             /* deallocates variables used in mrqmin */
             Deallocate = 1;
-            mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+            mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
             Deallocate = 0;
 
             totarea = 0;
@@ -1177,17 +1229,23 @@ int main(int argc, char** argv)
 #endif
 
         /* output file */
-        if (n == 1)
-        {
-            out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
-        }
-        else
-        {
-            out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
+        auto darkBest = n == 1
+            ? conw_r * escl * escl
+            : dark_best;
+
+        out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best* dev_best* (ndata - 3), darkBest, round(la_best), round(be_best));
+
+        //if (n == 1)
+        //{
+        //    out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
+        //}
+        //else
+        //{
+        //    out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
+        //}
 #if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
             // blinkLed(3);
 #endif
-        }
 
 
         if (boinc_time_to_checkpoint() || boinc_is_standalone())
@@ -1201,24 +1259,24 @@ int main(int argc, char** argv)
 
     out.close();
 
-    deallocate_matrix_double(ee, gl.maxDataPoints + 4);
-    deallocate_matrix_double(ee0, gl.maxDataPoints + 4);
-    aligned_deallocate_matrix_double(covar, MAX_N_PAR);
-    aligned_deallocate_matrix_double(aalpha, MAX_N_PAR);
-    deallocate_matrix_int(ifp, MAX_N_FAC);
+    //deallocate_matrix_double(ee, gl.maxDataPoints + 4);
+    //deallocate_matrix_double(ee0, gl.maxDataPoints + 4);
+    //aligned_deallocate_matrix_double(covar, MAX_N_PAR);
+    //aligned_deallocate_matrix_double(aalpha, MAX_N_PAR);
+    //deallocate_matrix_int(ifp, MAX_N_FAC);
 
-    deallocate_vector(tim);
-    deallocate_vector(brightness);
-    deallocate_vector(sig);
-    deallocate_vector(cg);
-    deallocate_vector(cg_first);
-    deallocate_vector(t);
-    deallocate_vector(f);
-    deallocate_vector(at);
-    deallocate_vector(af);
-    deallocate_vector(ia);
-    deallocate_vector(al);
-    deallocate_vector(weight_lc);
+    //deallocate_vector(tim);
+    //deallocate_vector(brightness);
+    //deallocate_vector(sig);
+    //deallocate_vector(cg);
+    //deallocate_vector(cg_first);
+    //deallocate_vector(t);
+    //deallocate_vector(f);
+    //deallocate_vector(at);
+    //deallocate_vector(af);
+    //deallocate_vector(ia);
+    //deallocate_vector(al);
+    //deallocate_vector(weight_lc);
 
     //delete[] gl.Inrel;
     //delete[] gl.Lpoints;

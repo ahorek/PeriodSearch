@@ -1,24 +1,47 @@
-/*	Numerical Recipes
-	LU Decomposition
-*/
-
-//#define TINY 1.0e-20;
-#include <stdio.h>
-#include <stdlib.h>
+// ReSharper disable IdentifierTypo
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include "declarations.h"
-#include <math.h>
-//#include "../period_search/arrayHelpers.hpp"
+
+#if _MSC_VER >= 1900 // Visual Studio 2015 or later
+constexpr auto tiny = 1.0e-20;
+#else
+const auto tiny = 1.0e-20;
+#endif
 
 //TODO: LUdcmp:LUdcmp()
-void ludcmp(double **a, int n, int indx[], double d[])
+
+/**
+ * @brief Performs LU decomposition of a matrix.
+ *
+ * This function decomposes a given matrix into lower and upper triangular matrices
+ * using LU decomposition as described in "Numerical Recipes".
+ * It is used for solving linear systems, inverting matrices, and determining the determinant.
+ *
+ * The function operates on 1-based indexed arrays, and it does not use the zero
+ * elements of the vectors and matrix.
+ *
+ * @param a A 2D vector representing the matrix to be decomposed. The matrix should be
+ *          of size (n+1) x (n+1) to account for 1-based indexing.
+ * @param n The dimension of the matrix.
+ * @param indx A vector of integers that will be filled with the permutation information
+ *             produced during the decomposition. The vector should be of size n+1.
+ * @param d A vector of doubles to be updated with the parity of the permutation matrix. The
+ *          first element (d[0]) will be set to 1.0 or -1.0.
+ */
+//void ludcmp(double **a, int n, int indx[], double d[])
+void ludcmp(std::vector<std::vector<double>>& a, const int n, std::vector<int>& indx, std::vector<double>& d)
 {
     int i, imax = -999, j, k;
     double big, dum, sum, temp;
-    double *v;
+    //double *v;
 
-    v = vector_double(n);
+    //v = vector_double(n);
+    std::vector<double> v(n + 1);
 
-    *d = 1.0;
+    //*d = 1.0;
+    d[0] = 1.0;
     for (i = 1; i <= n; i++)
     {
         big = 0.0;
@@ -56,11 +79,13 @@ void ludcmp(double **a, int n, int indx[], double d[])
                 a[imax][k] = a[j][k];
                 a[j][k] = dum;
             }
-            *d = -(*d);
+
+            //*d = -(*d);
+            d[0] = -(d[0]);
             v[imax] = v[j];
         }
         indx[j] = imax;
-        if (a[j][j] == 0.0) a[j][j] = TINY;
+        if (a[j][j] == 0.0) a[j][j] = tiny;
         if (j != n)
         {
             dum = 1.0 / (a[j][j]);
@@ -71,6 +96,5 @@ void ludcmp(double **a, int n, int indx[], double d[])
     // For Unit tests reference only
     //printArray(indx, n, "indx");
 
-    deallocate_vector((void *)v);
+    //deallocate_vector((void *)v);
 }
-#undef TINY

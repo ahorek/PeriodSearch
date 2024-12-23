@@ -28,9 +28,6 @@
     <ClCompile Include="period_search\matrix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\memory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\mrqmin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -1,8 +1,3 @@
-/* Convexity regularization function
-
-   8.11.2006
-*/
-
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
@@ -18,6 +13,19 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
+/**
+ * @brief Computes the convexity regularization function.
+ *
+ * This function calculates the convexity regularization function, updating the global variables `ymod` and `dyda` based on the given parameters and the global data.
+ *
+ * @param nc An integer representing the current coefficient index.
+ * @param ma An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ */
 void CalcStrategyAsimd::conv(const int nc, const int ma, globals &gl)
 {
 	gl.ymod = 0;

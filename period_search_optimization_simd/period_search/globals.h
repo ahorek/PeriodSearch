@@ -1,6 +1,7 @@
+// ReSharper disable IdentifierTypo
 #pragma once
 #include <cstdio>
-
+#include <vector>
 #include "constants.h"
 #include "CalcStrategy.hpp"
 
@@ -16,6 +17,10 @@ Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
 Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
+
+extern std::vector<double> atry;
+extern std::vector<double> beta;
+extern std::vector<double> da;
 
 extern CalcContext calcCtx;
 

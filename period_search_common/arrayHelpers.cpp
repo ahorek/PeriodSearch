@@ -4,15 +4,6 @@
 #include <memory>
 #include <vector>
 
-void init2Darray(std::vector<std::unique_ptr<double[]>>& matrix, const int xSize, const int ySize)
-{
-    matrix.resize(xSize);
-    for (int i = 0; i < xSize; ++i)
-    {
-        matrix[i] = std::make_unique<double[]>(ySize);
-    }
-}
-
 void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY)
 {
 	matrix = new double* [dytemp_siszeX];

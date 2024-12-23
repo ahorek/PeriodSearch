@@ -1,21 +1,38 @@
-/* Areas and normals of the triangulated Gaussian image sphere
-
-   8.11.2006
-*/
-
 #include <cmath>
-#include "globals.h"
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
-void areanorm(double t[], double f[], const int ndir, const int nfac, int **ifp, double at[], double af[], globals &gl)
+/**
+ * @brief Calculates areas and normals of the triangulated Gaussian image sphere.
+ *
+ * This function computes the areas and normals for each facet of a triangulated
+ * Gaussian image sphere. It takes spherical coordinates (theta, phi) and converts them
+ * to Cartesian coordinates, then calculates the cross product for each triangle to find
+ * the normal vector and the area of the triangle on the unit sphere.
+ *
+ * @param t A vector of theta angles (in radians) for the directions.
+ * @param f A vector of phi angles (in radians) for the directions.
+ * @param ndir The number of directions.
+ * @param nfac The number of facets (triangles).
+ * @param ifp A 2D vector of indices defining the vertices of each facet.
+ * @param at A vector to store the theta angles of the normal vectors.
+ * @param af A vector to store the phi angles of the normal vectors.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note This function was originally written on 8.11.2006.
+ */
+void areanorm(const std::vector<double>& t, const std::vector<double>& f, const int ndir, const int nfac, const std::vector<std::vector<int>>& ifp,
+    std::vector<double>& at, std::vector<double>& af, globals &gl)
 {
     int i;
     double c[4]{}, vx[4]{}, vy[4]{}, vz[4]{};
 
-    double* x = vector_double(ndir);
-    double* y = vector_double(ndir);
-    double* z = vector_double(ndir);
+    //double* x = vector_double(ndir);
+    //double* y = vector_double(ndir);
+    //double* z = vector_double(ndir);
+    std::vector<double> x(ndir + 1, 0.0);
+    std::vector<double> y(ndir + 1, 0.0);
+    std::vector<double> z(ndir + 1, 0.0);
 
     for (i = 1; i <= ndir; i++)
     {
@@ -65,7 +82,7 @@ void areanorm(double t[], double f[], const int ndir, const int nfac, int **ifp,
     //printArray(af, i - 1, "af");
 	//printArray(Darea, nfac, "Darea");
 
-    deallocate_vector((void *)x);
-    deallocate_vector((void *)y);
-    deallocate_vector((void *)z);
+    //deallocate_vector((void *)x);
+    //deallocate_vector((void *)y);
+    //deallocate_vector((void *)z);
 }

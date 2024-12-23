@@ -4,6 +4,7 @@
    8.11.2006
 */
 
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
 #include "CalcStrategyAsimd.hpp"
@@ -20,11 +21,18 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[],
-	double sig[], double a[], int ia[], int ma,
-	double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl)
+//void CalcStrategyAsimd::mrqcof(double** x1, double** x2, double x3[], double y[],
+//	double sig[], double a[], int ia[], int ma,
+//	double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl)
+//void CalcStrategyAsimd::mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+//	std::vector<double>& sig, double a[], int ia[], int ma,
+//	double** alpha, double beta[], int mfit, int lastone, int lastma, double& trial_chisq, globals& gl)
+void CalcStrategyAsimd::mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+	std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
+	std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
+	auto& alpha = isCovar ? gl.covar : gl.alpha;
 
 	/* N.B. curv and blmatrix called outside bright because output same for all points */
 	CalcStrategyAsimd::curv(a, gl);

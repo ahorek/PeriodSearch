@@ -1,13 +1,22 @@
-/* Curvature function (and hence facet area) from Laplace series
-
-   8.11.2006
-*/
-
+#include <vector>
 #include "globals.h"
 #include "CalcStrategyNone.hpp"
 #include "arrayHelpers.hpp"
 
-void CalcStrategyNone::curv(double cg[], globals& gl)
+/**
+ * @brief Computes the curvature function and facet area from the Laplace series.
+ *
+ * This function calculates the curvature function and hence the facet area based on the Laplace series
+ * using the provided coefficients and global data. The results are stored in the global variables.
+ *
+ * @param cg A reference to a vector of doubles containing the coefficients for the Laplace series.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `Area` and `Dg`.
+ *
+ * @date 8.11.2006
+ */
+void CalcStrategyNone::curv(std::vector<double>& cg, globals& gl)
 {
     for (auto i = 1; i <= Numfac; i++)
     {

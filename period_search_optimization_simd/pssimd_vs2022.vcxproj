@@ -598,7 +598,6 @@
     <ClCompile Include="period_search\lubksb.cpp" />
     <ClCompile Include="period_search\ludcmp.cpp" />
     <ClCompile Include="period_search\matrix.cpp" />
-    <ClCompile Include="period_search\memory.cpp" />
     <ClCompile Include="period_search\mrqcof.cpp" />
     <ClCompile Include="period_search\mrqcof_asimd.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
