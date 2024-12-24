@@ -4,9 +4,6 @@
     <ClCompile Include="period_search\areanorm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\arrayHelpers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\blmatrix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -29,9 +26,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\matrix.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\mrqmin.cpp">
@@ -165,12 +159,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="period_search\arrayHelpers.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="period_search\constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="period_search\declarations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -208,6 +196,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\CalcStrategyAsimd.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\VersionInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

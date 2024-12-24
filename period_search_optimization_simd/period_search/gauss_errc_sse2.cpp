@@ -1,11 +1,9 @@
-/* from Numerical Recipes */
-
 #define SWAP(a,b) {temp=(a);(a)=(b);(b)=temp;}
 
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
-#include <string.h>
+#include <vector>
+//#include <string.h>
 #include "declarations.h"
 
 #if !defined __APPLE__
@@ -20,30 +18,67 @@ const  __m128i avx_ones = _mm_set_epi16(1, 1, 1, 1, 1, 1, 1, 1);
 #if defined(__GNUC__)
 __attribute__((target("sse2")))
 #endif
-void CalcStrategySse2::gauss_errc(double** a, int n, double b[], int &error)
+
+/**
+* @brief Solves a linear system of equations using Gaussian elimination with partial pivoting.
+*
+* This function implements the Gaussian elimination algorithm with partial pivoting to solve a
+* linear system of equations. It rearranges the covariance matrix and the right-hand side vector
+* to find the solution.
+*
+* @param gl A reference to a globals structure containing the covariance matrix and other global data.
+* @param n The dimension of the system (number of equations/variables).
+* @param b A vector of doubles representing the right-hand side vector of the system.
+* @param error An integer reference to store error codes:
+*              - 0: No error
+*              - 1: Singular matrix
+*              - 2: Zero pivot element
+*
+* @note The function modifies the covariance matrix `covar` in place.
+*
+* @source Numerical Recipes
+*
+* @date 8.11.2006
+*/
+void CalcStrategySse2::gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error)
 {
-	int* indxc, * indxr;
-	short* ipiv;
+	//int * indxc, * indxr;
+	//short* ipiv;
 	int i, icol = 0, irow = 0, j, k, l, ll, ipivsize;
 	double big, dum, pivinv, temp;
 
-	indxc = vector_int(n + 1);
-	indxr = vector_int(n + 1);
+	auto& a = gl.covar;
+
+	//indxc = vector_int(n + 1);
+	std::vector<int> indxc(n + 1 + 1, 0);
+	//indxr = vector_int(n + 1);
+	std::vector<int> indxr(n + 1 + 1, 0);
 
 	ipivsize = (n >> 3) << 3;
 	if (n % 8) ipivsize += 8;
 
-#if !defined _WIN32 && !defined __APPLE__
-	ipiv = (short*)memalign(16, ipivsize * sizeof(short)); //is zero indexed
-#elif defined __APPLE__
-	posix_memalign((void**)&ipiv, 16, ipivsize * sizeof(short));
+//#if !defined _WIN32 && !defined __APPLE__
+//	ipiv = (short*)memalign(16, ipivsize * sizeof(short)); //is zero indexed
+//#elif defined __APPLE__
+//	posix_memalign((void**)&ipiv, 16, ipivsize * sizeof(short));
+//#else
+//	ipiv = (short*)_aligned_malloc(ipivsize * sizeof(short), 16); //is zero indexed
+//#endif
+
+#if defined __GNUC__
+	std::vector<short> ipiv(ipivsize, 0)  __attribute__((aligned(16))); /is zero indexed
 #else
-	ipiv = (short*)_aligned_malloc(ipivsize * sizeof(short), 16); //is zero indexed
+#if _MSC_VER >= 1900 // Visual Studio 2015 or later
+	alignas(16) std::vector<short> ipiv(ipivsize, 0); // is zero indexed
+#else
+	__declspec(align(16)) std::vector<short> ipiv(ipivsize, 0); // is zero indexed
+#endif
 #endif
 
 	__m128i avx_zeros = _mm_setzero_si128();
 
-	memset(ipiv, 0, n * sizeof(short));
+	//memset(ipiv, 0, n * sizeof(short));
+
 
 	for (j = n; j < ipivsize; j++) ipiv[j] = 1;
 
@@ -62,13 +97,13 @@ void CalcStrategySse2::gauss_errc(double** a, int n, double b[], int &error)
 
 					if (ria)
 					{
-#if !defined _WIN32
-						free(ipiv);
-#else
-						_aligned_free(ipiv);
-#endif
-						deallocate_vector((void*)indxc);
-						deallocate_vector((void*)indxr);
+//#if !defined _WIN32
+//						free(ipiv);
+//#else
+//						_aligned_free(ipiv);
+//#endif
+						//deallocate_vector((void*)indxc);
+						//deallocate_vector((void*)indxr);
 						error = 1;
 
 						return;
@@ -168,13 +203,13 @@ void CalcStrategySse2::gauss_errc(double** a, int n, double b[], int &error)
 		if (a[icol][icol] == 0.0)
 		{
 
-#if !defined _WIN32
-			free(ipiv);
-#else
-			_aligned_free(ipiv);
-#endif
-			deallocate_vector((void*)indxc);
-			deallocate_vector((void*)indxr);
+//#if !defined _WIN32
+//			free(ipiv);
+//#else
+//			_aligned_free(ipiv);
+//#endif
+			//deallocate_vector((void*)indxc);
+			//deallocate_vector((void*)indxr);
 			error = 2;
 
 			return;
@@ -223,14 +258,14 @@ void CalcStrategySse2::gauss_errc(double** a, int n, double b[], int &error)
 				SWAP(a[k][indxr[l]], a[k][indxc[l]]);
 	}
 
-#if !defined _WIN32
-	free(ipiv);
-#else
-	_aligned_free(ipiv);
-#endif
+//#if !defined _WIN32
+//	free(ipiv);
+//#else
+//	_aligned_free(ipiv);
+//#endif
 
-	deallocate_vector((void*)indxc);
-	deallocate_vector((void*)indxr);
+	//deallocate_vector((void*)indxc);
+	//deallocate_vector((void*)indxr);
 	error = 0;
 
 	return;

@@ -1,10 +1,8 @@
-/* from Numerical Recipes */
-
 #define SWAP(a,b) {temp=(a);(a)=(b);(b)=temp;}
 
 #include <cmath>
-#include <cstdio>
 #include <cstdlib>
+#include <vector>
 #include <string.h>
 #include "declarations.h"
 #include "CalcStrategyAsimd.hpp"
@@ -16,16 +14,42 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::gauss_errc(double** a, int n, double b[], int &error)
+/**
+* @brief Solves a linear system of equations using Gaussian elimination with partial pivoting.
+*
+* This function implements the Gaussian elimination algorithm with partial pivoting to solve a
+* linear system of equations. It rearranges the covariance matrix and the right-hand side vector
+* to find the solution.
+*
+* @param gl A reference to a globals structure containing the covariance matrix and other global data.
+* @param n The dimension of the system (number of equations/variables).
+* @param b A vector of doubles representing the right-hand side vector of the system.
+* @param error An integer reference to store error codes:
+*              - 0: No error
+*              - 1: Singular matrix
+*              - 2: Zero pivot element
+*
+* @note The function modifies the covariance matrix `covar` in place.
+*
+* @source Numerical Recipes
+*
+* @date 8.11.2006
+*/
+void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error)
 {
-	int *indxc, *indxr, *ipiv;
+	//int *indxc,  *indxr, *ipiv;
 	int i, icol = 0, irow = 0, j, k, l, ll;
 	double big, dum, pivinv, temp;
 
-	indxc = vector_int(n + 1);
-	indxr = vector_int(n + 1);
-	ipiv = vector_int(n + 1);
-	memset(ipiv, 0, n * sizeof(int));
+	auto& a = gl.covar;
+
+	//indxc = vector_int(n + 1);
+	std::vector<int> indxc(n + 1 + 1, 0);
+	//indxr = vector_int(n + 1);
+	std::vector<int> indxr(n + 1 + 1, 0);
+	//ipiv = vector_int(n + 1);
+	//memset(ipiv, 0, n * sizeof(int));
+	std::vector<int> ipiv(n + 1 + 1, 0);
 
 	for (i = 1; i <= n; i++)
 	{
@@ -48,9 +72,9 @@ void CalcStrategyAsimd::gauss_errc(double** a, int n, double b[], int &error)
 					}
 					else if (ipiv[k] > 1)
 					{
-						deallocate_vector((void*)ipiv);
-						deallocate_vector((void*)indxc);
-						deallocate_vector((void*)indxr);
+						//deallocate_vector((void*)indxc);
+						//deallocate_vector((void*)indxr);
+						//deallocate_vector((void*)ipiv);
 						error = 1;
 						return;
 					}
@@ -70,9 +94,9 @@ void CalcStrategyAsimd::gauss_errc(double** a, int n, double b[], int &error)
 
 		if (a[icol][icol] == 0.0)
 		{
-			deallocate_vector((void*)ipiv);
-			deallocate_vector((void*)indxc);
-			deallocate_vector((void*)indxr);
+			//deallocate_vector((void*)indxc);
+			//deallocate_vector((void*)indxr);
+			//deallocate_vector((void*)ipiv);
 			error = 2;
 			return;
 		}
@@ -121,9 +145,9 @@ void CalcStrategyAsimd::gauss_errc(double** a, int n, double b[], int &error)
 			}
 	}
 
-	deallocate_vector((void*)ipiv);
-	deallocate_vector((void*)indxc);
-	deallocate_vector((void*)indxr);
+	//deallocate_vector((void*)indxc);
+	//deallocate_vector((void*)indxr);
+	//deallocate_vector((void*)ipiv);
 	error = 0;
 
 	return;

@@ -1,13 +1,7 @@
-/* computes integrated brightness of all visible and iluminated areas
-   and its derivatives
-
-   8.11.2006 - Josef Durec
-   25.3.2024 - Pavel Rosicky
-*/
-
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
@@ -95,10 +89,10 @@ inline static double reduce_pd(__m512d a) {
 // end of inner_calc
 
 #define INNER_CALC_DSMU \
-	  avx_Area=_mm512_load_pd(&Area[i]); \
+	  avx_Area=_mm512_load_pd(&gl.Area[i]); \
 	  avx_dnom=_mm512_add_pd(avx_lmu,avx_lmu0); \
 	  avx_s=_mm512_mul_pd(_mm512_mul_pd(avx_lmu,avx_lmu0),_mm512_add_pd(avx_cl,_mm512_div_pd(avx_cls,avx_dnom))); \
-	  avx_pdbr=_mm512_mul_pd(_mm512_load_pd(&Darea[i]),avx_s); \
+	  avx_pdbr=_mm512_mul_pd(_mm512_load_pd(&gl.Darea[i]),avx_s); \
 	  avx_pbr=_mm512_mul_pd(avx_Area,avx_s); \
 	  avx_powdnom=_mm512_div_pd(avx_lmu0,avx_dnom); \
 	  avx_powdnom=_mm512_mul_pd(avx_powdnom,avx_powdnom); \
@@ -111,10 +105,31 @@ inline static double reduce_pd(__m512d a) {
 #if defined(__GNUC__)
 __attribute__((target("avx512dq,avx512f")))
 #endif
-void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double& br)
+
+/**
+ * @brief Computes integrated brightness of all visible and illuminated areas and its derivatives.
+ *
+ * This function calculates the integrated brightness of all visible and illuminated areas based on the provided time `t`,
+ * coefficient vector `cg`, and global data. It also computes the derivatives of the brightness with respect to the coefficients.
+ *
+ * @param t The time at which the brightness is evaluated.
+ * @param cg A reference to a vector of doubles containing the coefficients for the brightness calculation.
+ * @param ncoef An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ * @author Josef Durec
+ *
+ * @date 25.3.2024 modified by Pavel Rosicky
+ */
+void CalcStrategyAvx512::bright(const double t, std::vector<double>& cg, const int ncoef, globals &gl)
 {
 	int i, j, k;
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
 	ncoef0 = ncoef - 2 - Nphpar;
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
@@ -128,8 +143,7 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 
 	matrix(cg[ncoef0], t, tmat, dtm);
 
-	/* Directions (and ders.) in the rotating system */
-
+	/* Directions (and derivatives) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -148,7 +162,7 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 		}
 	}
 
-	/*Integrated brightness (phase coeff. used later) */
+	/*Integrated brightness (phase coefficients used later) */
 	__m512d avx_e1 = _mm512_set1_pd(e[1]);
 	__m512d avx_e2 = _mm512_set1_pd(e[2]);
 	__m512d avx_e3 = _mm512_set1_pd(e[3]);
@@ -185,14 +199,19 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 	__m512d avx_dyda3 = _mm512_setzero_pd();
 	__m512d avx_d = _mm512_setzero_pd();
 	__m512d avx_d1 = _mm512_setzero_pd();
-	double g[8];
+
+#ifdef __GNUC__
+	double g[8] __attribute__((aligned(64)));
+#else
+	alignas(64) double g[8];
+#endif
 
 	for (i = 0; i < Numfac; i += 8)
 	{
 		__m512d avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-		__m512d avx_Nor1 = _mm512_load_pd(&Nor[0][i]);
-		__m512d avx_Nor2 = _mm512_load_pd(&Nor[1][i]);
-		__m512d avx_Nor3 = _mm512_load_pd(&Nor[2][i]);
+		__m512d avx_Nor1 = _mm512_load_pd(&gl.Nor[0][i]);
+		__m512d avx_Nor2 = _mm512_load_pd(&gl.Nor[1][i]);
+		__m512d avx_Nor3 = _mm512_load_pd(&gl.Nor[2][i]);
 		__m512d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
 		__m512d avx_Area;
 
@@ -216,47 +235,47 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 			avx_dsmu = blendv_pd(_mm512_setzero_pd(), avx_dsmu, cmp);
 			avx_dsmu0 = blendv_pd(_mm512_setzero_pd(), avx_dsmu0, cmp);
 			avx_lmu = blendv_pd(_mm512_setzero_pd(), avx_lmu, cmp);
-			avx_lmu0 = blendv_pd(avx_11, avx_lmu0, cmp); //abychom nedelili nulou
+			avx_lmu0 = blendv_pd(avx_11, avx_lmu0, cmp); // Note: So that it is not divisible by zero (abychom nedelili nulou)
 
 			_mm512_store_pd(g, avx_pdbr);
 			if (icmp & 1)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i];
 				dbr[incl_count++] = _mm512_set1_pd(g[0]);
 			}
 			if (icmp & 2)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 1];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 1];
 				dbr[incl_count++] = _mm512_set1_pd(g[1]);
 			}
 			if (icmp & 4)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 2];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 2];
 				dbr[incl_count++] = _mm512_set1_pd(g[2]);
 			}
 			if (icmp & 8)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 3];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 3];
 				dbr[incl_count++] = _mm512_set1_pd(g[3]);
 			}
 			if (icmp & 16)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 4];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 4];
 				dbr[incl_count++] = _mm512_set1_pd(g[4]);
 			}
 			if (icmp & 32)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 5];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 5];
 				dbr[incl_count++] = _mm512_set1_pd(g[5]);
 			}
 			if (icmp & 64)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 6];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 6];
 				dbr[incl_count++] = _mm512_set1_pd(g[6]);
 			}
 			if (icmp & 128)
 			{
-				Dg_row[incl_count] = (__m512d*)&Dg[i + 7];
+				Dg_row[incl_count] = (__m512d*)&gl.Dg[i + 7];
 				dbr[incl_count++] = _mm512_set1_pd(g[7]);
 			}
 			INNER_CALC
@@ -265,9 +284,9 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 
 	dbr[incl_count] = _mm512_setzero_pd();
 	Dg_row[incl_count] = Dg_row[0];
-	br = reduce_pd(res_br);
+	gl.ymod = reduce_pd(res_br);
 
-	/* Derivatives of brightness w.r.t. g-coeffs */
+	/* Derivatives of brightness w.r.t. g-coefficients */
 	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 16) * 16;
 
 	for (i = 0; i < cyklus1; i += 16) //2 * 8 doubles
@@ -289,9 +308,9 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 		}
 		dgi += 2;
 		tmp1 = _mm512_mul_pd(tmp1, avx_Scale);
-		_mm512_store_pd(&dyda[i], tmp1);
+		_mm512_store_pd(&gl.dyda[i], tmp1);
 		tmp2 = _mm512_mul_pd(tmp2, avx_Scale);
-		_mm512_store_pd(&dyda[i + 8], tmp2);
+		_mm512_store_pd(&gl.dyda[i + 8], tmp2);
 	}
 
 	for (; i < ncoef03; i += 8) //1 * 8 doubles
@@ -311,22 +330,24 @@ void CalcStrategyAvx512::bright(double ee[], double ee0[], double t, double cg[]
 		}
 		dgi++;
 		tmp1 = _mm512_mul_pd(tmp1, avx_Scale);
-		_mm512_store_pd(&dyda[i], tmp1);
+		_mm512_store_pd(&gl.dyda[i], tmp1);
 	}
 
-	/* Ders. of brightness w.r.t. rotation parameters */
-	dyda[ncoef0 - 3 + 1 - 1] = reduce_pd(avx_dyda1) * Scale;
-	dyda[ncoef0 - 3 + 2 - 1] = reduce_pd(avx_dyda2) * Scale;
-	dyda[ncoef0 - 3 + 3 - 1] = reduce_pd(avx_dyda3) * Scale;
+	/* Derivatives of brightness w.r.t. rotation parameters */
+	gl.dyda[ncoef0 - 3 + 1 - 1] = reduce_pd(avx_dyda1) * Scale;
+	gl.dyda[ncoef0 - 3 + 2 - 1] = reduce_pd(avx_dyda2) * Scale;
+	gl.dyda[ncoef0 - 3 + 3 - 1] = reduce_pd(avx_dyda3) * Scale;
 
-	/* Ders. of br. w.r.t. cl, cls */
-	dyda[ncoef - 1 - 1] = reduce_pd(avx_d) * Scale * cl;
-	dyda[ncoef - 1] = reduce_pd(avx_d1) * Scale;
+	/* Derivatives of br. w.r.t. cl, cls */
+	gl.dyda[ncoef - 1 - 1] = reduce_pd(avx_d) * Scale * cl;
+	gl.dyda[ncoef - 1] = reduce_pd(avx_d1) * Scale;
 
-	/* Ders. of br. w.r.t. phase function params. */
+	/* Derivatives of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
-		dyda[ncoef0 + i - 1] = br * dphp[i];
+	{
+		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
+	}
 
 	/* Scaled brightness */
-	br *= Scale;
+	gl.ymod *= Scale;
 }

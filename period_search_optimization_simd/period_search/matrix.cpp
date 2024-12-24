@@ -1,14 +1,25 @@
-/* rotation matrix and its derivatives
-   converted from Mikko's fortran code
-
-   8.11.2006
-*/
-
-#include <math.h>
+#include <cmath>
 #include "globals.h"
 #include "constants.h"
 
-void matrix(double omg, double t, double tmat[][4], double dtm[][4][4])
+/**
+ * @brief Computes the rotation matrix and its derivatives.
+ *
+ * This function calculates the rotation matrix for a given angular velocity (`omg`) and time (`t`),
+ * as well as the derivatives of the rotation matrix with respect to the angular velocity.
+ *
+ * @param omg The angular velocity in radians per unit time.
+ * @param t The time at which the rotation matrix is evaluated.
+ * @param tmat A 2D array to store the computed rotation matrix.
+ * @param dtm A 3D array to store the derivatives of the rotation matrix with respect to angular velocity.
+ *
+ * @note The function modifies the global variables `Blmat` and `Dblm`.
+ *
+ * @source Converted from Mikko's Fortran code
+ *
+ * @date 8.11.2006
+ */
+void matrix(const double omg, const double t, double tmat[][4], double dtm[][4][4])
 {
     double f, cf, sf, dfm[4][4], fmat[4][4];
 

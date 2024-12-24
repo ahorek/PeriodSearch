@@ -1,30 +1,51 @@
-/* N.B. The foll. L-M routines are modified versions of Press et al.
-   converted from Mikko's fortran code
-
-   8.11.2006
-
-   Numerical recipes: Nonlinear least-squares fit, Marquardt’s method
-*/
-
+// ReSharper disable IdentifierTypo
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
-#include "constants.h"
+#include "arrayHelpers.hpp"
 
-int mrqmin(double** x1, double** x2, double x3[], double y[],
-	double sig[], double a[], int ia[], int ma,
-	double** covar, double** alpha)
+/**
+ * @brief Performs a nonlinear least-squares fit using the Marquardt method.
+ *
+ * This function implements the Marquardt method for nonlinear least-squares fitting.
+ * It adjusts the parameters to minimize the chi-squared value, based on the given data and initial parameters.
+ *
+ * @param x1 A reference to a 2D vector of doubles representing the independent variable data.
+ * @param x2 A reference to a 2D vector of doubles representing additional independent variable data.
+ * @param x3 A reference to a vector of doubles representing additional data points.
+ * @param y A reference to a vector of doubles representing the dependent variable data.
+ * @param sig A reference to a vector of doubles representing the standard deviations of the data points.
+ * @param a A reference to a vector of doubles representing the initial parameters.
+ * @param ia A reference to a vector of integers indicating which parameters are to be fitted.
+ * @param ma An integer representing the total number of parameters.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @return An integer error code:
+ *         - 0: No error
+ *         - Non-zero: Indicates an error occurred during fitting
+ *
+ * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
+ *
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardtâ€™s method.
+ *
+ * @date 8.11.2006
+ */
+int mrqmin(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, const int ma, globals& gl)
 {
 	int j, k, l, err_code;
 	static int mfit, lastone, lastma; /* it is set in the first call*/
-	static double* atry, * beta, * da; //beta, da are zero indexed
-	double trial_chisq;
+	//static double* beta, * da, * atry; //beta, da are zero indexed
 
-	/* dealocates memory when usen in period_search */
+	double trial_chisq;
+	//double** alpha, ** covar; // Dummy placeholders
+
+	/* deallocates memory when used in period_search */
 	if (Deallocate == 1)
 	{
-		deallocate_vector((void*)atry);
-		deallocate_vector((void*)beta);
-		deallocate_vector((void*)da);
+		//deallocate_vector((void*)atry);
+		//deallocate_vector((void*)beta);
+		//deallocate_vector((void*)da);
 		return(0);
 	}
 
@@ -32,9 +53,13 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 	{
 		if (Alamda < 0)
 		{
-			atry = vector_double(ma);
-			beta = vector_double(ma);
-			da = vector_double(ma);
+			//atry = vector_double(ma);
+			//beta = vector_double(ma);
+			//da = vector_double(ma);
+
+			std::fill(atry.begin(), atry.end(), 0.0);
+			std::fill(beta.begin(), beta.end(), 0.0);
+			std::fill(da.begin(), da.end(), 0.0);
 
 			/* number of fitted parameters */
 			mfit = 0;
@@ -57,7 +82,9 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 
 			Alamda = Alamda_start; /* initial alambda */
 
-			calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, a, ia, ma, alpha, beta, mfit, lastone, lastma, trial_chisq);
+			//gl.isCovar = false;
+			// NOTE: Use gl.alpha
+			calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, a, ia, ma, beta, mfit, lastone, lastma, trial_chisq, gl, false);
 
 			Ochisq = trial_chisq;
 			for (j = 1; j <= ma; j++)
@@ -70,14 +97,27 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 		{
 			for (k = 0; k < mfit; k++)
 			{
-				covar[j][k] = alpha[j][k];
+				gl.covar[j][k] = gl.alpha[j][k];
 			}
 
-			covar[j][j] = alpha[j][j] * (1 + Alamda);
+			gl.covar[j][j] = gl.alpha[j][j] * (1 + Alamda);
 			da[j] = beta[j];
 		}
 
-		calcCtx.CalculateGaussErrc(covar, mfit, da, err_code);
+		//calcCtx.CalculateGaussErrc(covar, mfit, da.data(), err_code);
+
+		//auto flat2DCover = flatten2Dvector(gl.covar);
+		//// Create double** from the flattened vector
+		//auto rows = gl.covar.size();
+		//auto cols = gl.covar[0].size();
+		//double** flatCovar = new double*[rows];
+	 //   for (size_t i = 0; i < rows; ++i)
+	 //   {
+		//	flatCovar[i] = &flat2DCover[i * cols];
+	 //   }
+
+		//calcCtx.CalculateGaussErrc(flatCovar, mfit, da.data(), err_code);
+		calcCtx.CalculateGaussErrc(gl, mfit, da, err_code);
 
 		if (err_code != 0) return(err_code);
 
@@ -100,15 +140,17 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 		}
 	}
 
-	calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, atry, ia, ma, covar, da, mfit, lastone, lastma, trial_chisq);
+	//gl.isCovar = true;
+	// NOTE: Use gl.covar
+	calcCtx.CalculateMrqcof(x1, x2, x3, y, sig, atry, ia, ma, da, mfit, lastone, lastma, trial_chisq, gl, true);
 
 	Chisq = trial_chisq;
 
 	if (Lastcall == 1)
 	{
-		deallocate_vector((void*)atry);
-		deallocate_vector((void*)beta);
-		deallocate_vector((void*)da);
+		//deallocate_vector((void*)atry);
+		//deallocate_vector((void*)beta);
+		//deallocate_vector((void*)da);
 		return(0);
 	}
 
@@ -119,7 +161,7 @@ int mrqmin(double** x1, double** x2, double x3[], double y[],
 		{
 			for (k = 0; k < mfit; k++)
 			{
-				alpha[j][k] = covar[j][k];
+				gl.alpha[j][k] = gl.covar[j][k];
 			}
 			beta[j] = da[j];
 		}

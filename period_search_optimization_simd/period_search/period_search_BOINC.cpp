@@ -22,17 +22,6 @@
 
 */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-#include <ctime>
-#include <cstring>
-#include <memory.h>
-
-#include "declarations.h"
-#include "constants.h"
-#include "globals.h"
-
 // This file is part of BOINC.
 // http://boinc.berkeley.edu
 // Copyright (C) 2008 University of California
@@ -50,9 +39,25 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
 
+// ReSharper disable CppClangTidyCertErr33C
+// ReSharper disable CppClangTidyPerformanceAvoidEndl
+// ReSharper disable CppClangTidyConcurrencyMtUnsafe
+// ReSharper disable CppClangTidyCertErr34C
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cstring>
+
+#if defined _DEBUG
+#include <ctime>
+#endif
+
+#include "declarations.h"
+#include "constants.h"
+#include "globals.h"
+
 #ifdef _WIN32
 #include "boinc_win.h"
-#include "VersionInfo.h"
 #include <Shlwapi.h>
 #include "WinBase.h"
 #else
@@ -66,7 +71,6 @@
 #include <unistd.h>
 #include <iostream>
 #endif
-//#include <memory>
 
 #ifdef __GNUC__
 #include <filesystem>
@@ -82,6 +86,8 @@
 #include "Enums.h"
 #include "CalcStrategy.hpp"
 #include "CalcStrategyNone.hpp"
+#include "LcHelpers.hpp"
+#include "SIMDHelpers.h"
 
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
@@ -89,33 +95,27 @@
 UC_SHMEM* shmem;
 #endif
 
-//#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
-//#include <wiringPi.h>
-//#define	LED	17
-//#endif
-
 #if !defined _WIN32
 #include <stdarg.h>
 
-int fscanf_s(FILE *file, const char *format, ...) {
+int fscanf_s(FILE* file, const char* format, ...) {
     va_list args;
     va_start(args, format);
     int result = vfscanf(file, format, args);
     va_end(args);
 
     if (result == EOF) {
-		fprintf(stderr, "\nError: reading input\n"); fflush(stderr); exit(2);
-    } else if (result == 0) {
-		fprintf(stderr, "\nError: input format mismatch\n"); fflush(stderr); exit(2);
+        fprintf(stderr, "\nError: reading input\n"); fflush(stderr); std::exit(2);
     }
-	return result;
+    else if (result == 0) {
+        fprintf(stderr, "\nError: input format mismatch\n"); fflush(stderr); std::exit(2);
+    }
+    return result;
 }
 #endif
 
-CalcContext calcCtx(std::make_unique<CalcStrategyNone>());
+CalcContext calcCtx(std::allocate_shared<CalcStrategyNone>(AlignedAllocator<CalcStrategyNone>(64)));
 SIMDSupport CPUopt;
-
-using std::string;
 
 constexpr auto checkpoint_file = "period_search_state";
 constexpr auto input_filename = "period_search_in";
@@ -123,90 +123,67 @@ constexpr auto output_filename = "period_search_out";
 
 int DoCheckpoint(MFILE& mf, const int nlines, const int newconw, const double conwr, const double sumdarkfacet, const int testperiods)
 {
-	string resolvedName;
+    std::string resolvedName;
 
-	const auto file = fopen("temp", "w");
-	if (!file) return 1;
+    const auto file = fopen("temp", "w");
+    if (!file) return 1;
 	fprintf(file, "%d %d %.17g %.17g %d", nlines, newconw, conwr, sumdarkfacet, testperiods);
 	fclose(file);
 
 	auto retval = mf.flush();
 	if (retval) return retval;
-	boinc_resolve_filename_s(checkpoint_file, resolvedName);
+    boinc_resolve_filename_s(checkpoint_file, resolvedName);
 	retval = boinc_rename("temp", resolvedName.c_str());
 	if (retval) return retval;
 
-	return 0;
+    return 0;
 }
 
 #ifdef APP_GRAPHICS
 void update_shmem() {
-	if (!shmem) return;
+    if (!shmem) return;
 
-	// always do this; otherwise a graphics app will immediately
-	// assume we're not alive
-	shmem->update_time = dtime();
+    // always do this; otherwise a graphics app will immediately
+    // assume we're not alive
+    shmem->update_time = dtime();
 
-	// Check whether a graphics app is running,
-	// and don't bother updating shmem if so.
-	// This doesn't matter here,
-	// but may be worth doing if updating shmem is expensive.
-	//
-	if (shmem->countdown > 0) {
-		// the graphics app sets this to 5 every time it renders a frame
-		shmem->countdown--;
-	}
-	else {
-		return;
-	}
-	shmem->fraction_done = boinc_get_fraction_done();
-	shmem->cpu_time = boinc_worker_thread_cpu_time();;
-	boinc_get_status(&shmem->status);
+    // Check whether a graphics app is running,
+    // and don't bother updating shmem if so.
+    // This doesn't matter here,
+    // but may be worth doing if updating shmem is expensive.
+    //
+    if (shmem->countdown > 0) {
+        // the graphics app sets this to 5 every time it renders a frame
+        shmem->countdown--;
+    }
+    else {
+        return;
+    }
+    shmem->fraction_done = boinc_get_fraction_done();
+    shmem->cpu_time = boinc_worker_thread_cpu_time();;
+    boinc_get_status(&shmem->status);
 }
 #endif
 
 /* global parameters */
 int Lmax, Mmax, Niter, Lastcall,
-Ncoef, Numfac, Lcurves, Nphpar,
-Lpoints[MAX_LC + 1], Inrel[MAX_LC + 1],
+Ncoef, Numfac, Nphpar,
 Deallocate, n_iter;
 
 double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
-Sclnw[MAX_LC + 1],
-Yout[MAX_N_OBS + 1],
+
 Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1],
 Tc[MAX_N_FAC + 1][MAX_LM + 1], Ts[MAX_N_FAC + 1][MAX_LM + 1],
 Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
 Blmat[4][4],
 Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
-Dblm[3][4][4],
-Weight[MAX_N_OBS + 1];
+Dblm[3][4][4];
 
-#ifdef __GNUC__
-double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64))),
-Area[MAX_N_FAC + 8] __attribute__((aligned(64))),
-Darea[MAX_N_FAC + 8] __attribute__((aligned(64))),
-Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
-#else
-__declspec(align(64))
-	double Nor[3][MAX_N_FAC + 8],
-			Area[MAX_N_FAC + 8],
-			Darea[MAX_N_FAC + 8],
-			Dg[MAX_N_FAC + 16][MAX_N_PAR + 8]; //Nor,Dg ARE ZERO INDEXED
-#endif
+std::vector<double> atry;
+std::vector<double> beta;
+std::vector<double> da;
 
-#ifdef __GNUC__
-double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-#else
-__declspec(align(64)) double dyda[MAX_N_PAR + 16]; //is zero indexed for aligned memory access
-#endif
-
-double xx1[4], xx2[4], dy, sig2i, wt, ymod,
-	ytemp[MAX_LC_POINTS + 1], dytemp[MAX_LC_POINTS + 1][MAX_N_PAR + 1 + 4],
-	dave[MAX_N_PAR + 1 + 4],
-	dave2[MAX_N_PAR + 1 + 4],
-	coef, ave = 0, trial_chisq, wght;
-
+// NOTE: RPi related:
 //void blinkLed(int count) {
 //	for (int i = 0; i < count; i++) {
 //		digitalWrite(LED, HIGH);  // On
@@ -218,1052 +195,1085 @@ double xx1[4], xx2[4], dy, sig2i, wt, ymod,
 
 int main(int argc, char** argv)
 {
-	int nchars = 0, nlines, ntestperiods, checkpoint_exists, n_start_from;
-	char input_path[512], output_path[512], chkpt_path[512], buf[256];
-	MFILE out;
+    int nlines = 0, ntestperiods, checkpoint_exists, n_start_from;
+    char input_path[512], output_path[512], chkpt_path[512], buf[256];
+    MFILE out;
 
-	int i, j, l, m, k, n, nrows, ndir, i_temp,
-		n_iter_max, n_iter_min,
-		ia_prd, ia_par[4]{}, ia_cl,
-		lc_number,
-		new_conw, max_test_periods;
+    int i, j, l, m, k, n = 0, nrows, ndir, i_temp,
+        n_iter_max, n_iter_min,
+        ia_prd, ia_par[4]{}, ia_cl,
+        lc_number,
+        new_conw, max_test_periods,
+        ma = 0;
 
-	double per_start, per_step_coef, per_end,
-		freq, freq_start, freq_step, freq_end,
-		dev_old, dev_new, iter_diff, iter_diff_max, stop_condition,
-		totarea, sum, dark, dev_best, per_best, dark_best, la_tmp, be_tmp, la_best, be_best, fraction_done,
-		sum_dark_facet, ave_dark_facet;
+    double per_start, per_step_coef, per_end,
+        freq, freq_start, freq_step, freq_end,
+        dev_old, dev_new, iter_diff, iter_diff_max, stop_condition,
+        totarea, sum, dark, dev_best, per_best, dark_best, la_tmp, be_tmp, la_best, be_best, fraction_done,
+        sum_dark_facet = 0.0, ave_dark_facet;
 
-	double jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95,
-		prd, cl, e0len, elen, cos_alpha,
-		dth, dph, rfit, escl,
-		e[4]{}, e0[4]{},
-		chck[4]{},
-		 par[4]{}, rchisq;
+    double jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95,
+        prd, cl, e0len, elen, cos_alpha,
+        dth, dph, rfit, escl,
+        chck[4]{},
+        par[4]{}, rchisq;
 
-	char *str_temp = (char*)malloc(MAX_LINE_LENGTH);
+    auto* str_temp = static_cast<char*>(malloc(MAX_LINE_LENGTH));
 
-	double **ee = matrix_double(MAX_N_OBS, 3);
-	double **ee0 = matrix_double(MAX_N_OBS, 3);
-	double **covar = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR);
-	double **aalpha = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR + 8);
-	double *tim = vector_double(MAX_N_OBS);
-	double *brightness = vector_double(MAX_N_OBS);
-	double *sig = vector_double(MAX_N_OBS);
-	double *cg = vector_double(MAX_N_PAR);
-	double *cg_first = vector_double(MAX_N_PAR);
-	double *t = vector_double(MAX_N_FAC);
-	double *f = vector_double(MAX_N_FAC);
-	double *at = vector_double(MAX_N_FAC);
-	double *af = vector_double(MAX_N_FAC);
+    double lambda_pole[N_POLES + 1] = { 0.0, 0.0, 90.0, 180.0, 270.0, 60.0, 180.0, 300.0, 60.0, 180.0, 300.0 };
+    double beta_pole[N_POLES + 1] = { 0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, -60.0, -60.0, -60.0 };
 
-	int **ifp = matrix_int(MAX_N_FAC, 4);
-	int *ia = vector_int(MAX_N_PAR); //ia is zero indexed
+    int ia_lambda_pole = 1;
+    int ia_beta_pole = 1;
 
-	double lambda_pole[N_POLES + 1] = { 0.0, 0.0, 90.0, 180.0, 270.0, 60.0, 180.0, 300.0, 60.0, 180.0, 300.0 };
-	double beta_pole[N_POLES + 1] = { 0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, -60.0, -60.0, -60.0 };
+    //wiringPiSetupSys();
+    //pinMode(LED, OUTPUT);
 
+    int retval = boinc_init();
+    if (retval)
+    {
+        fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
+        std::exit(retval);
+    }
 
-	// ia_lambda_pole = ia_beta_pole = 1;
-	int ia_lambda_pole = 1;
-	int ia_beta_pole = 1;
+    auto gl = globals();
+    auto res = PrepareLcData(gl, input_filename);
+    if (res <= 0)
+    {
+        fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", input_filename);
+        fflush(stderr);
+    }
 
-	//wiringPiSetupSys();
-	//pinMode(LED, OUTPUT);
+    /* Time in JD*/
+    std::vector<double> tim(gl.maxDataPoints + 4 + 1, 0.0);
+    /* Brightness*/
+    std::vector<double> brightness(gl.maxDataPoints + 4 + 1);
+    /* Solar phase angle */
+    std::vector<double> al(gl.Lcurves + 1, 0.0);
+    /* Weights...*/
+    std::vector<double> weight_lc(gl.Lcurves + 1, 0.0);
+    /* Ecliptic astronomical tempo-centric coordinates of the Sun in AU*/
+    double e0[4]{};
+    /* Ecliptic astronomical centric coordinates of the Earth in AU*/
+    double e[4]{};
+    /* Normalization of distance vectors*/
+    std::vector<std::vector<double>> ee;
+    init_matrix(ee, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
+    std::vector<std::vector<double>> ee0;
+    init_matrix(ee0, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
 
-	int retval = boinc_init();
-	if (retval)
-	{
-		fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
-		exit(retval);
-	}
+    std::vector<double> sig(gl.maxDataPoints + 4 + 1, 0.0);
+    std::vector<double> cg_first(MAX_N_PAR + 1, 0.0);
+    std::vector<double> cg(MAX_N_PAR + 1, 0.0);
 
-	// open the input file (resolve logical name first)
-	boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
-	FILE *infile = boinc_fopen(input_path, "r");
-	if (!infile) {
-		fprintf(stderr,
-			"%s Couldn't find input file, resolved name %s.\n",
-			boinc_msg_prefix(buf, sizeof(buf)), input_path
-		);
-		exit(-1);
-	}
+    std::vector<double> t(MAX_N_FAC + 1, 0.0);
+    std::vector<double> f(MAX_N_FAC + 1, 0.0);
+    std::vector<double> at(MAX_N_FAC + 1, 0.0);
+    std::vector<double> af(MAX_N_FAC + 1, 0.0);
+    std::vector<int> ia(MAX_N_PAR + 1, 0);
+    std::vector<std::vector<int>> ifp;
+    init_matrix(ifp, MAX_N_FAC + 1, 4 + 1, 0);
 
-	// output file
-	boinc_resolve_filename(output_filename, output_path, sizeof(output_path));
-	//    out.open(output_path, "w");
+    init_matrix(gl.covar, MAX_N_PAR + 1, MAX_N_PAR + 1, 0.0);
+    init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
 
-		// See if there's a valid checkpoint file.
-		// If so seek input file and truncate output file
-		//
-	boinc_resolve_filename(checkpoint_file, chkpt_path, sizeof(chkpt_path));
-	FILE *state = boinc_fopen(chkpt_path, "r");
-	if (state) {
-		n = fscanf(state, "%d %d %lf %lf %d", &nlines, &new_conw, &conw_r, &sum_dark_facet, &ntestperiods);
-		fclose(state);
-	}
-	if (state && n == 5) {
-		checkpoint_exists = 1;
-		n_start_from = nlines + 1;
-		retval = out.open(output_path, "a");
-	}
-	else {
-		checkpoint_exists = 0;
-		n_start_from = 1;
-		retval = out.open(output_path, "w");
-	}
-	if (retval) {
-		fprintf(stderr, "%s APP: period_search output open failed:\n",
-			boinc_msg_prefix(buf, sizeof(buf))
-		);
-		fprintf(stderr, "%s resolved name %s, retval %d\n",
-			boinc_msg_prefix(buf, sizeof(buf)), output_path, retval
-		);
-		perror("open");
-		exit(1);
-	}
+    // open the input file (resolve logical name first)
+    boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
+    FILE* infile = boinc_fopen(input_path, "r");
+    if (!infile) {
+        fprintf(stderr,
+            "%s Couldn't find input file, resolved name %s.\n",
+            boinc_msg_prefix(buf, sizeof(buf)), input_path
+        );
+        std::exit(-1);
+    }
+
+    // output file
+    boinc_resolve_filename(output_filename, output_path, sizeof(output_path));
+    //    out.open(output_path, "w");
+
+        // See if there's a valid checkpoint file.
+        // If so seek input file and truncate output file
+        //
+    boinc_resolve_filename(checkpoint_file, chkpt_path, sizeof(chkpt_path));
+    FILE* state = boinc_fopen(chkpt_path, "r");
+    if (state) {
+        n = fscanf(state, "%d %d %lf %lf %d", &nlines, &new_conw, &conw_r, &sum_dark_facet, &ntestperiods);
+        fclose(state);
+    }
+    if (state && n == 5) {
+        checkpoint_exists = 1;
+        n_start_from = nlines + 1;
+        retval = out.open(output_path, "a");
+    }
+    else {
+        checkpoint_exists = 0;
+        n_start_from = 1;
+        retval = out.open(output_path, "w");
+    }
+    if (retval) {
+        fprintf(stderr, "%s APP: period_search output open failed:\n",
+            boinc_msg_prefix(buf, sizeof(buf))
+        );
+        fprintf(stderr, "%s resolved name %s, retval %d\n",
+            boinc_msg_prefix(buf, sizeof(buf)), output_path, retval
+        );
+        perror("open");
+        std::exit(1);
+    }
 
 #ifdef APP_GRAPHICS
-	// create shared mem segment for graphics, and arrange to update it
-	//
-	shmem = (UC_SHMEM*)boinc_graphics_make_shmem("uppercase", sizeof(UC_SHMEM));
-	if (!shmem) {
-		fprintf(stderr, "%s failed to create shared mem segment\n",
-			boinc_msg_prefix(buf, sizeof(buf))
-		);
-	}
-	update_shmem();
-	boinc_register_timer_callback(update_shmem);
+    // create shared mem segment for graphics, and arrange to update it
+    //
+    shmem = (UC_SHMEM*)boinc_graphics_make_shmem("uppercase", sizeof(UC_SHMEM));
+    if (!shmem) {
+        fprintf(stderr, "%s failed to create shared mem segment\n",
+            boinc_msg_prefix(buf, sizeof(buf))
+        );
+    }
+    update_shmem();
+    boinc_register_timer_callback(update_shmem);
 #endif
 
-	int err = 0;
+    int err = 0;
 
-	/* Period interval (hrs) fixed or free */
-	err = fscanf_s(infile, "%lf %lf %lf %d", &per_start, &per_step_coef, &per_end, &ia_prd);	fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Period interval (hrs) fixed or free */
+    err = fscanf_s(infile, "%lf %lf %lf %d", &per_start, &per_step_coef, &per_end, &ia_prd);	fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Epoch of zero time t0 */
-	err = fscanf_s(infile, "%lf", &jd_00);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Epoch of zero time t0 */
+    err = fscanf_s(infile, "%lf", &jd_00);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Initial fixed rotation angle fi0 */
-	err = fscanf_s(infile, "%lf", &Phi_0);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Initial fixed rotation angle fi0 */
+    err = fscanf_s(infile, "%lf", &Phi_0);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* The weight factor for conv. reg. */
-	err = fscanf_s(infile, "%lf", &conw);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* The weight factor for conv. reg. */
+    err = fscanf_s(infile, "%lf", &conw);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Degree and order of the Laplace series */
-	err = fscanf_s(infile, "%d %d", &Lmax, &Mmax);                        fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Degree and order of the Laplace series */
+    err = fscanf_s(infile, "%d %d", &Lmax, &Mmax);                        fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Number of triangulation rows per octant */
-	err = fscanf_s(infile, "%d", &nrows);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Number of triangulation rows per octant */
+    err = fscanf_s(infile, "%d", &nrows);                                 fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Initial guesses for phase funct. params. */
-	err = fscanf_s(infile, "%lf %d", &par[1], &ia_par[1]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
-	err = fscanf_s(infile, "%lf %d", &par[2], &ia_par[2]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
-	err = fscanf_s(infile, "%lf %d", &par[3], &ia_par[3]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Initial guesses for phase funct. params. */
+    err = fscanf_s(infile, "%lf %d", &par[1], &ia_par[1]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
+    err = fscanf_s(infile, "%lf %d", &par[2], &ia_par[2]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
+    err = fscanf_s(infile, "%lf %d", &par[3], &ia_par[3]);                fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Initial Lambert coeff. (L-S=1) */
-	err = fscanf_s(infile, "%lf %d", &cl, &ia_cl);                        fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Initial Lambert coeff. (L-S=1) */
+    err = fscanf_s(infile, "%lf %d", &cl, &ia_cl);                        fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Maximum number of iterations (when > 1) or
-	   minimum difference in dev to stop (when < 1) */
-	err = fscanf_s(infile, "%lf", &stop_condition);                       fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Maximum number of iterations (when > 1) or
+       minimum difference in dev to stop (when < 1) */
+    err = fscanf_s(infile, "%lf", &stop_condition);                       fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Minimum number of iterations when stop_condition < 1 */
-	err = fscanf_s(infile, "%d", &n_iter_min);                            fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Minimum number of iterations when stop_condition < 1 */
+    err = fscanf_s(infile, "%d", &n_iter_min);                            fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Multiplicative factor for Alamda */
-	err = fscanf_s(infile, "%lf", &Alamda_incr);                          fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Multiplicative factor for Alamda */
+    err = fscanf_s(infile, "%lf", &Alamda_incr);                          fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	/* Alamda initial value*/
-	err = fscanf_s(infile, "%lf", &Alamda_start);                         fgets(str_temp, MAX_LINE_LENGTH, infile);
+    /* Alamda initial value*/
+    err = fscanf_s(infile, "%lf", &Alamda_start);                         fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	if (boinc_is_standalone())
-	{
-		printf("\n%g  %g  %g  period start/step/stop (%d)\n", per_start, per_step_coef, per_end, ia_prd);
-		printf("%g epoch of zero time t0\n", jd_00);
-		printf("%g  initial fixed rotation angle fi0\n", Phi_0);
-		printf("%g  the weight factor for conv. reg.\n", conw);
-		printf("%d %d  degree and order of the Laplace series\n", Lmax, Mmax);
-		printf("%d  nr. of triangulation rows per octant\n", nrows);
-		printf("%g %g %g  initial guesses for phase funct. params. (%d,%d,%d)\n", par[1], par[2], par[3], ia_par[1], ia_par[2], ia_par[3]);
-		printf("%g  initial Lambert coeff. (L-S=1) (%d)\n", cl, ia_cl);
-		printf("%g  stop condition\n", stop_condition);
-		printf("%d  minimum number of iterations\n", n_iter_min);
-		printf("%g  Alamda multiplicative factor\n", Alamda_incr);
-		printf("%g  initial Alamda \n\n", Alamda_start);
-	}
+    if (boinc_is_standalone())
+    {
+        printf("\n%g  %g  %g  period start/step/stop (%d)\n", per_start, per_step_coef, per_end, ia_prd);
+        printf("%g epoch of zero time t0\n", jd_00);
+        printf("%g  initial fixed rotation angle fi0\n", Phi_0);
+        printf("%g  the weight factor for conv. reg.\n", conw);
+        printf("%d %d  degree and order of the Laplace series\n", Lmax, Mmax);
+        printf("%d  nr. of triangulation rows per octant\n", nrows);
+        printf("%g %g %g  initial guesses for phase funct. params. (%d,%d,%d)\n", par[1], par[2], par[3], ia_par[1], ia_par[2], ia_par[3]);
+        printf("%g  initial Lambert coeff. (L-S=1) (%d)\n", cl, ia_cl);
+        printf("%g  stop condition\n", stop_condition);
+        printf("%d  minimum number of iterations\n", n_iter_min);
+        printf("%g  Alamda multiplicative factor\n", Alamda_incr);
+        printf("%g  initial Alamda \n\n", Alamda_start);
+    }
 
-	/* lightcurves + geometry file */
-	/* number of lightcurves and the first realtive one */
-	err = fscanf_s(infile, "%d", &Lcurves);
+    /* lightcurves + geometry file */
+    /* number of lightcurves and the first realtive one */
+    err = fscanf_s(infile, "%d", &gl.Lcurves);
 
-	if (Lcurves > MAX_LC)
-	{
-		fprintf(stderr, "\nError: Number of lcs  is greater than MAX_LC = %d\n", MAX_LC); fflush(stderr); exit(2);
-	}
+    int ndata = 0;			/* total number of data */
+    int k2 = 0;				/* index */
+    double al0 = PI;		/* the smallest solar phase angle */
+    double al0_abs = PI;
+    int ial0 = -1;			/* initialization, index of al0 */
+    int ial0_abs = -1;
+    double jdMin = 1e20;	/* initial minimum JD (Julian date)*/
+    double jdMax = -1e40;	/* initial maximum JD (Julian date)*/
+    int onlyrel = 1;
+    double jd_0 = jd_00;
+    double a = a0;
+    double b = b0;
+    double c_axis = c0;
 
-	double *al = vector_double(Lcurves);
-	double *weight_lc = vector_double(Lcurves);
+    /* Loop over lightcurves */
+    for (i = 1; i <= gl.Lcurves; i++)
+    {
+        double average = 0; /* average */
+        err = fscanf_s(infile, "%d %d", &gl.Lpoints[i], &i_temp); /* points in this lightcurve */
+        fgets(str_temp, MAX_LINE_LENGTH, infile);
 
-	int ndata = 0;			/* total number of data */
-	int k2 = 0;				/* index */
-	double al0 = PI;		/* the smallest solar phase angle */
-	double al0_abs = PI;
-	int ial0 = -1;			/* initialization, index of al0 */
-	int ial0_abs = -1;
-	double jd_min = 1e20;	/* initial minimum JD (Julian date)*/
-	double jd_max = -1e40;	/* initial maximum JD (Julian date)*/
-	int onlyrel = 1;
-	double jd_0 = jd_00;
-	double a = a0;
-	double b = b0;
-	double c_axis = c0;
+        gl.Inrel[i] = 1 - i_temp;
+        if (gl.Inrel[i] == 0)
+            onlyrel = 0;
 
-	/* Loop over lightcurves */
-	for (i = 1; i <= Lcurves; i++)
-	{
-		double average = 0; /* average */
-		err = fscanf_s(infile, "%d %d", &Lpoints[i], &i_temp); /* points in this lightcurve */
-		fgets(str_temp, MAX_LINE_LENGTH, infile);
+        /* loop over one lightcurve */
+        for (j = 1; j <= gl.Lpoints[i]; j++)
+        {
+            ndata++;
 
-		Inrel[i] = 1 - i_temp;
-		if (Inrel[i] == 0)
-			onlyrel = 0;
+            err = fscanf_s(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); /* JD, brightness */
+            err = fscanf_s(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]); /* ecliptic astr_tempocentric coord. of the Sun in AU */
+            err = fscanf_s(infile, "%lf %lf %lf", &e[1], &e[2], &e[3]); /* ecliptic astrocentric coord. of the Earth in AU */
 
-		if (Lpoints[i] > MAX_LC_POINTS)
-		{
-			fprintf(stderr, "\nError: Number of lc points is greater than MAX_LC_POINTS = %d\n", MAX_LC_POINTS); fflush(stderr); exit(2);
-		}
+            /* selects the minimum and maximum JD */
+            if (tim[ndata] < jdMin) jdMin = tim[ndata];
+            if (tim[ndata] > jdMax) jdMax = tim[ndata];
 
-		/* loop over one lightcurve */
-		for (j = 1; j <= Lpoints[i]; j++)
-		{
-			ndata++;
+            /* normals of distance vectors */
+            e0len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
+            elen = sqrt(e[1] * e[1] + e[2] * e[2] + e[3] * e[3]);
 
-			if (ndata > MAX_N_OBS)
-			{
-				fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
-			}
+            average += brightness[ndata];
 
-			err = fscanf_s(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); /* JD, brightness */
-			err = fscanf_s(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]); /* ecliptic astr_tempocentric coord. of the Sun in AU */
-			err = fscanf_s(infile, "%lf %lf %lf", &e[1], &e[2], &e[3]); /* ecliptic astrocentric coord. of the Earth in AU */
+            /* normalization of distance vectors */
+            for (k = 1; k <= 3; k++)
+            {
+                ee[ndata][k] = e[k] / elen;
+                ee0[ndata][k] = e0[k] / e0len;
+            }
 
-			/* selects the minimum and maximum JD */
-			if (tim[ndata] < jd_min) jd_min = tim[ndata];
-			if (tim[ndata] > jd_max) jd_max = tim[ndata];
+            if (j == 1)
+            {
+                cos_alpha = dot_product(e, e0) / (elen * e0len);
+                al[i] = acos(cos_alpha); /* solar phase angle */
+                /* Find the smallest solar phase al0 (not important, just for info) */
+                if (al[i] < al0)
+                {
+                    al0 = al[i];
+                    ial0 = ndata;
+                }
+                if ((al[i] < al0_abs) && (gl.Inrel[i] == 0))
+                {
+                    al0_abs = al[i];
+                    ial0_abs = ndata;
+                }
+            }
+        } /* j, one lightcurve */
 
-			/* normals of distance vectors */
-			e0len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
-			elen = sqrt(e[1] * e[1] + e[2] * e[2] + e[3] * e[3]);
+        // For Unit test reference only
+        /*printArray(ee, ndata, 3, "ee");
+        printArray(ee0, ndata, 3, "ee0");*/
 
-			average += brightness[ndata];
+        average /= gl.Lpoints[i];
+        // For unit test reference only
+        //printf("gl.ave: %.30f\n", gl.ave);
 
-			/* normalization of distance vectors */
-			for (k = 1; k <= 3; k++)
-			{
-				ee[ndata][k] = e[k] / elen;
-				ee0[ndata][k] = e0[k] / e0len;
-			}
+        /* Mean brightness of lcurve
+           Use the mean brightness as 'sigma' to renormalize the
+           mean of each lightcurve to unity */
 
-			if (j == 1)
-			{
-				cos_alpha = dot_product(e, e0) / (elen * e0len);
-				al[i] = acos(cos_alpha); /* solar phase angle */
-				/* Find the smallest solar phase al0 (not important, just for info) */
-				if (al[i] < al0)
-				{
-					al0 = al[i];
-					ial0 = ndata;
-				}
-				if ((al[i] < al0_abs) && (Inrel[i] == 0))
-				{
-					al0_abs = al[i];
-					ial0_abs = ndata;
-				}
-			}
-		} /* j, one lightcurve */
+        for (j = 1; j <= gl.Lpoints[i]; j++)
+        {
+            k2++;
+            sig[k2] = average;
+        }
 
-		// For Unit test reference only
-		/*printArray(ee, ndata, 3, "ee");
-		printArray(ee0, ndata, 3, "ee0");*/
+    } /* i, all lightcurves */
 
-		average /= Lpoints[i];
-		// For unit test reference only
-		//printf("ave: %.30f\n", ave);
+    /* initiation of weights */
+    for (i = 1; i <= gl.Lcurves; i++)
+        weight_lc[i] = -1;
 
-		/* Mean brightness of lcurve
-		   Use the mean brightness as 'sigma' to renormalize the
-		   mean of each lightcurve to unity */
+    /* reads weights */
+    auto scanResult = 0;
+    while (true)
+    {
+        scanResult = fscanf(infile, "%d", &lc_number);
+        if (scanResult <= 0) break;
+        scanResult = fscanf(infile, "%lf", &weight_lc[lc_number]);
+        if (scanResult <= 0) break;
+        if (boinc_is_standalone())
+            printf("weights %d %g\n", lc_number, weight_lc[lc_number]);
 
-		for (j = 1; j <= Lpoints[i]; j++)
-		{
-			k2++;
-			sig[k2] = average;
-		}
+        if (feof(infile)) break;
+    }
 
-	} /* i, all lightcurves */
+    /* If input jd_0 <= 0 then the jd_0 is set to the day before the lowest JD in the data */
+    if (jd_0 <= 0)
+    {
+        jd_0 = static_cast<int>(jdMin);
+        if (boinc_is_standalone())
+            printf("\nNew epoch of zero time  %f\n", jd_0);
+    }
 
-	/* initiation of weights */
-	for (i = 1; i <= Lcurves; i++)
-		weight_lc[i] = -1;
+    /* loop over data - subtraction of jd_0 */
+    for (i = 1; i <= ndata; i++)
+        tim[i] = tim[i] - jd_0;
 
-	/* reads weights */
-	/*while (feof(infile) == 0)
-	{
-		fscanf(infile, "%d", &lc_number);
-		fscanf(infile, "%lf", &weight_lc[lc_number]);
-		if (boinc_is_standalone())
-			printf("weights %d %g\n", lc_number, weight_lc[lc_number]);
-	}*/
+    // For Unit test reference only
+    //printArray(tim, ndata, "tim");
 
-	auto scanResult = 0;
-	while (true)
-	{
-		scanResult = fscanf(infile, "%d", &lc_number);
-		if (scanResult <= 0) break;
-		scanResult = fscanf(infile, "%lf", &weight_lc[lc_number]);
-		if (scanResult <= 0) break;
-		if (boinc_is_standalone())
-			printf("weights %d %g\n", lc_number, weight_lc[lc_number]);
+    Phi_0 = Phi_0 * DEG2RAD;
 
-		if (feof(infile)) break;
-	}
+    k = 0;
+    for (i = 1; i <= gl.Lcurves; i++)
+        for (j = 1; j <= gl.Lpoints[i]; j++)
+        {
+            k++;
+            if (weight_lc[i] == -1)
+                gl.Weight[k] = 1;
+            else
+                gl.Weight[k] = weight_lc[i];
+        }
 
-	/* If input jd_0 <= 0 then the jd_0 is set to the day before the lowest JD in the data */
-	if (jd_0 <= 0)
-	{
-		jd_0 = (int)jd_min;
-		if (boinc_is_standalone())
-			printf("\nNew epoch of zero time  %f\n", jd_0);
-	}
+    for (i = 1; i <= 3; i++)
+        gl.Weight[k + i] = 1;
 
-	/* loop over data - subtraction of jd_0 */
-	for (i = 1; i <= ndata; i++)
-		tim[i] = tim[i] - jd_0;
+    // For Unit tests reference only
+    //printArray(Weight, 122, "Weight");
 
-	// For Unit test reference only
-	//printArray(tim, ndata, "tim");
+    /* use calibrated data if possible */
+    if (onlyrel == 0)
+    {
+        al0 = al0_abs;
+        ial0 = ial0_abs;
+    }
 
-	Phi_0 = Phi_0 * DEG2RAD;
+    // For unit test reference only
+    //printf("al0: %.30f\tial0 %d\n", al0, ial0);
 
-	k = 0;
-	for (i = 1; i <= Lcurves; i++)
-		for (j = 1; j <= Lpoints[i]; j++)
-		{
-			k++;
-			if (weight_lc[i] == -1)
-				Weight[k] = 1;
-			else
-				Weight[k] = weight_lc[i];
-		}
+    /* Initial shape guess */
+    rfit = sqrt(2 * sig[ial0] / (0.5 * PI * (1 + cos(al0))));
+    escl = rfit / sqrt((a * b + b * c_axis + a * c_axis) / 3);
+    if (onlyrel == 0)
+        escl *= 0.8;
+    a = a * escl;
+    b = b * escl;
+    c_axis = c_axis * escl;
+    if (boinc_is_standalone())
+    {
+        printf("\nWild guess for initial sphere size is %g\n", rfit);
+        printf("Suggested scaled a,b,c: %g %g %g\n\n", a, b, c_axis);
+    }
 
-	for (i = 1; i <= 3; i++)
-		Weight[k + i] = 1;
+    /* Convexity regularization: make one last 'lightcurve' that
+       consists of the three comps. of the residual nonconv. vect.
+       that should all be zero */
+    // gl.Lcurves = gl.Lcurves + 1;
+    // gl.Lpoints[gl.Lcurves] = 3;
+    // gl.Inrel[gl.Lcurves] = 0;
+    MakeConvexityRegularization(gl);
 
-	// For Unit tests reference only
-	//printArray(Weight, 122, "Weight");
+    // For Unit test reference only
+    //printArray(Inrel, 10, "Inrel");
 
-	/* use calibrated data if possible */
-	if (onlyrel == 0)
-	{
-		al0 = al0_abs;
-		ial0 = ial0_abs;
-	}
+    /* optimization of the convexity weight **************************************************************/
+    APP_INIT_DATA aid;
+    boinc_get_init_data(aid);
+    if (!checkpoint_exists)
+    {
+        conw_r = conw / escl / escl;
+        new_conw = 0;
 
-	// For unit test reference only
-	//printf("al0: %.30f\tial0 %d\n", al0, ial0);
+        fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
 
-	/* Initial shape guess */
-	rfit = sqrt(2 * sig[ial0] / (0.5 * PI * (1 + cos(al0))));
-	escl = rfit / sqrt((a * b + b * c_axis + a * c_axis) / 3);
-	if (onlyrel == 0)
-		escl *= 0.8;
-	a = a * escl;
-	b = b * escl;
-	c_axis = c_axis * escl;
-	if (boinc_is_standalone())
-	{
-		printf("\nWild guess for initial sphere size is %g\n", rfit);
-		printf("Suggested scaled a,b,c: %g %g %g\n\n", a, b, c_axis);
-	}
+        int major, minor, build, revision;
 
-	/* Convexity regularization: make one last 'lightcurve' that
-	   consists of the three comps. of the residual nonconv. vect.
-	   that should all be zero */
-	Lcurves = Lcurves + 1;
-	Lpoints[Lcurves] = 3;
-	Inrel[Lcurves] = 0;
-
-	// For Unit test reference only
-	//printArray(Inrel, 10, "Inrel");
-
-	/* optimization of the convexity weight **************************************************************/
-	APP_INIT_DATA aid;
-	boinc_get_init_data(aid);
-	if (!checkpoint_exists)
-	{
-		conw_r = conw / escl / escl;
-		new_conw = 0;
-
-		fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
-
-		int major, minor, build, revision;
 #if !defined __GNUC__ && defined _WIN32
-		TCHAR filepath[MAX_PATH]; //NOTE: Equal to 'getenv("_")';
-		GetModuleFileName(nullptr, filepath, MAX_PATH);
-		auto filename = PathFindFileName(filepath);
-		GetVersionInfo(filename, major, minor, build, revision);
-		std::cerr << "Application: " << filename << std::endl;
+        char nameBuffer[MAX_PATH];
+        GetModuleFileNameA(nullptr, nameBuffer, MAX_PATH);
+        auto filename = PathFindFileName(nameBuffer);
+        GetVersionInfo(filename, major, minor, build, revision);
+        std::cerr << "Application: " << filename << std::endl;
 #elif defined __GNUC__
-		GetVersionInfo(major, minor, build, revision);
+        GetVersionInfo(major, minor, build, revision);
 #if !defined __APPLE__ && !defined __arm__ && !defined __aarch64__
-		auto path = std::filesystem::current_path();
+        auto path = std::filesystem::current_path();
 #endif
-		std::cerr << "Application: " << argv[0] << std::endl;
+        std::cerr << "Application: " << argv[0] << std::endl;
 #endif
-		std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
-	}
+        std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
+    }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__
-	getSystemInfo();
+    getSystemInfo();
 #else
-	std::cerr << "CPU: " << GetCpuInfo() << std::endl;
-	std::cerr << "RAM: " << roundf(getTotalSystemMemory() * 100) / 100 << " GB" << std::endl;
+    std::cerr << "CPU: " << GetCpuInfo() << std::endl;
+    std::cerr << "RAM: " << round(getTotalSystemMemory() * 100.0) / 100.0 << " GB" << std::endl;
 #endif
 
-	// --- Set desired CPU SIMD optimization ---
-	GetSupportedSIMDs();
+    // --- Set desired CPU SIMD optimization ---
+    GetSupportedSIMDs();
 
-	SIMDEnum useOptimization = SIMDEnum::Undefined;
-	for (auto i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "--optimization") == 0 && i + 1 < argc)
-		{
-			auto index = atoi(argv[++i]);
-			useOptimization = static_cast<SIMDEnum>(index);
-			std::cerr << "Manaual Optimization Override: " << getSIMDEnumName(useOptimization) << std::endl;
-		}
-	}
+    SIMDEnum useOptimization = SIMDEnum::Undefined;
+    for (i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--optimization") == 0 && i + 1 < argc)
+        {
+            auto index = atoi(argv[++i]);
+            useOptimization = static_cast<SIMDEnum>(index);
+            std::cerr << "Manual Optimization Override: " << getSIMDEnumName(useOptimization) << std::endl;
+        }
+    }
 
-	// TEST
-	//CPUopt.hasAVX512dq = false;
-	//CPUopt.hasAVX512 = false;
-	//CPUopt.hasFMA = false;
-	//CPUopt.hasAVX = false;
-	//CPUopt.hasSSE3 = false;
-	//CPUopt.hasSSE2 = false;
-	//CPUopt.hasASIMD = false;
+    // TEST
+    //CPUopt.hasAVX512dq = false;
+    //CPUopt.hasAVX512 = false;
+    //CPUopt.hasFMA = false;
+    //CPUopt.hasAVX = false;
+    //CPUopt.hasSSE3 = false;
+    //CPUopt.hasSSE2 = false;
+    //CPUopt.hasASIMD = false;
 
-	useOptimization = useOptimization == SIMDEnum::Undefined
-		? GetBestSupportedSIMD()
-		: CheckSupportedSIMDs(useOptimization);
+    useOptimization = useOptimization == SIMDEnum::Undefined
+        ? GetBestSupportedSIMD()
+        : CheckSupportedSIMDs(useOptimization);
 
-	SetOptimizationStrategy(useOptimization);
-	// -------------
+    SetOptimizationStrategy(useOptimization);
 
-	while ((new_conw != 1) && ((conw_r * escl * escl) < 10.0))
-	{
-		for (j = 1; j <= 3; j++)
-		{
-			ndata++;
-			brightness[ndata] = 0;
-			sig[ndata] = 1 / conw_r;
-		}
+    // -------------
 
-		// For Unit tests reference only
-		//printArray(sig, 130, "sig");
+    while ((new_conw != 1) && ((conw_r * escl * escl) < 10.0))
+    {
+        for (j = 1; j <= 3; j++)
+        {
+            ndata++;
+            brightness[ndata] = 0;
+            sig[ndata] = 1 / conw_r;
+        }
 
-		/* the ordering of the coeffs. of the Laplace series */
-		Ncoef = 0; /* number of coeffs. */
-		for (m = 0; m <= Mmax; m++)
-			for (l = m; l <= Lmax; l++)
-			{
-				Ncoef++;
-				if (m != 0) Ncoef++;
-			}
+        // For Unit tests reference only
+        //printArray(sig, 130, "sig");
 
-		/*  Fix the directions of the triangle vertices of the Gaussian image sphere
-			t = theta angle, f = phi angle */
-		dth = PI / (2 * nrows); /* step in theta */
-		k = 1;
-		t[1] = 0;
-		f[1] = 0;
-		for (i = 1; i <= nrows; i++)
-		{
-			dph = PI / (2 * i); /* step in phi */
-			for (j = 0; j <= 4 * i - 1; j++)
-			{
-				k++;
-				t[k] = i * dth;
-				f[k] = j * dph;
-			}
-		}
+        /* the ordering of the coeffs. of the Laplace series */
+        Ncoef = 0; /* number of coeffs. */
+        for (m = 0; m <= Mmax; m++)
+            for (l = m; l <= Lmax; l++)
+            {
+                Ncoef++;
+                if (m != 0) Ncoef++;
+            }
 
-		/* go to south pole (in the same rot. order, not a mirror image) */
-		for (i = nrows - 1; i >= 1; i--)
-		{
-			dph = PI / (2 * i);
-			for (j = 0; j <= 4 * i - 1; j++)
-			{
-				k++;
-				t[k] = PI - i * dth;
-				f[k] = j * dph;
-			}
-		}
+        /*  Fix the directions of the triangle vertices of the Gaussian image sphere
+            t = theta angle, f = phi angle */
+        dth = PI / (2 * nrows); /* step in theta */
+        k = 1;
+        t[1] = 0;
+        f[1] = 0;
+        for (i = 1; i <= nrows; i++)
+        {
+            dph = PI / (2 * i); /* step in phi */
+            for (j = 0; j <= 4 * i - 1; j++)
+            {
+                k++;
+                t[k] = i * dth;
+                f[k] = j * dph;
+            }
+        }
 
-		ndir = k + 1; /* number of vertices */
+        /* go to south pole (in the same rot. order, not a mirror image) */
+        for (i = nrows - 1; i >= 1; i--)
+        {
+            dph = PI / (2 * i);
+            for (j = 0; j <= 4 * i - 1; j++)
+            {
+                k++;
+                t[k] = PI - i * dth;
+                f[k] = j * dph;
+            }
+        }
 
-		t[ndir] = PI;
-		f[ndir] = 0;
-		Numfac = 8 * nrows * nrows;
+        ndir = k + 1; /* number of vertices */
 
-		if (Numfac > MAX_N_FAC)
-		{
-			fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); exit(2);
-		}
+        t[ndir] = PI;
+        f[ndir] = 0;
+        Numfac = 8 * nrows * nrows;
 
-		/* makes indices to triangle vertices */
-		trifac(nrows, ifp);
+        if (Numfac > MAX_N_FAC)
+        {
+            fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); std::exit(2);
+        }
 
-		// NOTE: For unit tests arrange only
-		//printArray(f, ndir, "f");
+        /* makes indices to triangle vertices */
+        trifac(nrows, ifp);
 
-		/* areas and normals of the triangulated Gaussian image sphere */
-		areanorm(t, f, ndir, Numfac, ifp, at, af);
+        // NOTE: For unit tests arrange only
+        //printArray(f, ndir, "f");
 
-		/* Precompute some function values at each normal direction*/
-		sphfunc(Numfac, at, af);
+        /* areas and normals of the triangulated Gaussian image sphere */
+        areanorm(t, f, ndir, Numfac, ifp, at, af, gl);
 
-		ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
+        /* Precompute some function values at each normal direction*/
+        sphfunc(Numfac, at, af);
 
-		freq_start = 1 / per_start;
-		freq_end = 1 / per_end;
-		freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+        ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
 
-		// For Unit tests ref only
-		//printf("jd_max: %.6f\n", jd_max);
-		//printf("jd_min: %.6f\n", jd_min);
+        freq_start = 1 / per_start;
+        freq_end = 1 / per_end;
+        freq_step = 0.5 / (jdMax - jdMin) / 24 * per_step_coef;
 
-		/* Give ia the value 0/1 if it's fixed/free */
-		ia[Ncoef + 1 - 1] = ia_beta_pole;
-		ia[Ncoef + 2 - 1] = ia_lambda_pole;
-		ia[Ncoef + 3 - 1] = ia_prd;
+        // For Unit tests ref only
+        //printf("jd_max: %.6f\n", jd_max);
+        //printf("jd_min: %.6f\n", jd_min);
 
-		/* phase function parameters */
-		Nphpar = 3;
+        /* Give ia the value 0/1 if it's fixed/free */
+        ia[Ncoef + 1 - 1] = ia_beta_pole;
+        ia[Ncoef + 2 - 1] = ia_lambda_pole;
+        ia[Ncoef + 3 - 1] = ia_prd;
 
-		/* shape is free to be optimized */
-		for (i = 0; i < Ncoef; i++)
-			ia[i] = 1;
+        /* phase function parameters */
+        Nphpar = 3;
+        ma = Ncoef + 5 + Nphpar;
 
-		/* The first shape param. fixed for relative br. fit */
-		if (onlyrel == 1)
-			ia[0] = 0;
-		ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
+        atry.resize(ma + 1, 0.0);
+        beta.resize(ma + 1, 0.0);
+        da.resize(ma + 1, 0.0);
 
-		/* Lommel-Seeliger part is fixed */
-		ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
+        /* shape is free to be optimized */
+        for (i = 0; i < Ncoef; i++)
+            ia[i] = 1;
 
-		if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
-		{
-			fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
-		}
+        /* The first shape param. fixed for relative br. fit */
+        if (onlyrel == 1)
+            ia[0] = 0;
+        ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
 
-		max_test_periods = 10;
-		ave_dark_facet = 0.0;
-		n_iter = (int)((freq_start - freq_end) / freq_step) + 1;
-		if (n_iter < max_test_periods)
-			max_test_periods = n_iter;
+        /* Lommel-Seeliger part is fixed */
+        ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
 
-		if (checkpoint_exists)
-		{
-			n = ntestperiods + 1;
-			checkpoint_exists = 0; //reset for next loop
-		}
-		else
-		{
-			sum_dark_facet = 0.0;
-			n = 1;
-		}
+        if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
+        {
+            fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); std::exit(2);
+        }
 
-		//NOTE: Gatering initial poles...
+        max_test_periods = 10;
+        ave_dark_facet = 0.0;
+        n_iter = static_cast<int>((freq_start - freq_end) / freq_step) + 1;
+        if (n_iter < max_test_periods)
+            max_test_periods = n_iter;
 
-		for (; n <= max_test_periods; n++)
-		{
-			boinc_fraction_done(n / 10000.0 / max_test_periods);
+        if (checkpoint_exists)
+        {
+            n = ntestperiods + 1;
+            checkpoint_exists = 0; //reset for next loop
+        }
+        else
+        {
+            sum_dark_facet = 0.0;
+            n = 1;
+        }
 
-			freq = freq_start - (n - 1) * freq_step;
+        //NOTE: Gathering initial poles...
+        for (; n <= max_test_periods; n++)
+        {
+            boinc_fraction_done(n / 10000.0 / max_test_periods);
 
-			/* initial poles */
-			per_best = dark_best = la_best = be_best = 0;
-			dev_best = 1e40;
-			for (m = 1; m <= N_POLES; m++)
-			{
-				prd = 1 / freq;
+            freq = freq_start - (n - 1) * freq_step;
+
+            /* initial poles */
+            per_best = dark_best = la_best = be_best = 0;
+            dev_best = 1e40;
+            for (m = 1; m <= N_POLES; m++)
+            {
+                prd = 1 / freq;
 #ifdef _DEBUG
-				printf(".");
+                printf(".");
 #endif
-				/* starts from the initial ellipsoid */
-				for (i = 1; i <= Ncoef; i++)
-					cg[i] = cg_first[i];
+                /* starts from the initial ellipsoid */
+                for (i = 1; i <= Ncoef; i++)
+                    cg[i] = cg_first[i];
 
-				cg[Ncoef + 1] = beta_pole[m];
-				cg[Ncoef + 2] = lambda_pole[m];
+                cg[Ncoef + 1] = beta_pole[m];
+                cg[Ncoef + 2] = lambda_pole[m];
 
-				/* The formulas use beta measured from the pole */
-				cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
-				/* conversion of lambda, beta to radians */
-				cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
-				cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
+                /* The formulas use beta measured from the pole */
+                cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
+                /* conversion of lambda, beta to radians */
+                cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
+                cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
 
-				/* Use omega instead of period */
-				cg[Ncoef + 3] = 24 * 2 * PI / prd;
+                /* Use omega instead of period */
+                cg[Ncoef + 3] = 24 * 2 * PI / prd;
 
-				for (i = 1; i <= Nphpar; i++)
-				{
-					cg[Ncoef + 3 + i] = par[i];
-					ia[Ncoef + 3 + i - 1] = ia_par[i];
-				}
-				/* Lommel-Seeliger part */
-				cg[Ncoef + 3 + Nphpar + 2] = 1;
-				/* Use logarithmic formulation for Lambert to keep it positive */
-				cg[Ncoef + 3 + Nphpar + 1] = log(cl);
+                for (i = 1; i <= Nphpar; i++)
+                {
+                    cg[Ncoef + 3 + i] = par[i];
+                    ia[Ncoef + 3 + i - 1] = ia_par[i];
+                }
+                /* Lommel-Seeliger part */
+                cg[Ncoef + 3 + Nphpar + 2] = 1;
+                /* Use logarithmic formulation for Lambert to keep it positive */
+                cg[Ncoef + 3 + Nphpar + 1] = log(cl);
 
-				// For Unit tests reference only
-				//printArray(cg, 24, "cg");
-				//printArray(ia, 24, "ia");
+                // For Unit tests reference only
+                //printArray(cg, 24, "cg");
+                //printArray(ia, 24, "ia");
 
-				/* Levenberg-Marquardt loop */
-				n_iter_max = 0;
-				iter_diff_max = -1;
-				rchisq = -1;
-				if (stop_condition > 1)
-				{
-					n_iter_max = (int)stop_condition;
-					iter_diff_max = 0;
-					n_iter_min = 0; /* to not overwrite the n_iter_max value */
-				}
-				if (stop_condition < 1)
-				{
-					n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-					iter_diff_max = stop_condition;
-				}
-				Alamda = -1;
-				Niter = 0;
-				iter_diff = 1e40;
-				dev_old = 1e30;
-				dev_new = 0;
-				Lastcall = 0;
+                /* Levenberg-Marquardt loop */
+                n_iter_max = 0;
+                iter_diff_max = -1;
+                rchisq = -1;
+                if (stop_condition > 1)
+                {
+                    n_iter_max = static_cast<int>(stop_condition);
+                    iter_diff_max = 0;
+                    n_iter_min = 0; /* to not overwrite the n_iter_max value */
+                }
+                if (stop_condition < 1)
+                {
+                    n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
+                    iter_diff_max = stop_condition;
+                }
+                Alamda = -1;
+                Niter = 0;
+                iter_diff = 1e40;
+                dev_old = 1e30;
+                dev_new = 0;
+                Lastcall = 0;
 
-				// For Unit tests reference only
-				//printArray(brightness, ndata, "brightness[ndata] -> brightness");
+                // For Unit tests reference only
+                //printArray(brightness, ndata, "brightness[ndata] -> brightness");
 
-				while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
-				{
-					mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
+                while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
+                {
+                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                    mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
 
-					// For Unite test reference only
-					//printArray(aalpha, 25, 25, "aaplha");
-					//printArray(covar, 25, 25, "covar");
+                    // For Unite test reference only
+                    //printArray(aalpha, 25, 25, "aaplha");
+                    //printArray(covar, 25, 25, "covar");
 
-					Niter++;
+                    Niter++;
 
-					if ((Niter == 1) || (Chisq < Ochisq))
-					{
-						Ochisq = Chisq;
-						calcCtx.CalculateCurv(cg);
+                    if ((Niter == 1) || (Chisq < Ochisq))
+                    {
+                        Ochisq = Chisq;
+                        calcCtx.CalculateCurv(cg, gl);
 
-						for (i = 1; i <= 3; i++)
-						{
-							chck[i] = 0;
-							for (j = 1; j <= Numfac; j++)
-								chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
-						}
-						rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
-					}
-					dev_new = sqrt(rchisq / (ndata - 3));
-					//printf("% 0.6f\n", dev_new);
+                        for (i = 1; i <= 3; i++)
+                        {
+                            chck[i] = 0;
+                            for (j = 1; j <= Numfac; j++)
+                                chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
+                        }
+                        rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
+                    }
+                    dev_new = sqrt(rchisq / (ndata - 3));
+                    //printf("% 0.6f\n", dev_new);
 
-					/* only if this step is better than the previous,
-					   1e-10 is for numeric errors */
-					if (dev_old - dev_new > 1e-10)
-					{
-						iter_diff = dev_old - dev_new;
-						dev_old = dev_new;
-					}
-				}
+                    /* only if this step is better than the previous,
+                       1e-10 is for numeric errors */
+                    if (dev_old - dev_new > 1e-10)
+                    {
+                        iter_diff = dev_old - dev_new;
+                        dev_old = dev_new;
+                    }
+                }
 
-				/* deallocates variables used in mrqmin */
-				Deallocate = 1;
-				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
-				Deallocate = 0;
+                /* deallocates variables used in mrqmin */
+                Deallocate = 1;
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
+                Deallocate = 0;
 
-				totarea = 0;
-				for (i = 1; i <= Numfac; i++)
-				{
-					totarea = totarea + Area[i - 1];
-				}
+                totarea = 0;
+                for (i = 1; i <= Numfac; i++)
+                {
+                    totarea = totarea + gl.Area[i - 1];
+                }
 
-				sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-				dark = sqrt(sum);
+                sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
+                dark = sqrt(sum);
 
-				/* period solution */
-				prd = 2 * PI / cg[Ncoef + 3];
+                /* period solution */
+                prd = 2 * PI / cg[Ncoef + 3];
 
-				/* pole solution */
-				la_tmp = RAD2DEG * cg[Ncoef + 2];
-				be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
+                /* pole solution */
+                la_tmp = RAD2DEG * cg[Ncoef + 2];
+                be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
 
-				if (dev_new < dev_best)
-				{
-					dev_best = dev_new;
-					per_best = prd;
-					dark_best = dark / totarea * 100;
-					la_best = la_tmp;
-					be_best = be_tmp;
-				}
-			} /* pole loop */
+                if (dev_new < dev_best)
+                {
+                    dev_best = dev_new;
+                    per_best = prd;
+                    dark_best = dark / totarea * 100;
+                    la_best = la_tmp;
+                    be_best = be_tmp;
+                }
+            } /* pole loop */
 
 #ifdef _DEBUG
-			printf("\n");
+            printf("\n");
 #endif
-			if (la_best < 0)
-				la_best += 360;
+            if (la_best < 0)
+                la_best += 360;
 
 #ifdef __GNUC__
-			if (std::isnan(dark_best) == 1)
-				dark_best = 1.0;
+            if (std::isnan(dark_best) == 1)
+                dark_best = 1.0;
 #else
-			if (_isnan(dark_best) == 1)
-				dark_best = 1.0;
+            if (_isnan(dark_best) == 1)
+                dark_best = 1.0;
 #endif
 
-			sum_dark_facet = sum_dark_facet + dark_best;
+            sum_dark_facet += dark_best;
 
-			if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
-				retval = DoCheckpoint(out, 0, new_conw, conw_r, sum_dark_facet, n); //zero lines
-				if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); exit(retval); }
-				boinc_checkpoint_completed();
-			}
+            if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
+                retval = DoCheckpoint(out, 0, new_conw, conw_r, sum_dark_facet, n); //zero lines
+                if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
+                boinc_checkpoint_completed();
+            }
 
-		} /* period loop */
+        } /* period loop */
 
-		ave_dark_facet = sum_dark_facet / max_test_periods;
+        ave_dark_facet = sum_dark_facet / max_test_periods;
 
-		if (ave_dark_facet < 1.0)
-			new_conw = 1; /* new correct conwexity weight */
-		if (ave_dark_facet >= 1.0)
-			conw_r = conw_r * 2; /* still not good */
-		ndata = ndata - 3;
+        if (ave_dark_facet < 1.0)
+            new_conw = 1; /* new correct conwexity weight */
+        if (ave_dark_facet >= 1.0)
+            conw_r = conw_r * 2; /* still not good */
+        ndata = ndata - 3;
 
 
-		if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
-			retval = DoCheckpoint(out, 0, new_conw, conw_r, 0.0, 0); //zero lines,zero sum dark facets, zero testperiods
-			if (retval)
-			{
-				fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); exit(retval);
-			}
+        if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
+            retval = DoCheckpoint(out, 0, new_conw, conw_r, 0.0, 0); //zero lines,zero sum dark facets, zero testperiods
+            if (retval)
+            {
+                fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval);
+            }
 
-			boinc_checkpoint_completed();
-		}
+            boinc_checkpoint_completed();
+        }
 
-	}
-	/*end optimizing conw *********************************************************************************/
+    }
+    /*end optimizing conw *********************************************************************************/
 
-	for (j = 1; j <= 3; j++)
-	{
-		ndata++;
-		brightness[ndata] = 0;
-		sig[ndata] = 1 / conw_r;
-	}
+    for (j = 1; j <= 3; j++)
+    {
+        ndata++;
+        brightness[ndata] = 0;
+        sig[ndata] = 1 / conw_r;
+    }
 
-	/* the ordering of the coeffs. of the Laplace series */
-	Ncoef = 0; /* number of coeffs. */
-	for (m = 0; m <= Mmax; m++)
-		for (l = m; l <= Lmax; l++)
-		{
-			Ncoef++;
-			if (m != 0) Ncoef++;
-		}
+    /* the ordering of the coeffs. of the Laplace series */
+    Ncoef = 0; /* number of coeffs. */
+    for (m = 0; m <= Mmax; m++)
+        for (l = m; l <= Lmax; l++)
+        {
+            Ncoef++;
+            if (m != 0) Ncoef++;
+        }
 
-	/*  Fix the directions of the triangle vertices of the Gaussian image sphere
-		t = theta angle, f = phi angle */
-	dth = PI / (2 * nrows); /* step in theta */
-	k = 1;
-	t[1] = 0;
-	f[1] = 0;
-	for (i = 1; i <= nrows; i++)
-	{
-		dph = PI / (2 * i); /* step in phi */
-		for (j = 0; j <= 4 * i - 1; j++)
-		{
-			k++;
-			t[k] = i * dth;
-			f[k] = j * dph;
-		}
-	}
+    /*  Fix the directions of the triangle vertices of the Gaussian image sphere
+        t = theta angle, f = phi angle */
+    dth = PI / (2 * nrows); /* step in theta */
+    k = 1;
+    t[1] = 0;
+    f[1] = 0;
+    for (i = 1; i <= nrows; i++)
+    {
+        dph = PI / (2 * i); /* step in phi */
+        for (j = 0; j <= 4 * i - 1; j++)
+        {
+            k++;
+            t[k] = i * dth;
+            f[k] = j * dph;
+        }
+    }
 
-	/* go to south pole (in the same rot. order, not a mirror image) */
-	for (i = nrows - 1; i >= 1; i--)
-	{
-		dph = PI / (2 * i);
-		for (j = 0; j <= 4 * i - 1; j++)
-		{
-			k++;
-			t[k] = PI - i * dth;
-			f[k] = j * dph;
-		}
-	}
+    /* go to the South Pole (in the same rot. order, not a mirror image) */
+    for (i = nrows - 1; i >= 1; i--)
+    {
+        dph = PI / (2 * i);
+        for (j = 0; j <= 4 * i - 1; j++)
+        {
+            k++;
+            t[k] = PI - i * dth;
+            f[k] = j * dph;
+        }
+    }
 
-	ndir = k + 1; /* number of vertices */
+    ndir = k + 1; /* number of vertices */
 
-	t[ndir] = PI;
-	f[ndir] = 0;
-	Numfac = 8 * nrows * nrows;
+    t[ndir] = PI;
+    f[ndir] = 0;
+    Numfac = 8 * nrows * nrows;
 
-	if (Numfac > MAX_N_FAC)
-	{
-		fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); exit(2);
-	}
+    if (Numfac > MAX_N_FAC)
+    {
+        fprintf(stderr, "\nError: Number of facets is greater than MAX_N_FAC!\n"); fflush(stderr); std::exit(2);
+    }
 
-	/* makes indices to triangle vertices */
-	trifac(nrows, ifp);
-	/* areas and normals of the triangulated Gaussian image sphere */
-	areanorm(t, f, ndir, Numfac, ifp, at, af);
-	/* Precompute some function values at each normal direction*/
-	sphfunc(Numfac, at, af);
+    /* makes indices to triangle vertices */
+    trifac(nrows, ifp);
+    /* areas and normals of the triangulated Gaussian image sphere */
+    areanorm(t, f, ndir, Numfac, ifp, at, af, gl);
+    /* Precompute some function values at each normal direction*/
+    sphfunc(Numfac, at, af);
 
-	ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
+    ellfit(cg_first, a, b, c_axis, Numfac, Ncoef, at, af);
 
-	freq_start = 1 / per_start;
-	freq_end = 1 / per_end;
-	freq_step = 0.5 / (jd_max - jd_min) / 24 * per_step_coef;
+    freq_start = 1 / per_start;
+    freq_end = 1 / per_end;
+    freq_step = 0.5 / (jdMax - jdMin) / 24 * per_step_coef;
 
-	/* Give ia the value 0/1 if it's fixed/free */
-	ia[Ncoef + 1 - 1] = ia_beta_pole;
-	ia[Ncoef + 2 - 1] = ia_lambda_pole;
-	ia[Ncoef + 3 - 1] = ia_prd;
+    /* Give ia the value 0/1 if it's fixed/free */
+    ia[Ncoef + 1 - 1] = ia_beta_pole;
+    ia[Ncoef + 2 - 1] = ia_lambda_pole;
+    ia[Ncoef + 3 - 1] = ia_prd;
 
-	/* phase function parameters */
-	Nphpar = 3;
+    /* phase function parameters */
+    Nphpar = 3;
+    ma = Ncoef + 5 + Nphpar;
 
-	/* shape is free to be optimized */
-	for (i = 0; i < Ncoef; i++)
-	{
-		ia[i] = 1;
-	}
+    atry.resize(ma + 1, 0.0);
+    beta.resize(ma + 1, 0.0);
+    da.resize(ma + 1, 0.0);
 
-	/* The first shape param. fixed for relative br. fit */
-	if (onlyrel == 1)
-	{
-		ia[0] = 0;
-	}
+    /* shape is free to be optimized */
+    for (i = 0; i < Ncoef; i++)
+    {
+        ia[i] = 1;
+    }
 
-	ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
+    /* The first shape param. fixed for relative br. fit */
+    if (onlyrel == 1)
+    {
+        ia[0] = 0;
+    }
 
-	/* Lommel-Seeliger part is fixed */
-	ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
+    ia[Ncoef + 3 + Nphpar + 1 - 1] = ia_cl;
 
-	if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
-	{
-		fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
-	}
+    /* Lommel-Seeliger part is fixed */
+    ia[Ncoef + 3 + Nphpar + 2 - 1] = 0;
 
-	for (n = n_start_from; n <= (int)((freq_start - freq_end) / freq_step) + 1; n++)
-	{
-		fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
-		boinc_fraction_done(fraction_done);
+    if ((Ncoef + 3 + Nphpar + 1) > MAX_N_PAR)
+    {
+        fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); std::exit(2);
+    }
+
+    for (n = n_start_from; n <= static_cast<int>((freq_start - freq_end) / freq_step) + 1; n++)
+    {
+        fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
+        boinc_fraction_done(fraction_done);
 
 #ifdef _DEBUG
-		auto fraction = fraction_done * 100;
-		auto time = std::time(nullptr);   // get time now
-		auto now = std::localtime(&time);
-
-		printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
-		fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction);
+        auto fraction = fraction_done * 100;
+        auto time = std::time(nullptr);   // get time now
+        std::tm now{};
+#ifdef __GNUC__
+        std::localtime_r(&now, &time);
+#else
+        _localtime64_s(&now, &time);
+#endif
+        printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
+        fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
 #endif
 
-		freq = freq_start - (n - 1) * freq_step;
+        freq = freq_start - (n - 1) * freq_step;
 
-		/* initial poles */
-		per_best = dark_best = la_best = be_best = 0;
-		dev_best = 1e40;
-		for (m = 1; m <= N_POLES; m++)
-		{
-			prd = 1 / freq;
-			/* starts from the initial ellipsoid */
-			for (i = 1; i <= Ncoef; i++)
-				cg[i] = cg_first[i];
+        /* initial poles */
+        per_best = dark_best = la_best = be_best = 0;
+        dev_best = 1e40;
+        for (m = 1; m <= N_POLES; m++)
+        {
+            prd = 1 / freq;
+            /* starts from the initial ellipsoid */
+            for (i = 1; i <= Ncoef; i++)
+                cg[i] = cg_first[i];
 
-			cg[Ncoef + 1] = beta_pole[m];
-			cg[Ncoef + 2] = lambda_pole[m];
+            cg[Ncoef + 1] = beta_pole[m];
+            cg[Ncoef + 2] = lambda_pole[m];
 
-			/* The formulas use beta measured from the pole */
-			cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
-			/* conversion of lambda, beta to radians */
-			cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
-			cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
+            /* The formulas use beta measured from the pole */
+            cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
+            /* conversion of lambda, beta to radians */
+            cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
+            cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
 
-			/* Use omega instead of period */
-			cg[Ncoef + 3] = 24 * 2 * PI / prd;
+            /* Use omega instead of period */
+            cg[Ncoef + 3] = 24 * 2 * PI / prd;
 
-			for (i = 1; i <= Nphpar; i++)
-			{
-				cg[Ncoef + 3 + i] = par[i];
-				ia[Ncoef + 3 + i - 1] = ia_par[i];
-			}
-			/* Lommel-Seeliger part */
-			cg[Ncoef + 3 + Nphpar + 2] = 1;
-			/* Use logarithmic formulation for Lambert to keep it positive */
-			cg[Ncoef + 3 + Nphpar + 1] = log(cl);
+            for (i = 1; i <= Nphpar; i++)
+            {
+                cg[Ncoef + 3 + i] = par[i];
+                ia[Ncoef + 3 + i - 1] = ia_par[i];
+            }
+            /* Lommel-Seeliger part */
+            cg[Ncoef + 3 + Nphpar + 2] = 1;
+            /* Use logarithmic formulation for Lambert to keep it positive */
+            cg[Ncoef + 3 + Nphpar + 1] = log(cl);
 
-			/* Levenberg-Marquardt loop */
-			n_iter_max = 0;
-			iter_diff_max = -1;
-			rchisq = -1;
-			if (stop_condition > 1)
-			{
-				n_iter_max = (int)stop_condition;
-				iter_diff_max = 0;
-				n_iter_min = 0; /* to not overwrite the n_iter_max value */
-			}
-			if (stop_condition < 1)
-			{
-				n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-				iter_diff_max = stop_condition;
-			}
-			Alamda = -1;
-			Niter = 0;
-			iter_diff = 1e40;
-			dev_old = 1e30;
-			dev_new = 0;
-			Lastcall = 0;
+            /* Levenberg-Marquardt loop */
+            n_iter_max = 0;
+            iter_diff_max = -1;
+            rchisq = -1;
+            if (stop_condition > 1)
+            {
+                n_iter_max = static_cast<int>(stop_condition);
+                iter_diff_max = 0;
+                n_iter_min = 0; /* to not overwrite the n_iter_max value */
+            }
+            if (stop_condition < 1)
+            {
+                n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
+                iter_diff_max = stop_condition;
+            }
+            Alamda = -1;
+            Niter = 0;
+            iter_diff = 1e40;
+            dev_old = 1e30;
+            dev_new = 0;
+            Lastcall = 0;
 
-			while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
-			{
-				mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
-				Niter++;
+            while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
+            {
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
+                Niter++;
 
-				if ((Niter == 1) || (Chisq < Ochisq))
-				{
-					Ochisq = Chisq;
-					calcCtx.CalculateCurv(cg);
+                if ((Niter == 1) || (Chisq < Ochisq))
+                {
+                    Ochisq = Chisq;
+                    calcCtx.CalculateCurv(cg, gl);
 
-					for (i = 1; i <= 3; i++)
-					{
-						chck[i] = 0;
-						for (j = 1; j <= Numfac; j++)
-						{
-							chck[i] = chck[i] + Area[j - 1] * Nor[i - 1][j - 1];
-						}
-					}
-					rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
-				}
-				dev_new = sqrt(rchisq / (ndata - 3));
-				/* only if this step is better than the previous,
-				   1e-10 is for numeric errors */
-				if (dev_old - dev_new > 1e-10)
-				{
-					iter_diff = dev_old - dev_new;
-					dev_old = dev_new;
-				}
-			}
+                    for (i = 1; i <= 3; i++)
+                    {
+                        chck[i] = 0;
+                        for (j = 1; j <= Numfac; j++)
+                        {
+                            chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
+                        }
+                    }
+                    rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
+                }
+                dev_new = sqrt(rchisq / (ndata - 3));
+                /* only if this step is better than the previous,
+                   1e-10 is for numeric errors */
+                if (dev_old - dev_new > 1e-10)
+                {
+                    iter_diff = dev_old - dev_new;
+                    dev_old = dev_new;
+                }
+            }
 
-			/* deallocates variables used in mrqmin */
-			Deallocate = 1;
-			mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha);
-			Deallocate = 0;
+            /* deallocates variables used in mrqmin */
+            Deallocate = 1;
+            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
+            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
+            mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
+            Deallocate = 0;
 
-			totarea = 0;
-			for (i = 1; i <= Numfac; i++)
-			{
-				totarea = totarea + Area[i - 1];
-			}
+            totarea = 0;
+            for (i = 1; i <= Numfac; i++)
+            {
+                totarea = totarea + gl.Area[i - 1];
+            }
 
-			sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-			dark = sqrt(sum);
+            sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
+            dark = sqrt(sum);
 
-			/* period solution */
-			prd = 2 * PI / cg[Ncoef + 3];
+            /* period solution */
+            prd = 2 * PI / cg[Ncoef + 3];
 
-			/* pole solution */
-			la_tmp = RAD2DEG * cg[Ncoef + 2];
-			be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
+            /* pole solution */
+            la_tmp = RAD2DEG * cg[Ncoef + 2];
+            be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
 
-			if (dev_new < dev_best)
-			{
-				dev_best = dev_new;
-				per_best = prd;
-				dark_best = dark / totarea * 100;
-				la_best = la_tmp;
-				be_best = be_tmp;
-			}
-		} /* pole loop */
+            if (dev_new < dev_best)
+            {
+                dev_best = dev_new;
+                per_best = prd;
+                dark_best = dark / totarea * 100;
+                la_best = la_tmp;
+                be_best = be_tmp;
+            }
+        } /* pole loop */
 
-		if (la_best < 0)
-			la_best += 360;
+        if (la_best < 0)
+            la_best += 360;
 
 #ifdef __GNUC__
-		if (std::isnan(dark_best) == 1)
-			dark_best = 1.0;
+        if (std::isnan(dark_best) == 1)
+            dark_best = 1.0;
 #else
-		if (_isnan(dark_best) == 1)
-			dark_best = 1.0;
+        if (_isnan(dark_best) == 1)
+            dark_best = 1.0;
 #endif
 
-		/* output file */
-		if (n == 1)
-		{
-			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
-		}
-		else
-		{
-			out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
-			#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
-				// blinkLed(3);
-			#endif
-		}
+        /* output file */
+        auto darkBest = n == 1
+            ? conw_r * escl * escl
+            : dark_best;
+
+        out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best* dev_best* (ndata - 3), darkBest, round(la_best), round(be_best));
+
+        //if (n == 1)
+        //{
+        //    out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), conw_r * escl * escl, round(la_best), round(be_best));
+        //}
+        //else
+        //{
+        //    out.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * per_best, dev_best, dev_best * dev_best * (ndata - 3), dark_best, round(la_best), round(be_best));
+        //}
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
+            // blinkLed(3);
+#endif
 
 
-		if (boinc_time_to_checkpoint() || boinc_is_standalone())
-		{
-			retval = DoCheckpoint(out, n, new_conw, conw_r, 0.0, 0);
-			if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); exit(retval); }
-			boinc_checkpoint_completed();
-		}
+        if (boinc_time_to_checkpoint() || boinc_is_standalone())
+        {
+            retval = DoCheckpoint(out, n, new_conw, conw_r, 0.0, 0);
+            if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
+            boinc_checkpoint_completed();
+        }
 
-	} /* period loop */
+    } /* period loop */
 
-	out.close();
+    out.close();
 
-	deallocate_matrix_double(ee, MAX_N_OBS);
-	deallocate_matrix_double(ee0, MAX_N_OBS);
-	aligned_deallocate_matrix_double(covar, MAX_N_PAR);
-	aligned_deallocate_matrix_double(aalpha, MAX_N_PAR);
-	deallocate_matrix_int(ifp, MAX_N_FAC);
+    //deallocate_matrix_double(ee, gl.maxDataPoints + 4);
+    //deallocate_matrix_double(ee0, gl.maxDataPoints + 4);
+    //aligned_deallocate_matrix_double(covar, MAX_N_PAR);
+    //aligned_deallocate_matrix_double(aalpha, MAX_N_PAR);
+    //deallocate_matrix_int(ifp, MAX_N_FAC);
 
-	deallocate_vector(tim);
-	deallocate_vector(brightness);
-	deallocate_vector(sig);
-	deallocate_vector(cg);
-	deallocate_vector(cg_first);
-	deallocate_vector(t);
-	deallocate_vector(f);
-	deallocate_vector(at);
-	deallocate_vector(af);
-	deallocate_vector(ia);
-	deallocate_vector(al);
-	deallocate_vector(weight_lc);
-	free(str_temp);
+    //deallocate_vector(tim);
+    //deallocate_vector(brightness);
+    //deallocate_vector(sig);
+    //deallocate_vector(cg);
+    //deallocate_vector(cg_first);
+    //deallocate_vector(t);
+    //deallocate_vector(f);
+    //deallocate_vector(at);
+    //deallocate_vector(af);
+    //deallocate_vector(ia);
+    //deallocate_vector(al);
+    //deallocate_vector(weight_lc);
 
-	boinc_fraction_done(1);
+    //delete[] gl.Inrel;
+    //delete[] gl.Lpoints;
+    //delete[] gl.ytemp;
+    //delete[] gl.Weight;
+    //delete2Darray(gl.dytemp, gl.dytemp_sizeX);
+
+    free(str_temp);
+
+    boinc_fraction_done(1);
 #ifdef APP_GRAPHICS
-	update_shmem();
+    update_shmem();
 #endif
 
-	//system("PAUSE");
+    //system("PAUSE");
 
-	boinc_finish(0);
+    boinc_finish(0);
 }
 
 #ifdef _WIN32

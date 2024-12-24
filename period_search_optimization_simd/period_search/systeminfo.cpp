@@ -189,7 +189,7 @@ double getTotalSystemMemory()
 	//float memory = (float)status.ullTotalPhys;
 
 	//double memory = status.ullTotalPhys;
-	auto memoryGb = (unsigned long long)status.ullTotalPhys / (1024.0 * 1024.0 * 1024.0);
+    const auto memoryGb = status.ullTotalPhys / (1024.0 * 1024.0 * 1024.0);
 
 	return memoryGb;
 }

@@ -1,16 +1,18 @@
 #include <cstdio>
 #include <cstdlib>
-#include "ComputeCapability.h"
 #include <cuda_runtime_api.h>
+#include "ComputeCapability.h"
 
-Cc::Cc(const cudaDeviceProp deviceProp)
+Cc::Cc(const cudaDeviceProp& deviceProp)
 {
 	this->cudaVersion = CUDART_VERSION;
 	deviceCcMajor = deviceProp.major;
 	deviceCcMinor = deviceProp.minor;
 }
 
-Cc::~Cc() = default;
+#if defined (_MSC_VER) & (_MSC_VER < 1900) // Visual Studio 2012 or previous
+Cc::~Cc(){}
+#endif
 
 int Cc::GetSmxBlock() const
 {
@@ -27,6 +29,10 @@ int Cc::GetSmxBlock() const
 	{
 		result = GetSmxBlockCuda10();
 	}
+	else if (cudaVersion >= 6000 && cudaVersion < 10000)
+	{
+		result = GetSmxBlockCuda6();
+	}
 
 	return result;
 }
@@ -37,6 +43,12 @@ int Cc::GetSmxBlockCuda12() const
 	auto smxBlock = 0;
 	switch (deviceCcMajor)
 	{
+	case 10:
+		smxBlock = 16; // Fall back to safe value
+		break;
+	case 9:
+		smxBlock = GetSmxBlockCc9(); // Hopper
+		break;
 	case 8:
 		smxBlock = GetSmxBlockCc8(); // Ampere micro architecture CC 8.0, 8.6; Ada Lovelace - CC 8.9
 		break;
@@ -57,12 +69,17 @@ int Cc::GetSmxBlockCuda12() const
 	return smxBlock;
 }
 
-
 int Cc::GetSmxBlockCuda11() const
 {
 	auto smxBlock = 0;
 	switch (deviceCcMajor)
 	{
+	case 10:
+		smxBlock = 16; // Fall back to safe value
+		break;
+	case 9:
+		smxBlock = GetSmxBlockCc9(); // Hopper
+		break;
 	case 8:
 		smxBlock = GetSmxBlockCc8(); // Ampere micro architecture CC 8.0, 8.6; Ada Lovelace - CC 8.9
 		break;
@@ -90,6 +107,10 @@ int Cc::GetSmxBlockCuda10() const
 	auto smxBlock = 0;
 	switch (deviceCcMajor)
 	{
+	case 10:
+	case 9:
+		smxBlock = 16; // Fall back to safe value
+		break;
 	case 8:
 		smxBlock = GetSmxBlockCc8();
 		break;
@@ -104,6 +125,52 @@ int Cc::GetSmxBlockCuda10() const
 		break;
 	case 3:
 		smxBlock = GetSmxBlockCc3(); // Kepler
+		break;
+	default:
+		Exit();
+		break;
+	}
+
+	return smxBlock;
+}
+
+int Cc::GetSmxBlockCuda6() const
+{
+	auto smxBlock = 0;
+	switch (deviceCcMajor)
+	{
+	case 10:
+	case 9:
+	case 8:
+	case 7:
+	case 6:
+	case 5:
+		smxBlock = 16; // Fall back to safe value 
+		break;
+	case 3:
+		smxBlock = GetSmxBlockCc3(); // Kepler
+		break;
+	case 2:
+		smxBlock = GetSmxBlockCc2(); // Fermi
+		break;
+	case 1:
+		smxBlock = GetSmxBlockCc1(); // Tesla
+		break;
+	default:
+		Exit();
+		break;
+	}
+
+	return smxBlock;
+}
+
+int Cc::GetSmxBlockCc9() const
+{
+	auto smxBlock = 0;
+	switch (deviceCcMinor)
+	{
+	case 0:
+		smxBlock = 32;	// Hopper
 		break;
 	default:
 		Exit();
@@ -190,7 +257,6 @@ int Cc::GetSmxBlockCc5() const
 		case 3:
 			smxBlock = 32; //occupancy 100% = 32 blocks per SMX, instead as previous was 16 blocks per SMX which led to only 50%
 			break;
-
 		default:
 			Exit();
 			break;
@@ -211,6 +277,44 @@ int Cc::GetSmxBlockCc3() const
 		case 5:
 		case 7:
 			smxBlock = 16; //occupancy 100% = 16 blocks per SMX
+			break;
+		default:
+			Exit();
+			break;			
+	}
+
+	return smxBlock;
+}
+
+int Cc::GetSmxBlockCc2() const
+{
+	auto smxBlock = 0;
+	switch(deviceCcMinor)
+	{
+		//CC 2.0, 2.1
+		case 0:
+		case 1:
+			smxBlock = 8; //occupancy 100% = 8 blocks per SMX
+			break;
+		default:
+			Exit();
+			break;
+	}
+
+	return smxBlock;
+}
+
+int Cc::GetSmxBlockCc1() const
+{
+	auto smxBlock = 0;
+	switch(deviceCcMinor)
+	{
+		//CC 1.0, 1.1, 1.2, 1.3
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+			smxBlock = 8; //occupancy 100% = 8 blocks per SMX
 			break;
 		default:
 			Exit();

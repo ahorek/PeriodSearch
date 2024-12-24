@@ -1,31 +1,33 @@
+// ReSharper disable CppInconsistentNaming
 #pragma once
 
 #include "CalcStrategy.hpp"
 #include "constants.h"
+#include "arrayHelpers.hpp"
 
 #ifndef CSNO
 #define CSNO
 
-class CalcStrategyNone : public CalcStrategy
+class CalcStrategyNone final : public CalcStrategy
 {
 public:
 #if defined _WIN32
 #pragma warning(disable:26495)
 #endif
 
-	CalcStrategyNone() {};
+	CalcStrategyNone() = default;
 
-	virtual void mrqcof(double** x1, double** x2, double x3[], double y[],
-		double sig[], double a[], int ia[], int ma,
-		double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq);
+    void mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
+		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
+		std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar) override;
 
-	virtual void bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br);
+	void bright(double t, std::vector<double>& cg, int ncoef, globals &gl) override;
 
-	virtual void conv(int nc, double dres[], int ma, double &result);
+	void conv(int nc, int ma, globals &gl) override;
 
-	virtual void curv(double cg[]);
+	void curv(std::vector<double>& cg, globals &gl) override;
 
-	virtual void gauss_errc(double** a, int n, double b[], int &error);
+	void gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error) override;
 
 private:
 	double php[N_PHOT_PAR + 1];

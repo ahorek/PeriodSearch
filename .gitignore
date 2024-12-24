@@ -115,6 +115,7 @@ ipch/
 RC*
 ps_*_input*
 boinc_lockfile
+boinc_uppercase_0
 boinc_finish_called
 stderr.txt
 init_data*.xml

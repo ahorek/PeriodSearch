@@ -1,44 +1,3 @@
-/* This program take the input lightcurves, scans over the
-   given period range and finds the best period+pole+shape+scattering
-   solution. Shape is forgotten. The period, rms residual
-   of the fit, and pole solution (lamdda, beta) are given to the output.
-   Is starts from six initial poles and selects the best period.
-   Reports also pole solution.
-
-   syntax:
-   period_search_BOINC
-
-   output: period [hr], rms deviation, chi^2, dark facet [%] lambda_best beta_best
-
-   8.11.2006
-
-   new version of lightcurve files (new input lcs format)
-   testing the dark facet, finding the optimal value for convexity weight: 0.1, 0.2, 0.4, 0.8, ... <10.0
-   first line of output: fourth column is the optimized conw (not dark facet), all other lines include dark facet
-
-   16.4.2012
-
-   version for BOINC
-
-*/
-
-#include "stdafx.h"
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-#include <ctime>
-#include <cstring>
-#include <cstdlib>
-#include "cc_config.h"
-//#include <memory.h>
-
-#include "resource.h"
-#include "declarations.h"
-#include "constants.h"
-#include "globals.h"
-#include "cuda.h"
-#include <cuda_runtime.h>
-
 // This file is part of BOINC.
 // http://boinc.berkeley.edu
 // Copyright (C) 2008 University of California
@@ -55,6 +14,53 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with BOINC.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * @brief Scans input lightcurves to find the best period, pole, and scattering solution.
+ *
+ * This program takes the input lightcurves, scans over the given period range,
+ * and finds the best period + pole + shape + scattering solution. Shape is
+ * forgotten. The period, RMS residual of the fit, and pole solution (lambda, beta)
+ * are given to the output. It starts from six initial poles and selects the best period,
+ * then reports the best pole solution.
+ *  Version for BOINC.
+ *	8.11.2006
+ *
+ * @syntax:
+ * period_search_BOINC
+ *
+ * @output:
+ * - period [hr]
+ * - RMS deviation
+ * - chi^2
+ * - dark facet [%]
+ * - lambda_best
+ * - beta_best
+ *
+ * @note:
+ * - 16.4.2012: New version of lightcurve files (new input LCs format).
+ *              Testing the dark facet, finding the optimal value for convexity weight: 0.1, 0.2, 0.4, 0.8, ... <10.0
+ *              First line of output: fourth column is the optimized conw (not dark facet), all other lines include dark facet.
+ */
+
+
+// ReSharper disable All
+#include "stdafx.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cstdlib>
+#include "cc_config.h"
+
+#include "resource.h"
+#include "declarations.h"
+#include "constants.h"
+#include "globals.h"
+#include "cuda.h"
+#include <cuda_runtime.h>
+
 
 #ifdef _WIN32
 #include "boinc_win.h"
@@ -81,6 +87,9 @@
 #include "mfile.h"
 #include "start_CUDA.h"
 #include "Version.h"
+#include "arrayHelpers.hpp"
+#include "LcHelpers.hpp"
+#include "diagnostics.h"
 
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
@@ -90,9 +99,15 @@ UC_SHMEM* shmem;
 
 using std::string;
 
+#if _MSC_VER >= 1900 // Visual Studio 2015 or later
 constexpr auto checkpoint_file = "period_search_state";
 constexpr auto input_filename = "period_search_in";
 constexpr auto output_filename = "period_search_out";
+#else
+const auto checkpoint_file = "period_search_state";
+const auto input_filename = "period_search_in";
+const auto output_filename = "period_search_out";
+#endif
 
 int DoCheckpoint(MFILE& mf, const int nlines, const int newConw, const double conwr) {
 	string resolvedName;
@@ -140,20 +155,17 @@ void update_shmem() {
 
 // NOTE: global parameters
 int l_max, m_max, n_iter, last_call,
-n_coef, num_fac, l_curves, n_ph_par,
-l_points[MAX_LC + 1], in_rel[MAX_LC + 1],
-deallocate, max_l_points; // n_iter,
+n_coef, num_fac, n_ph_par,
+deallocate;
 
 double o_chi_square, chi_square, a_lambda, a_lamda_incr, a_lamda_start, phi_0, scale,
-d_area[MAX_N_FAC + 1], sclnw[MAX_LC + 1], /*Area[MAX_N_FAC+1],*/
-y_out[MAX_N_OBS + 1],
+d_area[MAX_N_FAC + 1],
 f_c[MAX_N_FAC + 1][MAX_LM + 1], f_s[MAX_N_FAC + 1][MAX_LM + 1],
 t_c[MAX_N_FAC + 1][MAX_LM + 1], t_s[MAX_N_FAC + 1][MAX_LM + 1],
 d_sphere[MAX_N_FAC + 1][MAX_N_PAR + 1], d_g[MAX_N_FAC + 1][MAX_N_PAR + 1],
 normal[MAX_N_FAC + 1][3], bl_matrix[4][4],
 pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
-d_bl_matrix[3][4][4],
-weight[MAX_N_OBS + 1];
+d_bl_matrix[3][4][4];
 
 auto cuda_device = -1;
 APP_INIT_DATA aid;
@@ -169,69 +181,69 @@ int main(int argc, char** argv)
 	FILE* state, * infile;
 
 	int i, j, l, m, k, n, nrows, onlyrel, ndata, k2, ndir, iTemp, nIterMin,
-		* ia, ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl,
-		lcNumber, ** ifp, newConw;
+		ial0, ial0_abs, ia_beta_pole, ia_lambda_pole, ia_prd, ia_par[4], ia_cl,
+		lcNumber, newConw;
 
 	double startPeriod, periodStepCoef, endPeriod,
-		startFrequency, frequencyStep, endFrequency, //jdMin, jdMax,
-		stopCondition,
-		* t, * f, * at, * af;
-	/*Minimum JD*/
+		startFrequency, frequencyStep, endFrequency,
+		stopCondition;
+
+	auto gl = globals();
+	PrepareLcData(gl, input_filename);
+
+	/* Minimum JD*/
 	double jdMin;
-	/*Maximum JD*/
+	/* Maximum JD*/
 	double jdMax;
-	/*Time in JD*/
-	double* tim;
-	/*Brightness*/
-	double* brightness;
-	/*Ecliptic astronomical tempocentric coordinates of the Sun in AU*/
+	/* Time in JD*/
+	//double* tim;
+	std::vector<double> tim(gl.maxDataPoints + 2, 0.0);
+	/* Brightness*/
+	std::vector<double> brightness(gl.maxDataPoints + 4, 0.0);
+	/* Solar phase angle */
+	std::vector<double> al(gl.Lcurves + 1, 0.0);
+	/* Weights...*/
+	std::vector<double> weightLc(gl.Lcurves + 1, 0.0);
+	/* Ecliptic astronomical tempo-centric coordinates of the Sun in AU*/
 	double e0[4];
-	/*Ecliptic astronomical centric coordinates of the Earth in AU*/
+	/* Ecliptic astronomical centric coordinates of the Earth in AU*/
 	double e[4];
+	/* Normalization of distance vectors*/
+	std::vector<std::vector<double>> ee;
+	init_matrix(ee, gl.maxDataPoints + 1, 3, 0.0);
+	std::vector<std::vector<double>> ee0;
+	init_matrix(ee0, gl.maxDataPoints + 1, 3, 0.0);
 
-	double jd0, jd00, conw, conwR, a0 = 1.05, b0 = 1.00, c0 = 0.95, a, b, cAxis,
+	double jd0, jd00, a0 = 1.05, b0 = 1.00, c0 = 0.95, a, b, cAxis, conw, conwR,
 		cl, al0, al0Abs, ave, e0Len, elen, cosAlpha, dth, dph, rfit, escl,
-		ee[MAX_N_OBS + 1][3], // e[4], e0[4],
-		ee0[MAX_N_OBS + 1][3], * cg, * cgFirst, * sig, * al, // *tim, *brightness,
-		betaPole[N_POLES + 1], lambdaPole[N_POLES + 1], par[4], * weightLc;
+		par[4];
 
-	char* stringTemp;
+	auto stringTemp = static_cast<char*>(malloc(MAX_LINE_LENGTH));
 
-	stringTemp = static_cast<char*>(malloc(MAX_LINE_LENGTH));
+	std::vector<double> sig(gl.maxDataPoints + 4, 0.0);
+	std::vector<double> cgFirst(gl.maxDataPoints + 2, 0.0);
+	std::vector<double> t(MAX_N_FAC + 1, 0.0);
+	std::vector<double> f(MAX_N_FAC + 1, 0.0);
+	std::vector<double> at(MAX_N_FAC + 1, 0.0);
+	std::vector<double> af(MAX_N_FAC + 1, 0.0);
+	std::vector<int> ia(MAX_N_PAR + 1, 0);
+	std::vector<std::vector<int>> ifp;
+	init_matrix<int>(ifp, MAX_N_FAC + 1, 4 + 1, 0);
 
-	//   ee = matrix_double(MAX_N_OBS,3);
-	//   ee0 = matrix_double(MAX_N_OBS,3);
-	//   covar = matrix_double(MAX_N_PAR,MAX_N_PAR);
-	//   aalpha = matrix_double(MAX_N_PAR,MAX_N_PAR);
-
-	ifp = matrix_int(MAX_N_FAC, 4);
-	tim = vector_double(MAX_N_OBS);
-	brightness = vector_double(MAX_N_OBS);
-	sig = vector_double(MAX_N_OBS);
-	cg = vector_double(MAX_N_PAR);
-	cgFirst = vector_double(MAX_N_PAR);
-	t = vector_double(MAX_N_FAC);
-	f = vector_double(MAX_N_FAC);
-	at = vector_double(MAX_N_FAC);
-	af = vector_double(MAX_N_FAC);
-
-	ia = vector_int(MAX_N_PAR);
-
-	lambdaPole[1] = 0;    betaPole[1] = 0;
-	lambdaPole[2] = 90;   betaPole[2] = 0;
-	lambdaPole[3] = 180;  betaPole[3] = 0;
-	lambdaPole[4] = 270;  betaPole[4] = 0;
-	lambdaPole[5] = 60;   betaPole[5] = 60;
-	lambdaPole[6] = 180;  betaPole[6] = 60;
-	lambdaPole[7] = 300;  betaPole[7] = 60;
-	lambdaPole[8] = 60;   betaPole[8] = -60;
-	lambdaPole[9] = 180;  betaPole[9] = -60;
-	lambdaPole[10] = 300; betaPole[10] = -60;
+	double lambdaPole[N_POLES + 1] = { 0.0, 0.0, 90.0, 180.0, 270.0, 60.0, 180.0, 300.0, 60.0, 180.0, 300.0 };
+	double betaPole[N_POLES + 1] = { 0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, -60.0, -60.0, -60.0 };
 
 	ia_lambda_pole = ia_beta_pole = 1;
 
-	BOINC_OPTIONS options;
+    BOINC_OPTIONS options;
 	boinc_options_defaults(options);
+
+#if defined _DEBUG
+	// Initialize diagnostics with the memory leak check enabled
+	boinc_init_diagnostics(BOINC_DIAG_DUMPCALLSTACKENABLED | BOINC_DIAG_HEAPCHECKENABLED | BOINC_DIAG_MEMORYLEAKCHECKENABLED 
+		| BOINC_DIAG_REDIRECTSTDERR | BOINC_DIAG_TRACETOSTDERR);
+#endif
+
 	options.normal_thread_priority = true;
 	retval = boinc_init_options(&options);
 
@@ -386,20 +398,13 @@ int main(int argc, char** argv)
 
 	// NOTE: light curves + geometry file
 	// NOTE: number of light curves and the first relative one
-	fscanf(infile, "%d", &l_curves);
+	int tlcurves;
+	fscanf(infile, "%d", &tlcurves);
 
 	if (boinc_is_standalone())
 	{
-		printf("%d  Number of light curves\n", l_curves);
+		printf("%d  Number of light curves\n", gl.Lcurves);
 	}
-
-	if (l_curves > MAX_LC)
-	{
-		fprintf(stderr, "\nError: Number of lcs  is greater than MAX_LC = %d\n", MAX_LC); fflush(stderr); exit(2);
-	}
-
-	al = vector_double(l_curves);
-	weightLc = vector_double(l_curves);
 
 	ndata = 0;              /* total number of data */
 	k2 = 0;                 /* index */
@@ -411,51 +416,37 @@ int main(int argc, char** argv)
 	jd0 = jd00;
 	a = a0; b = b0; cAxis = c0;
 
-	max_l_points = 0;
+	//max_l_points = 0;
 	/* loop over lightcurves */
-	for (i = 1; i <= l_curves; i++)
+	for (i = 1; i <= gl.Lcurves; i++)
 	{
 		ave = 0; /* average */
-		fscanf(infile, "%d %d", &l_points[i], &iTemp); /* points in this lightcurve */
+		fscanf(infile, "%d %d", &gl.Lpoints[i], &iTemp); /* points in this lightcurve */
 		if (boinc_is_standalone())
 		{
-			printf("%d points in light curve[%d]\n", l_points[i], i);
+			printf("%d points in light curve[%d]\n", gl.Lpoints[i], i);
 		}
 		fgets(stringTemp, MAX_LINE_LENGTH, infile);
-		in_rel[i] = 1 - iTemp;
-		if (in_rel[i] == 0)
+		gl.Inrel[i] = 1 - iTemp;
+		if (gl.Inrel[i] == 0)
 			onlyrel = 0;
 
-		if (l_points[i] > max_l_points) max_l_points = l_points[i];
-
-		if (l_points[i] > POINTS_MAX)
-		{
-			fprintf(stderr, "\nError: Number of lc points is greater than POINTS_MAX = %d\n", POINTS_MAX); fflush(stderr); exit(2);
-		}
-
 		// NOTE: loop over one light curve
-		for (j = 1; j <= l_points[i]; j++)
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			ndata++;
 
-			if (ndata > MAX_N_OBS)
-			{
-				fprintf(stderr, "\nError: Number of data is greater than MAX_N_OBS = %d\n", MAX_N_OBS); fflush(stderr); exit(2);
-			}
-
 			fscanf(infile, "%lf %lf", &tim[ndata], &brightness[ndata]); // NOTE: JD, brightness
-			fscanf(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]);      // NOTE: ecliptic astronomical tempocentric coordinates of the Sun in AU
+			fscanf(infile, "%lf %lf %lf", &e0[1], &e0[2], &e0[3]);      // NOTE: ecliptic astronomical tempo-centric coordinates of the Sun in AU
 			fscanf(infile, "%lf %lf %lf", &e[1], &e[2], &e[3]);         // NOTE: ecliptic astronomical centric coordinates of the Earth in AU
 
 			// NOTE: selects the minimum and maximum JD
 			if (tim[ndata] < jdMin) jdMin = tim[ndata];
 			if (tim[ndata] > jdMax) jdMax = tim[ndata];
 
-
 			// NOTE: normals of distance vectors
-			e0Len = sqrt(e0[1] * e0[1] + e0[2] * e0[2] + e0[3] * e0[3]);
-			elen = sqrt(e[1] * e[1] + e[2] * e[2] + e[3] * e[3]);
-
+			e0Len = sqrt(dot_product(e0, e0));
+			elen = sqrt(dot_product(e, e));
 			ave += brightness[ndata];
 
 			// NOTE: normalization of distance vectors
@@ -467,7 +458,7 @@ int main(int argc, char** argv)
 
 			if (j == 1)
 			{
-				cosAlpha = host_dot_product(e, e0) / (elen * e0Len);
+				cosAlpha = dot_product(e, e0) / (elen * e0Len);
 				al[i] = acos(cosAlpha); /* solar phase angle */
 				/* Find the smallest solar phase al0 (not important, just for info) */
 				if (al[i] < al0)
@@ -475,7 +466,7 @@ int main(int argc, char** argv)
 					al0 = al[i];
 					ial0 = ndata;
 				}
-				if ((al[i] < al0Abs) && (in_rel[i] == 0))
+				if ((al[i] < al0Abs) && (gl.Inrel[i] == 0))
 				{
 					al0Abs = al[i];
 					ial0_abs = ndata;
@@ -483,13 +474,13 @@ int main(int argc, char** argv)
 			}
 		} /* j, one lightcurve */
 
-		ave /= l_points[i];
+		ave /= gl.Lpoints[i];
 
 		/* Mean brightness of lcurve
 		   Use the mean brightness as 'sigma' to renormalize the
 		   mean of each lightcurve to unity */
 
-		for (j = 1; j <= l_points[i]; j++)
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			k2++;
 			sig[k2] = ave;
@@ -498,7 +489,7 @@ int main(int argc, char** argv)
 	} /* i, all lightcurves */
 
 	/* initiation of weights */
-	for (i = 1; i <= l_curves; i++)
+	for (i = 1; i <= gl.Lcurves; i++)
 		weightLc[i] = -1;
 
 	/* reads weights */
@@ -525,23 +516,29 @@ int main(int argc, char** argv)
 
 	/* loop over data - subtraction of jd_0 */
 	for (i = 1; i <= ndata; i++)
+	{
 		tim[i] = tim[i] - jd0;
+	}
 
 	phi_0 = phi_0 * DEG2RAD;
 
 	k = 0;
-	for (i = 1; i <= l_curves; i++)
-		for (j = 1; j <= l_points[i]; j++)
+	for (i = 1; i <= gl.Lcurves; i++)
+	{	    
+		for (j = 1; j <= gl.Lpoints[i]; j++)
 		{
 			k++;
 			if (weightLc[i] == -1)
-				weight[k] = 1;
+				gl.Weight[k] = 1;
 			else
-				weight[k] = weightLc[i];
+				gl.Weight[k] = weightLc[i];
 		}
+	}
 
 	for (i = 1; i <= 3; i++)
-		weight[k + i] = 1;
+	{
+		gl.Weight[k + i] = 1;
+	}
 
 	/* use calibrated data if possible */
 	if (onlyrel == 0)
@@ -567,9 +564,11 @@ int main(int argc, char** argv)
 	/* Convexity regularization: make one last 'lightcurve' that
 	   consists of the three comps. of the residual nonconv. vect.
 	   that should all be zero */
-	l_curves = l_curves + 1;
-	l_points[l_curves] = 3;
-	in_rel[l_curves] = 0;
+	//l_curves = l_curves + 1;
+	//l_points[l_curves] = 3;
+	//in_rel[l_curves] = 0;
+
+	MakeConvexityRegularization(gl);
 
 	// extract a --device option
 
@@ -609,7 +608,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
 	}
 
-	retval = CUDAPrepare(cuda_device, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
+	retval = CUDAPrepare(cuda_device, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata, gl);
 	if (!retval)
 	{
 		fflush(stderr);
@@ -631,9 +630,9 @@ int main(int argc, char** argv)
 #endif
 
 	}
+
 	while ((newConw != 1) && ((conwR * escl * escl) < 10.0))
 	{
-
 		for (j = 1; j <= 3; j++)
 		{
 			ndata++;
@@ -692,8 +691,10 @@ int main(int argc, char** argv)
 
 		/* makes indices to triangle vertices */
 		trifac(nrows, ifp);
+
 		/* areas and normals of the triangulated Gaussian image sphere */
 		areanorm(t, f, ndir, num_fac, ifp, at, af);
+
 		/* Precompute some function values at each normal direction*/
 		sphfunc(num_fac, at, af);
 
@@ -724,7 +725,8 @@ int main(int argc, char** argv)
 			fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
 		}
 
-		CUDAPrecalc(cuda_device, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, brightness);
+		CUDAPrecalc(cuda_device, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, 
+			brightness, gl);
 
 		ndata = ndata - 3;
 
@@ -733,7 +735,7 @@ int main(int argc, char** argv)
 			if (retval)
 			{
 				fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof buf), retval);
-				CUDAUnprepare();   // TODO: Double check why this was placed after exit() method?
+				CUDAFree();   // TODO: Double check why this was placed after exit() method?
 				exit(retval);
 			}
 			boinc_checkpoint_completed();
@@ -799,8 +801,10 @@ int main(int argc, char** argv)
 
 	/* makes indices to triangle vertices */
 	trifac(nrows, ifp);
+
 	/* areas and normals of the triangulated Gaussian image sphere */
 	areanorm(t, f, ndir, num_fac, ifp, at, af);
+
 	/* Precompute some function values at each normal direction*/
 	sphfunc(num_fac, at, af);
 
@@ -831,30 +835,12 @@ int main(int argc, char** argv)
 		fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
 	}
 
-	CUDAStart(cuda_device, nStartFrom, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, conwR, ndata, ia, ia_par, cgFirst, out, escl, sig, num_fac, brightness);
+	CUDAStart(cuda_device, nStartFrom, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, conwR, 
+		ndata, ia, ia_par, cgFirst, out, escl, sig, num_fac, brightness, gl);
 
 	out.close();
 
-	CUDAUnprepare();
-
-	//  deallocate_matrix_double(ee,MAX_N_OBS);
-	//  deallocate_matrix_double(ee0,MAX_N_OBS);
-	//  deallocate_matrix_double(covar,MAX_N_PAR);
-	//  deallocate_matrix_double(aalpha,MAX_N_PAR);
-	deallocate_matrix_int(ifp, MAX_N_FAC);
-
-	deallocate_vector(tim);
-	deallocate_vector(brightness);
-	deallocate_vector(sig);
-	deallocate_vector(cg);
-	deallocate_vector(cgFirst);
-	deallocate_vector(t);
-	deallocate_vector(f);
-	deallocate_vector(at);
-	deallocate_vector(af);
-	deallocate_vector(ia);
-	deallocate_vector(al);
-	deallocate_vector(weightLc);
+	CUDAFree();
 	free(stringTemp);
 
 	//auto clockRate = cudaDeviceGetAttribute()
