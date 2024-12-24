@@ -41,7 +41,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
  * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
  *		 'mrqcof' is used by 'mrqmin' to evaluate coefficients.
  *
- * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt’s method.
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt's method.
  *
  * @date 8.11.2006
  */
