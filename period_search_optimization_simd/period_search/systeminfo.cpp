@@ -23,7 +23,7 @@ using namespace std;
 using std::string;
 constexpr auto MAXC = 2048;
 
-#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
+#if !defined(_WIN32) && (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64))
 
 void printCerr(string line)
 {
@@ -73,7 +73,11 @@ void getCpuInfoByArch(std::ifstream &cpuinfo)
 	printCerr(part);
 	printCerr(cpuRevision);
 }
-#endif
+#else // defined _WIN32 || (defined __GNUC__ && defined __APPLE__ && !(defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)))
+void getCpuInfoByArch(ifstream &cpuinfo)
+{
+}
+#endif // _WIN32 || macOS
 
 std::ifstream getIfstream(const char *fileName)
 {
@@ -109,13 +113,7 @@ void getCpuFrequency(std::ifstream &cpufreqIfstream, string definition)
 	}
 }
 
-#if defined _WIN32 || (defined __GNUC__ && defined __APPLE__ && !(defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)))
-void getCpuInfoByArch(ifstream &cpuinfo)
-{
-}
-#endif // _WIN32 || macOS
-
-#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)) && !defined __APPLE__
+#if (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)) && !defined __APPLE__ && !defined _WIN32
 void getSystemInfo()
 {
 	auto cpuinfo = getIfstream("/proc/cpuinfo");
@@ -164,6 +162,21 @@ void getSystemInfo()
 		float memSizeG =  physical_memory / 1024.0 / 1024.0 / 1024.0;
 		cerr << "RAM: " << memSizeG << "GB" << endl;
 	}
+}
+#elif defined _WIN32 && (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64))
+void getSystemInfo()
+{
+	SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    cerr << "Number of Processors: " << sysInfo.dwNumberOfProcessors << endl;
+
+	auto totalMemory = getTotalSystemMemory();
+	cerr.precision(2);
+	cerr << "Available memory: " << totalMemory << " GB" << endl;
+}
+#else
+void getSystemInfo()
+{
 }
 #endif
 

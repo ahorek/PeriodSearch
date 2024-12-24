@@ -41,7 +41,7 @@ __attribute__((__target__("arch=armv8-a+simd")))
  * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
  *		 'mrqcof' is used by 'mrqmin' to evaluate coefficients.
  *
- * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt’s method.
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt's method.
  *
  * @date 8.11.2006
  */
@@ -123,7 +123,7 @@ void CalcStrategyAsimd::mrqcof(std::vector<std::vector<double>>& x1, std::vector
 
 		if (Lastcall != 1)
 		{
-			float64x2_t avx_ave, avx_coef, avx_ytemp;
+			float64x2_t avx_ave, avx_coef{}, avx_ytemp{};
      		avx_ave = vdupq_n_f64(gl.ave);
 
 			for (jp = 1; jp <= gl.Lpoints[i]; jp++)
