@@ -1,13 +1,7 @@
-/* computes integrated brightness of all visible and iluminated areas
-   and its derivatives
-
-   8.11.2006 - Josef Durec
-   29.2.2024 - Georgi Vidinski
-*/
-
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
@@ -57,10 +51,10 @@
 			avx_d1=_mm_add_pd(avx_d1,_mm_div_pd(_mm_mul_pd(_mm_mul_pd(avx_Area,avx_lmu),avx_lmu0),_mm_add_pd(avx_lmu,avx_lmu0)));
 // end of inner_calc
 #define INNER_CALC_DSMU \
-	  avx_Area=_mm_load_pd(&Area[i]); \
+	  avx_Area=_mm_load_pd(&gl.Area[i]); \
 	  avx_dnom=_mm_add_pd(avx_lmu,avx_lmu0); \
 	  avx_s=_mm_mul_pd(_mm_mul_pd(avx_lmu,avx_lmu0),_mm_add_pd(avx_cl,_mm_div_pd(avx_cls,avx_dnom))); \
-	  avx_pdbr=_mm_mul_pd(_mm_load_pd(&Darea[i]),avx_s); \
+	  avx_pdbr=_mm_mul_pd(_mm_load_pd(&gl.Darea[i]),avx_s); \
 	  avx_pbr=_mm_mul_pd(avx_Area,avx_s); \
 	  avx_powdnom=_mm_div_pd(avx_lmu0,avx_dnom); \
 	  avx_powdnom=_mm_mul_pd(avx_powdnom,avx_powdnom); \
@@ -74,10 +68,30 @@
 #if defined(__GNUC__)
 __attribute__((target("sse3")))
 #endif
-void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+/**
+ * @brief Computes integrated brightness of all visible and illuminated areas and its derivatives.
+ *
+ * This function calculates the integrated brightness of all visible and illuminated areas based on the provided time `t`,
+ * coefficient vector `cg`, and global data. It also computes the derivatives of the brightness with respect to the coefficients.
+ *
+ * @param t The time at which the brightness is evaluated.
+ * @param cg A reference to a vector of doubles containing the coefficients for the brightness calculation.
+ * @param ncoef An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ * @author Josef Durec
+ *
+ * @date 29.2.2024 modified by Georgi Vidinski
+ */
+void CalcStrategySse3::bright(const double t, std::vector<double>& cg, const int ncoef, globals& gl)
 {
 	int i, j, k; // ncoef0,
 	incl_count = 0;
+	double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
 	ncoef0 = ncoef - 2 - Nphpar;
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
@@ -91,8 +105,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 
 	matrix(cg[ncoef0], t, tmat, dtm);
 
-	/* Directions (and ders.) in the rotating system */
-
+	/* Directions (and derivatives) in the rotating system */
 	for (i = 1; i <= 3; i++)
 	{
 		e[i] = 0;
@@ -111,8 +124,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 		}
 	}
 
-	/*Integrated brightness (phase coeff. used later) */
-
+	/*Integrated brightness (phase coefficients used later) */
 	//SSE3
 	__m128d avx_e1 = _mm_loaddup_pd(&e[1]);
 	__m128d avx_e2 = _mm_loaddup_pd(&e[2]);
@@ -152,9 +164,9 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 	for (i = 0; i < Numfac; i += 2)
 	{
 		__m128d avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-		__m128d avx_Nor1 = _mm_load_pd(&Nor[0][i]);
-		__m128d avx_Nor2 = _mm_load_pd(&Nor[1][i]);
-		__m128d avx_Nor3 = _mm_load_pd(&Nor[2][i]);
+		__m128d avx_Nor1 = _mm_load_pd(&gl.Nor[0][i]);
+		__m128d avx_Nor2 = _mm_load_pd(&gl.Nor[1][i]);
+		__m128d avx_Nor3 = _mm_load_pd(&gl.Nor[2][i]);
 		__m128d avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
 		__m128d avx_Area;
 
@@ -176,11 +188,11 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 				if (icmp & 2)
 				{
 					//0
-					Dg_row[incl_count] = (__m128d*) & Dg[i];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i];
 					dbr[incl_count++] = _mm_movedup_pd(avx_pdbr);
 
 					//1
-					Dg_row[incl_count] = (__m128d*) & Dg[i + 1];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i + 1];
 					dbr[incl_count++] = _mm_movedup_pd(_mm_shuffle_pd(avx_pdbr, avx_pdbr, 1));
 				}
 				else
@@ -191,7 +203,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 					avx_lmu = _mm_shuffle_pd(avx_lmu, _mm_setzero_pd(), 0);
 					avx_lmu0 = _mm_shuffle_pd(avx_lmu0, avx_11, 0); //abychom nedelili nulou
 					//0
-					Dg_row[incl_count] = (__m128d*) & Dg[i];
+					Dg_row[incl_count] = (__m128d*)& gl.Dg[i];
 					dbr[incl_count++] = _mm_movedup_pd(avx_pdbr);
 				}
 
@@ -206,7 +218,7 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 			avx_lmu = _mm_shuffle_pd(_mm_setzero_pd(), avx_lmu, _MM_SHUFFLE2(1, 0));
 			avx_lmu0 = _mm_shuffle_pd(avx_11, avx_lmu0, _MM_SHUFFLE2(1, 0));
 			//1
-			Dg_row[incl_count] = (__m128d*) & Dg[i + 1];
+			Dg_row[incl_count] = (__m128d*)& gl.Dg[i + 1];
 			dbr[incl_count++] = _mm_movedup_pd(_mm_shuffle_pd(avx_pdbr, avx_pdbr, 1));
 
 			INNER_CALC
@@ -223,9 +235,9 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 	Dg_row[incl_count + 3] = Dg_row[0];
 
 	res_br = _mm_hadd_pd(res_br, res_br);
-	br = _mm_cvtsd_f64(res_br);
+	gl.ymod = _mm_cvtsd_f64(res_br);
 
-	/* Derivatives of brightness w.r.t. g-coeffs */
+	/* Derivatives of brightness w.r.t. g-coefficients */
 	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 10) * 10;
 
 	for (i = 0; i < cyklus1; i += 10) //5 * 2doubles
@@ -272,15 +284,15 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 
 		dgi += 5;
 		tmp1 = _mm_mul_pd(tmp1, avx_Scale);
-		_mm_store_pd(&dyda[i], tmp1);
+		_mm_store_pd(&gl.dyda[i], tmp1);
 		tmp2 = _mm_mul_pd(tmp2, avx_Scale);
-		_mm_store_pd(&dyda[i + 2], tmp2);
+		_mm_store_pd(&gl.dyda[i + 2], tmp2);
 		tmp3 = _mm_mul_pd(tmp3, avx_Scale);
-		_mm_store_pd(&dyda[i + 4], tmp3);
+		_mm_store_pd(&gl.dyda[i + 4], tmp3);
 		tmp4 = _mm_mul_pd(tmp4, avx_Scale);
-		_mm_store_pd(&dyda[i + 6], tmp4);
+		_mm_store_pd(&gl.dyda[i + 6], tmp4);
 		tmp5 = _mm_mul_pd(tmp5, avx_Scale);
-		_mm_store_pd(&dyda[i + 8], tmp5);
+		_mm_store_pd(&gl.dyda[i + 8], tmp5);
 	}
 
 	for (; i < ncoef03; i += 4) //2 * 2doubles
@@ -319,29 +331,31 @@ void CalcStrategySse3::bright(double ee[], double ee0[], double t, double cg[], 
 
 		dgi += 2;
 		tmp1 = _mm_mul_pd(tmp1, avx_Scale);
-		_mm_store_pd(&dyda[i], tmp1);
+		_mm_store_pd(&gl.dyda[i], tmp1);
 		tmp2 = _mm_mul_pd(tmp2, avx_Scale);
-		_mm_store_pd(&dyda[i + 2], tmp2);
+		_mm_store_pd(&gl.dyda[i + 2], tmp2);
 	}
 
-	/* Ders. of brightness w.r.t. rotation parameters */
+	/* Derivatives of brightness w.r.t. rotation parameters */
 	avx_dyda1 = _mm_hadd_pd(avx_dyda1, avx_dyda2);
 	avx_dyda1 = _mm_mul_pd(avx_dyda1, avx_Scale);
-	_mm_storeu_pd(&dyda[ncoef0 - 3 + 1 - 1], avx_dyda1); //unaligned memory because of odd index
+	_mm_storeu_pd(&gl.dyda[ncoef0 - 3 + 1 - 1], avx_dyda1); //unaligned memory because of odd index
 	avx_dyda3 = _mm_hadd_pd(avx_dyda3, avx_dyda3);
 	avx_dyda3 = _mm_mul_pd(avx_dyda3, avx_Scale);
-	dyda[ncoef0 - 3 + 3 - 1] = _mm_cvtsd_f64(avx_dyda3);
+	gl.dyda[ncoef0 - 3 + 3 - 1] = _mm_cvtsd_f64(avx_dyda3);
 
-	/* Ders. of br. w.r.t. cl, cls */
+	/* Derivatives of br. w.r.t. cl, cls */
 	avx_d = _mm_hadd_pd(avx_d, avx_d1);
 	avx_d = _mm_mul_pd(avx_d, avx_Scale);
 	avx_d = _mm_mul_pd(avx_d, avx_cl1);
-	_mm_storeu_pd(&dyda[ncoef - 1 - 1], avx_d); //unaligned memory because of odd index
+	_mm_storeu_pd(&gl.dyda[ncoef - 1 - 1], avx_d); //unaligned memory because of odd index
 
-	/* Ders. of br. w.r.t. phase function params. */
+	/* Derivatives of br. w.r.t. phase function params. */
 	for (i = 1; i <= Nphpar; i++)
-		dyda[ncoef0 + i - 1] = br * dphp[i];
+	{
+		gl.dyda[ncoef0 + i - 1] = gl.ymod * dphp[i];
+	}
 
 	/* Scaled brightness */
-	br *= Scale;
+	gl.ymod *= Scale;
 }

@@ -1,6 +1,15 @@
-v10000	pocita dobre, ale je tam casta neshoda vystupu, casto se to lisi na poslednim miste, zbytecna presnost
-v10010	23.7.2012	uprava formatu vystupu - o jedno desetinne misto mene, snizi se pocet problemu s validaci, i kdyz to uplne nepomuze
-v10100	24.8.2012	10 misto 6ti pocatecnich polu - melo by spolehliveji konvergovat, 
-			format vystupu vracen na puvodni presnost, musi se to stejne validovat jinak
+# RELEASES
 
-gauss_1.c - nebylo to vubec potreba, smazano
+## Release notes
+
+### Release versions
+
+| Version | Date | Description |
+| ------- | ---- | ----------- |
+| v10222 | 15.11.2024 | Fixes a problematic behavior of the application by removing some limitations related to the data inside the WUs (MAX_LC_POINTS, MAX_LC & Max_n_OBS). |
+| v10221 | 12.06.2024 | 1. Fixes a bug that caused crashes on AVX-only hosts (such as older Intel CPUs like Sandy Bridge) has been fixed. This issue affected only Linux and FreeBSD. [More info...](https://asteroidsathome.net/boinc/forum_thread.php?id=1024)<br/>2. AMD Bulldozer-family CPUs now prefer the SSE3 version which is faster than AVX/FMA. |
+| v10220 | 29.03.2024 | Introduce universal application that will utilize different SIMD optimizations depending on the host. This way we escape from the unreliable detection system provided by the BOINC project. |
+| ... |||
+| v10100 | 24.8.2012 | 10 misto 6ti pocatecnich polu - melo by spolehliveji konvergovat, format vystupu vracen na puvodni presnost, musi se to stejne validovat jinak</br/>gauss_1.c - nebylo to vubec potreba, smazano |
+| v10010 | 23.7.2012| uprava formatu vystupu - o jedno desetinne misto mene, snizi se pocet problemu s validaci, i kdyz to uplne nepomuze |
+| v10000 | - | pocita dobre, ale je tam casta neshoda vystupu, casto se to lisi na poslednim miste, zbytecna presnost |

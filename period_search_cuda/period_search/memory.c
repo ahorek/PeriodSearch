@@ -4,11 +4,14 @@
 
    8.11.2006
 */
+#include "deprecated_macro.h"
+#pragma message("This file is deprecated. Use <arrayHelpers.hpp> instead.")
 
 #include "stdafx.h"
 #include <stdlib.h>
 #include <stdio.h>
 
+[[deprecated("Use vector.resize() instead")]]
 double *vector_double(int length)
 {
    double *p_x;

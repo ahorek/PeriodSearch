@@ -1,4 +1,4 @@
-/* computes integrated brightness of all visible and iluminated areas
+/* computes integrated brightness of all visible and illuminated areas
    and its derivatives
 
    8.11.2006 - Josef Durec
@@ -6,8 +6,9 @@
 */
 
 #include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
+#include <vector>
 #include "globals.h"
 #include "declarations.h"
 #include "constants.h"
@@ -58,10 +59,10 @@
 // end of inner_calc
 
 #define INNER_CALC_DSMU \
-    avx_Area = vld1q_f64(&Area[i]); \
+    avx_Area = vld1q_f64(&gl.Area[i]); \
     avx_dnom = vaddq_f64(avx_lmu, avx_lmu0); \
     avx_s = vmulq_f64(vmulq_f64(avx_lmu, avx_lmu0), vaddq_f64(avx_cl, vdivq_f64(avx_cls, avx_dnom))); \
-    avx_pdbr = vmulq_f64(vld1q_f64(&Darea[i]), avx_s); \
+    avx_pdbr = vmulq_f64(vld1q_f64(&gl.Darea[i]), avx_s); \
     avx_pbr = vmulq_f64(avx_Area, avx_s); \
     avx_powdnom = vdivq_f64(avx_lmu0, avx_dnom); \
     avx_powdnom = vmulq_f64(avx_powdnom, avx_powdnom); \
@@ -79,10 +80,30 @@ __attribute__((__target__("arch=armv8-a+simd")))
 // __attribute__((target("arch=armv8-a+simd")))
 #endif
 
-void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[], double dyda[], int ncoef, double &br)
+/**
+ * @brief Computes integrated brightness of all visible and illuminated areas and its derivatives.
+ *
+ * This function calculates the integrated brightness of all visible and illuminated areas based on the provided time `t`,
+ * coefficient vector `cg`, and global data. It also computes the derivatives of the brightness with respect to the coefficients.
+ *
+ * @param t The time at which the brightness is evaluated.
+ * @param cg A reference to a vector of doubles containing the coefficients for the brightness calculation.
+ * @param ncoef An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ * @author Josef Durec
+ *
+ * @date 25.3.2024 modified by Pavel Rosicky
+ */
+void CalcStrategyAsimd::bright(const double t, std::vector<double>& cg, const int ncoef, globals &gl)
 {
    int i, j, k;
    incl_count = 0;
+   double *ee = gl.xx1;
+	double *ee0 = gl.xx2;
 
    ncoef0 = ncoef - 2 - Nphpar;
    cl = exp(cg[ncoef-1]); /* Lambert */
@@ -96,7 +117,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
 
    matrix(cg[ncoef0],t,tmat,dtm);
 
-   /* Directions (and ders.) in the rotating system */
+   /* Directions (and derivatives) in the rotating system */
 
    for (i = 1; i <= 3; i++)
    {
@@ -116,7 +137,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
       }
    }
 
-   /*Integrated brightness (phase coeff. used later) */
+   /*Integrated brightness (phase coefficients used later) */
    float64x2_t avx_e1 = vdupq_n_f64(e[1]);
    float64x2_t avx_e2 = vdupq_n_f64(e[2]);
    float64x2_t avx_e3 = vdupq_n_f64(e[3]);
@@ -158,9 +179,9 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
    for (i = 0; i < Numfac; i += 2)
    {
       float64x2_t avx_lmu, avx_lmu0, cmpe, cmpe0, cmp;
-      float64x2_t avx_Nor1 = vld1q_f64(&Nor[0][i]);
-      float64x2_t avx_Nor2 = vld1q_f64(&Nor[1][i]);
-      float64x2_t avx_Nor3 = vld1q_f64(&Nor[2][i]);
+      float64x2_t avx_Nor1 = vld1q_f64(&gl.Nor[0][i]);
+      float64x2_t avx_Nor2 = vld1q_f64(&gl.Nor[1][i]);
+      float64x2_t avx_Nor3 = vld1q_f64(&gl.Nor[2][i]);
       float64x2_t avx_s, avx_dnom, avx_dsmu, avx_dsmu0, avx_powdnom, avx_pdbr, avx_pbr;
       float64x2_t avx_Area;
 
@@ -181,13 +202,13 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
       {
 		 INNER_CALC_DSMU
 		 if (icmp & 2) {
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i];
 
 			float64_t tmp;
 			vst1q_lane_f64(&tmp, avx_pdbr, 0);
 			dbr[incl_count++] = vdupq_n_f64(tmp);
 
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i + 1];
 
          float64_t tmp2;
          vst1q_lane_f64(&tmp2, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -199,7 +220,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
          avx_lmu = vcombine_f64(vget_low_f64(avx_lmu), vdup_n_f64(0.0));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_lmu0), vget_high_f64(avx_11));
 
-    		Dg_row[incl_count] = (float64x2_t*)&Dg[i];
+    		Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i];
 
 			float64_t tmp3;
 			vst1q_lane_f64(&tmp3, avx_pdbr, 0);
@@ -217,7 +238,7 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
          avx_lmu = vcombine_f64(vdup_n_f64(0.0), vget_high_f64(avx_lmu));
          avx_lmu0 = vcombine_f64(vget_low_f64(avx_11), vget_high_f64(avx_lmu0));
 
-         Dg_row[incl_count] = (float64x2_t*)&Dg[i + 1];
+         Dg_row[incl_count] = (float64x2_t*)&gl.Dg[i + 1];
 
          float64_t tmp4;
          vst1q_lane_f64(&tmp4, vextq_f64(avx_pdbr, avx_pdbr, 1), 0);
@@ -237,9 +258,9 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
    Dg_row[incl_count + 3] = Dg_row[0];
 
    res_br = vpaddq_f64(res_br, res_br);
-   vst1q_lane_f64(&br, res_br, 0);
+   vst1q_lane_f64(&gl.ymod, res_br, 0);
 
-   /* Derivatives of brightness w.r.t. g-coeffs */
+   /* Derivatives of brightness w.r.t. g-coefficients */
    int ncoef03=ncoef0-3,dgi=0,cyklus1=(ncoef03/10)*10;
 
    for (i = 0; i < cyklus1; i+=10) //5 * 2doubles
@@ -282,15 +303,15 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
 	  }
 	  dgi+=5;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
-	  vst1q_f64(&dyda[i],tmp1);
+	  vst1q_f64(&gl.dyda[i],tmp1);
 	  tmp2=vmulq_f64(tmp2,avx_Scale);
-	  vst1q_f64(&dyda[i+2],tmp2);
+	  vst1q_f64(&gl.dyda[i+2],tmp2);
 	  tmp3=vmulq_f64(tmp3,avx_Scale);
-	  vst1q_f64(&dyda[i+4],tmp3);
+	  vst1q_f64(&gl.dyda[i+4],tmp3);
 	  tmp4=vmulq_f64(tmp4,avx_Scale);
-	  vst1q_f64(&dyda[i+6],tmp4);
+	  vst1q_f64(&gl.dyda[i+6],tmp4);
 	  tmp5=vmulq_f64(tmp5,avx_Scale);
-	  vst1q_f64(&dyda[i+8],tmp5);
+	  vst1q_f64(&gl.dyda[i+8],tmp5);
    }
    for (; i < ncoef03; i+=4) //2 * 2doubles
    {
@@ -325,32 +346,34 @@ void CalcStrategyAsimd::bright(double ee[], double ee0[], double t, double cg[],
 	  }
 	  dgi+=2;
 	  tmp1=vmulq_f64(tmp1,avx_Scale);
-	  vst1q_f64(&dyda[i],tmp1);
+	  vst1q_f64(&gl.dyda[i],tmp1);
 	  tmp2=vmulq_f64(tmp2,avx_Scale);
-	  vst1q_f64(&dyda[i+2],tmp2);
+	  vst1q_f64(&gl.dyda[i+2],tmp2);
    }
 
-   /* Ders. of brightness w.r.t. rotation parameters */
+   /* Derivatives of brightness w.r.t. rotation parameters */
 	avx_dyda1 = vpaddq_f64(avx_dyda1, avx_dyda2);
    avx_dyda1 = vmulq_f64(avx_dyda1, avx_Scale);
-   vst1q_f64(&dyda[ncoef0-3+1-1], avx_dyda1);  //unaligned memory because of odd index
+   vst1q_f64(&gl.dyda[ncoef0-3+1-1], avx_dyda1);  //unaligned memory because of odd index
 
    avx_dyda3 = vpaddq_f64(avx_dyda3, avx_dyda3);
    avx_dyda3 = vmulq_f64(avx_dyda3, avx_Scale);
-   vst1q_f64(&dyda[ncoef0-3+3-1], avx_dyda3); //unaligned memory because of odd index
-   /* Ders. of br. w.r.t. cl, cls */
+   vst1q_f64(&gl.dyda[ncoef0-3+3-1], avx_dyda3); //unaligned memory because of odd index
+
+   /* Derivatives of br. w.r.t. cl, cls */
    avx_d = vpaddq_f64(avx_d, avx_d1);
    avx_d = vmulq_f64(avx_d, avx_Scale);
    avx_d = vmulq_f64(avx_d, avx_cl1);
-   vst1q_f64(&dyda[ncoef-1-1], avx_d); //unaligned memory because of odd index
+   vst1q_f64(&gl.dyda[ncoef-1-1], avx_d); //unaligned memory because of odd index
 
- /* Ders. of br. w.r.t. phase function params. */
+ /* Derivatives of br. w.r.t. phase function params. */
      for(i = 1; i <= Nphpar; i++)
-       dyda[ncoef0+i-1] = br * dphp[i];
+       gl.dyda[ncoef0+i-1] = gl.ymod * dphp[i];
+
 /*     dyda[ncoef0+1-1] = br * dphp[1];
      dyda[ncoef0+2-1] = br * dphp[2];
      dyda[ncoef0+3-1] = br * dphp[3];*/
 
    /* Scaled brightness */
-   br *= Scale;
+	 gl.ymod *= Scale;
 }

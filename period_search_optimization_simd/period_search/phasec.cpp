@@ -1,14 +1,24 @@
-/* linear-exponential phase function
-   converted from Mikko's fortran code
-
-   8.11.2006
-*/
-
-#include <math.h>
-#include <stdio.h>
+#include <cmath>
 #include "globals.h"
 
-void phasec(double dcdp[], double alpha, double p[])
+/**
+ * @brief Computes the linear-exponential phase function and its derivatives.
+ *
+ * This function calculates the linear-exponential phase function based on the given parameters
+ * and computes its derivatives with respect to the parameters. The model used is an exponential-linear
+ * combination where the constant term is set to 1.
+ *
+ * @param dcdp An array of doubles to store the derivatives of the phase function with respect to the parameters.
+ * @param alpha A double representing the phase angle in radians.
+ * @param p An array of doubles representing the model parameters.
+ *
+ * @note The function modifies the global variable `Scale` to store the computed phase function value.
+ *
+ * @source Converted from Mikko's Fortran code
+ *
+ * @date 8.11.2006
+ */
+void phasec(double dcdp[], const double alpha, double p[])
 {
     double e, c;
 

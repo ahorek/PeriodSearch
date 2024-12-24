@@ -1,7 +1,23 @@
-/* from Numerical Recipes */
-
 #define SWAP(a,b) {swap=(a);(a)=(b);(b)=swap;}
 
+/**
+ * @brief Rearranges the covariance matrix to its original form.
+ *
+ * This function rearranges the covariance matrix `covar` to its original form by swapping elements
+ * based on the permutation indices stored in `ia`. This is typically used after a least-squares fit
+ * to restore the covariance matrix to its original order.
+ *
+ * @param covar A pointer to a double array representing the covariance matrix.
+ * @param ma The dimension of the covariance matrix (number of rows/columns).
+ * @param ia An array of integers representing the permutation indices.
+ * @param mfit The number of fitted parameters (number of rows/columns to be rearranged).
+ *
+ * @note The function modifies the `covar` matrix in place.
+ *
+ * @source Numerical Recipes
+ *
+ * @date 8.11.2006
+ */
 void covsrt(double **covar, int ma, int ia[], int mfit)
 {
 	int i,j,k;

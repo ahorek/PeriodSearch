@@ -1,30 +1,36 @@
-/* Convexity regularization function
-
-   8.11.2006
-*/
-
-#include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "globals.h"
-#include "declarations.h"
 #include "CalcStrategyNone.hpp"
+#include "arrayHelpers.hpp"
 
-void CalcStrategyNone::conv(int nc, double dres[], int ma, double &result)
+/**
+ * @brief Computes the convexity regularization function.
+ *
+ * This function calculates the convexity regularization function, updating the global variables `ymod` and `dyda` based on the given parameters and the global data.
+ *
+ * @param nc An integer representing the current coefficient index.
+ * @param ma An integer representing the number of coefficients.
+ * @param gl A reference to a globals structure containing necessary global data.
+ *
+ * @note The function modifies the global variables `ymod` and `dyda`.
+ *
+ * @date 8.11.2006
+ */
+void CalcStrategyNone::conv(const int nc, const int ma, globals &gl)
 {
-	int i, j;
+	gl.ymod = 0;
 
-	result = 0;
-	for (j = 1; j <= ma; j++)
-		dres[j] = 0;
-
-	for (i = 0; i < Numfac; i++)
+	for (auto j = 1; j <= ma; j++)
 	{
-		result += Area[i] * Nor[nc - 1][i];
+		gl.dyda[j] = 0;
+	}
 
-		for (j = 0; j < Ncoef; j++)
+	for (int i = 0; i < Numfac; i++)
+	{
+		gl.ymod += gl.Area[i] * gl.Nor[nc - 1][i];
+
+		for (auto j = 0; j < Ncoef; j++)
 		{
-			dres[j] += Darea[i] * Dg[i][j] * Nor[nc - 1][i];
+			gl.dyda[j] += gl.Darea[i] * gl.Dg[i][j] * gl.Nor[nc - 1][i];
 		}
 	}
 }

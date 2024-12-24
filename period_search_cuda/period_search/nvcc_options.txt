@@ -1,0 +1,31 @@
+--use-local-env 
+--cl-version 2012 
+-ccbin "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\amd64"
+-I..\period_search_common 
+-IC:\boincsdk\boinc\lib 
+-IC:\boincsdk\boinc\api 
+-I"C:\Progra~1\NVIDIA~2\CUDA\v6.0\include" 
+# -gencode=arch=compute_10,code=\"sm_10,compute_10\" 
+# -gencode=arch=compute_11,code=\"sm_11,compute_11\" 
+-gencode=arch=compute_20,code=\"sm_20,compute_20\" 
+-gencode=arch=compute_30,code=\"sm_30,compute_30\" 
+-gencode=arch=compute_35,code=\"sm_35,compute_35\" 
+-odir $(ProjectDir)$(Platform)_6_0_$(PlatformToolset)\$(Configuration)\
+-G 
+-lineinfo 
+--keep-dir x64\Release 
+-maxrregcount=32 
+--ptxas-options=-v 
+--machine 64 
+--compile 
+-cudart static 
+-rdc=false 
+-O2 
+-D_USE_MATH_DEFINES 
+-D_CRT_SECURE_NO_WARNINGS 
+-DWIN32 
+-DNDEBUG 
+-D_CONSOLE 
+-D_MBCS 
+-Xcompiler "/W3 /nologo /O2 /Zi /MT" 
+-o $(OutDir)\my_program.exe $(ProjectDir)\period_search\blmatrix.cu $(ProjectDir)\period_search\bright.cu $(ProjectDir)\period_search\ComputeCapability.cu $(ProjectDir)\period_search\conv.cu $(ProjectDir)\period_search\curv.cu $(ProjectDir)\period_search\curve2_CUDA.cu $(ProjectDir)\period_search\gauss_errc.cu $(ProjectDir)\period_search\mrqcof.cu $(ProjectDir)\period_search\mrqmin.cu $(ProjectDir)\period_search\Start.cu $(ProjectDir)\period_search\start_CUDA.cu $(ProjectDir)\period_search\areanorm.cpp $(ProjectDir)\period_search\ellfit.cpp $(ProjectDir)\period_search\error.cpp $(ProjectDir)\period_search\lubksb.cpp $(ProjectDir)\period_search\ludcmp.cpp $(ProjectDir)\period_search\period_search_BOINC.cpp $(ProjectDir)\period_search\sphfunc.cpp $(ProjectDir)\period_search\stdfax.cpp $(ProjectDir)\period_search\trifac.cpp $(ProjectDir)\period_search\VersionInfo.cpp
