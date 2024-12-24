@@ -160,7 +160,6 @@ cl_int SaveKernelsToBinary(cl_program binProgram, const char* kernelFileName)
 
     fwrite(binary, binary_size, 1, fp);
     fclose(fp);
-    free(binary);
 
     //std::ofstream file(kernelFileName, std::ios::binary);
     ////size_t binary_size = file.tellg();
@@ -397,7 +396,6 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
     cerr << "OpenCL device name: " << deviceName << " " << globalMemory << sufix << endl;
     cerr << "Device driver version: " << driverVersion << endl;
     cerr << "Multiprocessors: " << msCount << endl;
-    cerr << "Max Samplers: " << block << endl;
     cerr << "Max work item dimensions: " << devMaxWorkItemDims << endl;
 #ifdef _DEBUG
     cerr << "Debug info:" << endl;
@@ -431,7 +429,7 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
         return (1);
     }
 
-    auto SMXBlock = block; // 32;
+    auto SMXBlock = 32;
     //CUDA_grid_dim = msCount * SMXBlock; //  24 * 32
     //CUDA_grid_dim = 8 * 32 = 256; 6 * 32 = 192
     CUDA_grid_dim = 2 * msCount * SMXBlock; // 256 (RX 550), 384 (1050Ti), 1536 (Nvidia GTX1660Ti), 768 (Intel Graphics HD)
