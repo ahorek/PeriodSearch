@@ -18,26 +18,16 @@ public:
 
 	CalcStrategyAvx() = default;
 
-	//void mrqcof(double** x1, double** x2, double x3[], double y[],
-	//	double sig[], double a[], int ia[], int ma,
-	//	double** alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl) override;
 	void mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
 		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
 		std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar) override;
 
-	//void mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
-	//	std::vector<double>& sig, double a[], int ia[], int ma,
-	//	double** alpha, double beta[], int mfit, int lastone, int lastma, double& trial_chisq, globals& gl) override;
-
 	void bright(double t, std::vector<double>& cg, int ncoef, globals &gl) override;
-	//void bright(double t, double cg[], int ncoef, globals& gl) override;
 
 	void conv(int nc, int ma, globals &gl) override;
 
 	void curv(std::vector<double>& cg, globals &gl) override;
-	//void curv(double cg[], globals& gl) override;
 
-	//void gauss_errc(double** a, int n, double b[], int &error) override;
 	void gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error) override;
 
 private:

@@ -1,11 +1,3 @@
-/* slightly changed code from Numerical Recipes
-   converted from Mikko's fortran code
-
-   8.11.2006
-
-   Numerical recipes: 'mrqcof' is used by 'mrqmin' to evaluate coefficients
-*/
-
 #include <vector>
 #include "globals.h"
 #include "declarations.h"
@@ -24,13 +16,36 @@ constexpr auto MIN(T1 X, T2 Y) { return ((X) < (Y) ? (X) : (Y)); }
 __attribute__((target("avx,fma")))
 #endif
 
-//void CalcStrategyFma::mrqcof(double **x1, double **x2, double x3[], double y[],
-//    double sig[], double a[], int ia[], int ma,
-//    double **alpha, double beta[], int mfit, int lastone, int lastma, double &trial_chisq, globals& gl)
-//void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
-//    std::vector<double>& sig, double a[], int ia[], int ma,
-//    double** alpha, double beta[], int mfit, int lastone, int lastma, double& trial_chisq, globals& gl)
-
+/**
+ * @brief Computes the coefficient matrix and right-hand side vector for the Marquardt method.
+ *
+ * This function calculates the coefficient matrix (alpha) and right-hand side vector (beta)
+ * for the nonlinear least-squares fitting using the Marquardt method. It also computes the
+ * trial chi-squared value based on the given data and parameters.
+ *
+ * @param x1 A reference to a 2D vector of doubles representing the first set of independent variable data.
+ * @param x2 A reference to a 2D vector of doubles representing the second set of independent variable data.
+ * @param x3 A reference to a vector of doubles representing additional independent variable data points.
+ * @param y A reference to a vector of doubles representing the dependent variable data.
+ * @param sig A reference to a vector of doubles representing the standard deviations of the data points.
+ * @param a A reference to a vector of doubles representing the initial parameters.
+ * @param ia A reference to a vector of integers indicating which parameters are to be fitted.
+ * @param ma An integer representing the total number of parameters.
+ * @param beta A reference to a vector of doubles to store the right-hand side vector.
+ * @param mfit An integer representing the number of parameters to be fitted.
+ * @param lastone An integer representing the last parameter to be fitted.
+ * @param lastma An integer representing the last parameter in the list of all parameters.
+ * @param trial_chisq A reference to a double to store the trial chi-squared value.
+ * @param gl A reference to a globals structure containing necessary global data.
+ * @param isCovar A boolean indicating whether the covariance matrix should be computed.
+ *
+ * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
+ *		 'mrqcof' is used by 'mrqmin' to evaluate coefficients.
+ *
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt’s method.
+ *
+ * @date 8.11.2006
+ */
 void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
     std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
     std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)

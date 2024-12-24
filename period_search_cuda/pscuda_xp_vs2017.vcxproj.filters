@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files CUDA">
+      <UniqueIdentifier>{0a073ee0-d787-4823-a556-c83760fa6773}</UniqueIdentifier>
+      <Extensions>cu</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="period_search\ComputeCapability.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\declarations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\declarations_CUDA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\deprecated_macro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\globals_CUDA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\Start.cuh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\start_CUDA.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\Version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\resource60_v110.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="period_search\Resource60_v110.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="period_search\blmatrix.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\bright.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\ComputeCapability.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\conv.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\curv.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\curve2_CUDA.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\gauss_errc.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\mrqcof.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\mrqmin.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\Start.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="period_search\start_CUDA.cu">
+      <Filter>Source Files CUDA</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="period_search\areanorm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\ellfit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\error.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\lubksb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\ludcmp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\period_search_BOINC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\sphfunc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\stdfax.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\trifac.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\VersionInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

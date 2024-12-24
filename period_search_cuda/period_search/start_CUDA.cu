@@ -2,8 +2,22 @@
 #define NVML_NO_UNVERSIONED_FUNC_DEFS
 #endif
 
+#if defined _MSC_VER & _MSC_VER < 1900
+//#define _WIN32_WINNT _WIN32_WINNT_WINXP 
+//#define NTDDI_VERSION NTDDI_WINXPSP3 
+
+#include <Windows.h>
+
+//#include <wtypes.h> 
+//#include <unknwn.h> 
+//#include <objbase.h>
+
+#endif
+
 // NOTE: CUDA 11.8 supports the following compute capabilities (CC):
 // compute_50,sm_50;compute_52,sm_52;compute_53,sm_53;compute_60,sm_60;compute_61,sm_61;compute_62,sm_62;compute_70,sm_70;compute_72,sm_72;compute_75,sm_75;compute_80,sm_80;compute_86,sm_86;compute_87,sm_87;compute_89,sm_89,compute_90,sm_90
+// NOTE: CUDA 9.0 supports the following compute capabilities (CC):
+// compute_10,sm_10;compute_11,sm_11;compute_12,sm_12;compute_20,sm_20;compute_30,sm_30;compute_32,sm_32;compute_35,sm_35
 
 #include <cuda.h>
 #include <cstdio>
@@ -114,6 +128,78 @@ bool SetCUDABlockingSync(const int device)
         return false;
 
     return true;
+}
+
+cudaError_t safeCudaMalloc(void** d_ptr, size_t size)
+{
+    cudaError_t err = cudaMalloc(d_ptr, size);
+
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA memory allocation failed: " << cudaGetErrorString(err) << std::endl;
+        std::cerr << "Attempting CPU memory allocation..." << std::endl;
+        *d_ptr = malloc(size);
+
+        if (*d_ptr == nullptr) {
+            std::cerr << "CPU memory allocation also failed." << std::endl;
+            return cudaErrorMemoryAllocation;
+        }
+    }
+
+    return cudaSuccess;
+}
+
+void handleCudaError(cudaError_t err, const char* function)
+{
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA error in " << function << ": " << cudaGetErrorString(err) << std::endl;
+        // Handle the error (e.g., free resources, exit the program, etc.)
+    }
+}
+
+void copyToSymbol(double* beta_pole)
+{
+    cudaError_t err = cudaMemcpyToSymbol(CUDA_beta_pole, beta_pole, sizeof(double) * (N_POLES + 1));
+    handleCudaError(err, "cudaMemcpyToSymbol");
+}
+
+
+
+// Template function for safe CUDA memcpy to symbol
+template <typename T>
+cudaError_t safeCudaMemcpyToSymbol(const T& symbol, const T* src, size_t count)
+{
+    cudaError_t err = cudaMemcpyToSymbol(symbol, src, count * sizeof(T));
+
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA memory copy to symbol failed: " << cudaGetErrorString(err) << std::endl;
+        // Handle the error appropriately
+    }
+
+    return err;
+}
+
+// Example usage of the safeCudaMemcpyToSymbol template function
+template <typename T, size_t N>
+void copyToSymbol(const T& symbol, const T(&beta_pole)[N])
+{
+    cudaError_t err = safeCudaMemcpyToSymbol(symbol, beta_pole, N);
+    if (err != cudaSuccess) {
+        // Handle the error appropriately
+    }
+}
+
+// Template function for safe CUDA memory copy
+template <typename T>
+cudaError_t safeMemcopy(T* dest, const T* src, size_t count, cudaMemcpyKind kind)
+{
+    cudaError_t err = cudaMemcpy(dest, src, count * sizeof(T), kind);
+
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA memory copy failed: " << cudaGetErrorString(err) << std::endl;
+        // Handle the error appropriately
+    }
+
+    return err;
 }
 
 int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par, double cl, double Alamda_start, double Alamda_incr,

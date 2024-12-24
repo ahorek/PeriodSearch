@@ -127,10 +127,18 @@ std::vector<T> flatten2Dvector(const std::vector<std::vector<T>>& matrix)
     std::vector<T> flattened_vec;
     flattened_vec.reserve(rows * cols); // Pre-allocate space for efficiency
 
+#if defined _MSC_VER & _MSC_VER < 1900
+	for (size_t i = 0; i < matrix.size(); ++i)
+	{
+		const auto& row = matrix[i];
+		flattened_vec.insert(flattened_vec.end(), row.begin(), row.end());
+	}
+#else
     for (const auto& row : matrix)
     {
         flattened_vec.insert(flattened_vec.end(), row.begin(), row.end());
     }
+#endif
 
     //if (compareVectors(matrix, flattened_vec))
     //{

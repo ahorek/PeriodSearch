@@ -22,7 +22,7 @@
     <ProjectGuid>{CDD6D6BF-C85E-4C4D-BD35-894515143261}</ProjectGuid>
     <RootNamespace>Project1</RootNamespace>
     <CudaToolkitCustomDir>$(CUDA_PATH_V6_0)</CudaToolkitCustomDir>
-    <ProjectName>pscuda_xp_vs2012</ProjectName>
+    <ProjectName>pscuda_v140_xp_vs2017</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -35,7 +35,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -47,7 +47,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110_xp</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -73,6 +73,7 @@
     <IntDir>$(ProjectDir)$(Platform)_6_0_$(PlatformToolset)\$(Configuration)\</IntDir>
     <TargetName>Period_search_XP_7_$(Platform)_cuda_6_0_$(PlatformToolset)_$(Configuration)</TargetName>
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(WindowsSdkDir);$(VsInstallRoot)\VC\Tools\MSVC\14.16.27023\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)$(Platform)_6_0_$(PlatformToolset)\$(Configuration)\</OutDir>
@@ -108,8 +109,8 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Debug;..\period_search_common\x64_v110\Debug;$(CUDA_PATH_V6_0)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboincd_staticcrt_v110.lib;libboincapid_staticcrt_v110.lib;cuda.lib;cudart_static.lib;Version.lib;ShLwApi.lib;libgraphics2d_v110.lib;ps_commond_v110.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Debug;..\period_search_common\x64_v140_xp\Debug;$(CUDA_PATH_V6_0)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboincd_staticcrt_v140_xp.lib;libboincapid_staticcrt_v140_xp.lib;cuda.lib;cudart.lib;Version.lib;ShLwApi.lib;libgraphics2d_v140_xp.lib;ps_commond_v140_xp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <StackReserveSize>10000000</StackReserveSize>
       <OptimizeReferences>false</OptimizeReferences>
@@ -121,14 +122,25 @@
     </CudaCompile>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_20,sm_20;compute_30,sm_30;compute_32,sm_32;compute_35,sm_35</CodeGeneration>
+      <CodeGeneration>compute_35,sm_35</CodeGeneration>
       <GenerateLineInfo>true</GenerateLineInfo>
       <MaxRegCount>32</MaxRegCount>
       <PtxAsOptionV>true</PtxAsOptionV>
       <Keep>true</Keep>
+      <CudaRuntime>Static</CudaRuntime>
+      <CompileOut>$(IntDir)%(Filename)%(Extension).obj</CompileOut>
+      <KeepDir>$(CudaIntDir)</KeepDir>
+      <NvccCompilation>compile</NvccCompilation>
+      <UseHostInclude>true</UseHostInclude>
     </CudaCompile>
     <CudaLink>
       <AdditionalLibraryDirectories>$(CUDA_PATH_V6_0)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <PerformDeviceLink>true</PerformDeviceLink>
+      <LinkOut>$(IntDir)$(TargetName).device-link.obj</LinkOut>
+      <UseHostLibraryDirectories>true</UseHostLibraryDirectories>
+      <UseHostLibraryDependencies>true</UseHostLibraryDependencies>
+      <GPUDebugInfo>InheritFromProject</GPUDebugInfo>
+      <Optimization>Od</Optimization>
     </CudaLink>
     <PreBuildEvent>
       <Command>call "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\x86_amd64\vcvarsx86_amd64.bat"
@@ -175,7 +187,7 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Release;..\period_search_common\x64_v110\Release;$(CUDA_PATH_V6_0)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboinc_staticcrt_v110.lib;libboincapi_staticcrt_v110.lib;cuda.lib;cudart_static.lib;Version.lib;ShLwApi.lib;libgraphics2_v110.lib;ps_common_v110.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboinc_staticcrt_v110.lib;libboincapi_staticcrt_v110.lib;cuda.lib;cudart.lib;Version.lib;ShLwApi.lib;libgraphics2_v110.lib;ps_common_v110.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <StackReserveSize>10000000</StackReserveSize>

@@ -117,8 +117,6 @@ int fscanf_s(FILE* file, const char* format, ...) {
 CalcContext calcCtx(std::allocate_shared<CalcStrategyNone>(AlignedAllocator<CalcStrategyNone>(64)));
 SIMDSupport CPUopt;
 
-//using std::string;
-
 constexpr auto checkpoint_file = "period_search_state";
 constexpr auto input_filename = "period_search_in";
 constexpr auto output_filename = "period_search_out";
@@ -217,7 +215,6 @@ int main(int argc, char** argv)
     double jd_00, conw, conw_r, a0 = 1.05, b0 = 1.00, c0 = 0.95,
         prd, cl, e0len, elen, cos_alpha,
         dth, dph, rfit, escl,
-        //e[4]{}, e0[4]{},
         chck[4]{},
         par[4]{}, rchisq;
 
@@ -248,55 +245,37 @@ int main(int argc, char** argv)
     }
 
     /* Time in JD*/
-    //double* tim = vector_double(gl.maxDataPoints + 4);
     std::vector<double> tim(gl.maxDataPoints + 4 + 1, 0.0);
     /* Brightness*/
-    //double* brightness = vector_double(gl.maxDataPoints + 4);
     std::vector<double> brightness(gl.maxDataPoints + 4 + 1);
     /* Solar phase angle */
-    //double* al = vector_double(gl.Lcurves);
     std::vector<double> al(gl.Lcurves + 1, 0.0);
     /* Weights...*/
-    //double* weight_lc = vector_double(gl.Lcurves);
     std::vector<double> weight_lc(gl.Lcurves + 1, 0.0);
     /* Ecliptic astronomical tempo-centric coordinates of the Sun in AU*/
     double e0[4]{};
     /* Ecliptic astronomical centric coordinates of the Earth in AU*/
     double e[4]{};
     /* Normalization of distance vectors*/
-    //double** ee = matrix_double(gl.maxDataPoints + 4, 3);
-    //double** ee0 = matrix_double(gl.maxDataPoints + 4, 3);
     std::vector<std::vector<double>> ee;
     init_matrix(ee, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
     std::vector<std::vector<double>> ee0;
     init_matrix(ee0, gl.maxDataPoints + 4 + 1, 3 + 1, 0.0);
 
-    //double* sig = vector_double(gl.maxDataPoints + 4);
     std::vector<double> sig(gl.maxDataPoints + 4 + 1, 0.0);
-    //double* cg_first = vector_double(MAX_N_PAR);
     std::vector<double> cg_first(MAX_N_PAR + 1, 0.0);
-    //double* cg = vector_double(MAX_N_PAR);
     std::vector<double> cg(MAX_N_PAR + 1, 0.0);
 
-    //double* t = vector_double(MAX_N_FAC);
     std::vector<double> t(MAX_N_FAC + 1, 0.0);
-    //double* f = vector_double(MAX_N_FAC);
     std::vector<double> f(MAX_N_FAC + 1, 0.0);
-    //double* at = vector_double(MAX_N_FAC);
     std::vector<double> at(MAX_N_FAC + 1, 0.0);
-    //double* af = vector_double(MAX_N_FAC);
     std::vector<double> af(MAX_N_FAC + 1, 0.0);
-    //int* ia = vector_int(MAX_N_PAR); //ia is zero indexed
     std::vector<int> ia(MAX_N_PAR + 1, 0);
-    //int** ifp = matrix_int(MAX_N_FAC, 4);
     std::vector<std::vector<int>> ifp;
     init_matrix(ifp, MAX_N_FAC + 1, 4 + 1, 0);
 
-    //double** covar = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR);
-    //double** aalpha = aligned_matrix_double(MAX_N_PAR, MAX_N_PAR + 8);
     init_matrix(gl.covar, MAX_N_PAR + 1, MAX_N_PAR + 1, 0.0);
     init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
-
 
     // open the input file (resolve logical name first)
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -585,9 +564,10 @@ int main(int argc, char** argv)
     /* Convexity regularization: make one last 'lightcurve' that
        consists of the three comps. of the residual nonconv. vect.
        that should all be zero */
-    gl.Lcurves = gl.Lcurves + 1;
-    gl.Lpoints[gl.Lcurves] = 3;
-    gl.Inrel[gl.Lcurves] = 0;
+    // gl.Lcurves = gl.Lcurves + 1;
+    // gl.Lpoints[gl.Lcurves] = 3;
+    // gl.Inrel[gl.Lcurves] = 0;
+    MakeConvexityRegularization(gl);
 
     // For Unit test reference only
     //printArray(Inrel, 10, "Inrel");

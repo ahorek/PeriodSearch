@@ -22,7 +22,7 @@ void processLine15(struct globals& gl, const char* line, int& err)
         err = -1;
         return;
     }
-    
+
     gl.Lpoints.resize(gl.Lcurves + 2, 0);
 }
 
@@ -62,7 +62,7 @@ void MakeConvexityRegularization(struct globals& gl)
     gl.Lpoints[gl.Lcurves] = 3;
     gl.Inrel[gl.Lcurves] = 0;
 
-    gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0); 
+    gl.maxDataPoints = std::accumulate(gl.Lpoints.begin(), gl.Lpoints.end(), 0);
 
     //for (auto q = 0; q <= gl.Lcurves; q++)
     //    fprintf(stderr, "Lpoints[%d] %d\n", q, gl.Lpoints[q]);
@@ -96,10 +96,12 @@ int PrepareLcData(struct globals& gl, const char* filename)
     int lineNumber = 0;
     int offset = 0;
     int i = 0;
-
+#if defined _MSC_VER & _MCS_VER < 1900
+#else
     std::unordered_map<int, std::function<void(const char*, int&)>> actions;
     actions[15] = [&](const char* line, int& err) { processLine15(gl, line, err); };
     actions[16] = [&](const char* line, int& err) { processLine16(gl, line, err, offset, i, i_temp, lineNumber); };
+#endif
 
     while (std::getline(file, lineStr))
     {
@@ -107,6 +109,24 @@ int PrepareLcData(struct globals& gl, const char* filename)
         std::strcpy(line, lineStr.c_str());
         lineNumber++;
 
+#if defined _MSC_VER & _MCS_VER < 1900
+		if (lineNumber == 15)
+        {
+            processLine15(gl, line, err);
+            if (err <= 0) {
+                file.close();
+                return err;
+            }
+        }
+        else if (lineNumber == 16)
+        {
+            processLine16(gl, line, err, offset, i, i_temp, lineNumber);
+            if (err <= 0) {
+                file.close();
+                return err;
+            }
+        }
+#else
         if (actions.find(lineNumber) != actions.end()) {
             actions[lineNumber](line, err);
             if (err <= 0) {
@@ -114,6 +134,7 @@ int PrepareLcData(struct globals& gl, const char* filename)
                 return err;
             }
         }
+#endif
 
         if (lineNumber <= 16)
         {

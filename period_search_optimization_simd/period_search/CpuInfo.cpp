@@ -6,7 +6,11 @@
 #include "Enums.h"
 #include "declarations.h"
 #include "globals.h"
+
+#if !defined _VC140_XP
 #include "CalcStrategyAvx512.hpp"
+#endif
+
 #include "CalcStrategyFma.hpp"
 #include "CalcStrategyAvx.hpp"
 #include "CalcStrategySse3.hpp"
@@ -43,14 +47,23 @@ unsigned long long xgetbv(unsigned long ctr)
 }
 
 #if !defined __GNUC__ && defined _WIN32
+/**
+ * @brief Retrieves the CPU information string for Windows systems.
+ *
+ * This function uses the `__cpuid` instruction to query the CPU information, including
+ * manufacturer, model, and clockspeed, and returns it as a concatenated string.
+ *
+ * @return Returns a string containing the CPU information.
+ *
+ * @note This function is designed for Windows systems and uses the `__cpuid` intrinsic.
+ *
+ * @see https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex?view=vs-2019
+ */
 std::string GetCpuInfo()
 {
     std::array<int, 4> integerBuffer = {};
     constexpr size_t sizeofIntegerBuffer = sizeof(int) * integerBuffer.size();
     std::array<char, 64> charBuffer = {};
-
-    // The information you wanna query __cpuid for.
-    // https://learn.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex?view=vs-2019
 
     constexpr std::array<int, 3> functionIds = {
         // Manufacturer
@@ -77,6 +90,16 @@ std::string GetCpuInfo()
 }
 
 #elif defined __GNUC__
+/**
+ * @brief Retrieves the CPU information string for Unix-like operating systems.
+ *
+ * This function uses the `__cpuid` instruction to query the CPU information, including
+ * manufacturer, model, and clockspeed, and returns it as a concatenated string.
+ *
+ * @return Returns a string containing the CPU information.
+ *
+ * @note This function is designed for Unix-like operating systems and uses the `__cpuid` intrinsic.
+ */
 std::string GetCpuInfo()
 {
     char CPUBrandString[0x40];
@@ -105,6 +128,20 @@ std::string GetCpuInfo()
 }
 #endif
 
+/**
+ * @brief Retrieves CPU information based on the specified info type.
+ *
+ * This function uses the `cpuid` instruction to query CPU information and stores
+ * the results in the provided references for registers `a`, `b`, `c`, and `d`.
+ *
+ * @param info_type An unsigned integer specifying the type of information to query.
+ * @param a A reference to an unsigned integer to store the value of the `EAX` register.
+ * @param b A reference to an unsigned integer to store the value of the `EBX` register.
+ * @param c A reference to an unsigned integer to store the value of the `ECX` register.
+ * @param d A reference to an unsigned integer to store the value of the `EDX` register.
+ *
+ * @note The function uses the `cpuid` instruction to obtain CPU information.
+ */
 static void GetCpuid(unsigned int info_type, unsigned int& a, unsigned int& b, unsigned int& c, unsigned int& d)
 {
     int CPUInfo[4] = { 0, 0, 0, 0 };
@@ -141,9 +178,16 @@ static bool IsAVX512SupportedByOS() {
     return IsAVXSupportedByOS(0xe6);
 }
 
-/// <summary>
-/// The Bulldozer CPU family does technically support AVX/FMA, but its performance is worse compared to SSE3.
-/// </summary>
+/**
+ * @brief Checks if the CPU belongs to the Bulldozer family.
+ *
+ * This function determines if the CPU is part of the Bulldozer family by querying the
+ * CPU vendor and family information using the `cpuid` instruction.
+ *
+ * @return Returns true if the CPU is from the Bulldozer family, false otherwise.
+ *
+ * @note The Bulldozer CPU family does technically support AVX/FMA, but its performance is worse compared to SSE3.
+ */
 static bool IsBulldozer()
 {
     unsigned int a, b, c, d;
@@ -176,6 +220,16 @@ static bool IsBulldozer()
     }
 }
 
+/**
+ * @brief Checks if the CPU belongs to the Bulldozer family.
+ *
+ * This function determines if the CPU is part of the Bulldozer family by querying the
+ * CPU vendor and family information using the `cpuid` instruction.
+ *
+ * @return Returns true if the CPU is from the Bulldozer family, false otherwise.
+ *
+ * @note The Bulldozer CPU family does technically support AVX/FMA, but its performance is worse compared to SSE3.
+ */
 void GetSupportedSIMDs()
 {
     unsigned int std_eax = 0, std_ebx = 0, std_ecx = 0, std_edx = 0;
@@ -198,7 +252,10 @@ void GetSupportedSIMDs()
 
     CPUopt.hasSSE2 = std_supported && (std_edx & (1 << 26));
     CPUopt.hasSSE3 = std_supported && ((std_ecx & (1 << 0)) || (std_ecx & (1 << 9)));
+
+#if !defined _VC140_XP
     CPUopt.hasAVX = std_supported && (std_ecx & (1 << 28));
+
     if (CPUopt.hasAVX)
     {
         CPUopt.hasFMA = std_supported && (std_ecx & (1 << 12));
@@ -209,13 +266,18 @@ void GetSupportedSIMDs()
         CPUopt.hasAVX512dq = struc_ebx & (1 << 17);
     }
     CPUopt.isBulldozer = IsBulldozer();
+#endif
 }
 
-/// <summary>
-/// Check if manualy overriden optimization is supported. If not return the closest supported as a falback.
-/// </summary>
-/// <param name="simdEnum"></param>
-/// <returns>SIMDEnum</returns>
+/**
+ * @brief Checks if a manually overridden optimization is supported and returns the closest supported fallback if not.
+ *
+ * This function checks the provided SIMDEnum value against the supported SIMD instructions
+ * on the CPU and returns the closest supported optimization as a fallback if the provided value is not supported.
+ *
+ * @param simd The SIMDEnum value representing the manually overridden optimization to check.
+ * @return Returns the closest supported SIMDEnum value if the provided value is not supported.
+ */
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 {
     SIMDEnum tempSimd = simd;
@@ -268,6 +330,14 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
     return simd;
 }
 
+/**
+ * @brief Determines the best supported SIMD optimization for the CPU.
+ *
+ * This function checks the supported SIMD instructions on the CPU and returns the best available SIMDEnum value.
+ * It prioritizes AVX512, FMA, AVX, SSE3, and SSE2 in that order, and prints a message indicating which optimization is being used.
+ *
+ * @return Returns the best supported SIMDEnum value based on the CPU capabilities.
+ */
 SIMDEnum GetBestSupportedSIMD()
 {
     if (CPUopt.hasAVX512 && CPUopt.hasAVX512dq)
@@ -302,10 +372,19 @@ SIMDEnum GetBestSupportedSIMD()
     }
 }
 
+/**
+ * @brief Sets the calculation strategy based on the specified SIMD optimization.
+ *
+ * This function selects and sets the appropriate calculation strategy based on the provided SIMDEnum value.
+ * It utilizes different strategies for AVX512, FMA, AVX, SSE3, SSE2, and falls back to a default strategy if none are specified.
+ *
+ * @param useOptimization The SIMDEnum value representing the desired SIMD optimization strategy.
+ */
 void SetOptimizationStrategy(const SIMDEnum useOptimization)
 {
     switch (useOptimization)
     {
+#if !defined _VC140_XP
     case SIMDEnum::OptAVX512:
         calcCtx.SetStrategy(CreateAlignedShared<CalcStrategyAvx512>(64));
         break;
@@ -315,6 +394,7 @@ void SetOptimizationStrategy(const SIMDEnum useOptimization)
     case SIMDEnum::OptAVX:
         calcCtx.SetStrategy(CreateAlignedShared<CalcStrategyAvx>(64));
         break;
+#endif
     case SIMDEnum::OptSSE3:
         calcCtx.SetStrategy(CreateAlignedShared<CalcStrategySse3>(64));
         break;

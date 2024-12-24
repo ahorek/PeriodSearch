@@ -5,7 +5,14 @@
 #include <stdexcept>
 #include <new> // for placement new
 
-// NOTE: To ensure alignment during dynamic allocation we will create a custom aligned allocator
+/**
+ * @brief A custom aligned allocator to ensure proper alignment during dynamic allocation.
+ *
+ * This template struct provides an allocator that ensures memory alignment for objects of type `T`.
+ * It uses `_aligned_malloc` and `_aligned_free` for allocation and deallocation, respectively.
+ *
+ * @tparam T The type of objects to be allocated.
+ */
 template <typename T>
 struct AlignedAllocator
 {
@@ -50,6 +57,18 @@ bool operator==(const AlignedAllocator<T>&, const AlignedAllocator<U>&) { return
 template <typename T, typename U>
 bool operator!=(const AlignedAllocator<T>&, const AlignedAllocator<U>&) { return false; }
 
+/**
+ * @brief Creates a shared pointer to an object with aligned memory allocation.
+ *
+ * This function template allocates aligned memory and constructs an object of type `T` using placement new.
+ * It returns a `std::shared_ptr` to the newly created object, ensuring proper alignment and memory management.
+ *
+ * @tparam T The type of the object to be created.
+ * @param alignment The alignment requirement for the memory allocation.
+ * @return Returns a `std::shared_ptr<T>` to the newly created and aligned object.
+ *
+ * @note The function uses `AlignedAllocator` for memory allocation and `AlignedDeleter` for memory deallocation.
+ */
 template <typename T>
 std::shared_ptr<T> CreateAlignedShared(std::size_t alignment)
 {

@@ -17,8 +17,6 @@ void trifac(const int nrows, std::vector<std::vector<int>>& ifp)
 {
    int i, j, j0, j1, j2, j3;
 
-   //int **nod;
-   //nod = matrix_int(2*nrows, 4*nrows);
    std::vector<std::vector<int>> nod;
    init_matrix(nod, 2 * nrows + 1, 4 * nrows + 1, 0);
 
@@ -97,5 +95,4 @@ void trifac(const int nrows, std::vector<std::vector<int>>& ifp)
        }
    }*/
 
-   //deallocate_matrix_int(nod, 2*nrows);
 }

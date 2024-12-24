@@ -1,11 +1,3 @@
-/* computes integrated brightness of all visible and illuminated areas
-   and its derivatives
-
-   8.11.2006 - Josef Durec
-   29.2.2024 - Georgi Vidinski
-*/
-
-//#include <stdlib.h>
 #include <cmath>
 #include <cstdio>
 #include <vector>
