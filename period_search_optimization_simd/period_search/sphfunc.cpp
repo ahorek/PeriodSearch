@@ -1,15 +1,22 @@
-/* Spherical harmonics functions (unnormalized) for Laplace series
-   converted from Mikko's fortran code
-
-   8.11.2006
-*/
-
 #include <cmath>
 #include "globals.h"
 #include "declarations.h"
 #include "arrayHelpers.hpp"
 
-void sphfunc(int ndir, double at[], double af[])
+/**
+ * @brief Computes spherical harmonics functions (denormalized) for Laplace series.
+ *
+ * This function calculates the spherical harmonics functions based on given angular
+ * coordinates. It was converted from Mikko's original Fortran code (J.Durech, 8.11.2006).
+ *
+ * The function operates on 1-based indexed arrays, and it does not use the zero
+ * elements of the input vectors.
+ *
+ * @param ndir The number of directions.
+ * @param at A vector of doubles representing the theta angles. The vector should be of size ndir+1.
+ * @param af A vector of doubles representing the phi angles. The vector should be of size ndir+1.
+ */
+void sphfunc(const int ndir, const std::vector<double>& at, const std::vector<double>& af)
 {
     int i, j, m, l, n, k, ibot;
 

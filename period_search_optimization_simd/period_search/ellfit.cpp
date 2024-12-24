@@ -1,33 +1,49 @@
-/* Find the curv. fn. Laplace series for given ellipsoid
-   converted from Mikko's fortran code
-
-   8.11.2006
-*/
-
 #include <cmath>
 #include "globals.h"
 #include "declarations.h"
-//#include "../period_search/arrayHelpers.hpp"
 #include "arrayHelpers.hpp"
 
-
-void ellfit(double cg[], double a, double b, double c, int ndir, int ncoef, double at[], double af[])
+/**
+ * @brief Finds the curvature function Laplace series for a given ellipsoid.
+ *
+ * This function computes the curvature function Laplace series for a given ellipsoid
+ * by fitting spherical harmonics. It converts the original Fortran code from Mikko (J.Durech, 8.11.2006).
+ *
+ * @param cg A vector to store the coefficients of the fitted series.
+ * @param a The semi-major axis of the ellipsoid.
+ * @param b The semi-minor axis of the ellipsoid.
+ * @param c The vertical axis of the ellipsoid.
+ * @param ndir The number of directions.
+ * @param ncoef The number of coefficients in the series.
+ * @param at A vector of theta angles (in radians) for the directions.
+ * @param af A vector of phi angles (in radians) for the directions.
+ */
+void ellfit(std::vector<double>& cg, double a, double b, double c, int ndir, int ncoef, const std::vector<double>& at, const std::vector<double>& af)
 {
     int i, m, l, n, j, k;
-    int *indx;
+    // int *indx;
 
     double sum, st;
-    double *fitvec, *d, *er,
-        **fmat, **fitmat;
+    //double *fitvec, *d, *er, **fmat, **fitmat;
 
-    indx = vector_int(ncoef);
+    //indx = vector_int(ncoef);
+    //fitvec = vector_double(ncoef);
+    //er = vector_double(ndir);
+    //d = vector_double(1);
 
-    fitvec = vector_double(ncoef);
-    er = vector_double(ndir);
-    d = vector_double(1);
+    //fmat = matrix_double(ndir, ncoef);
+    //fitmat = matrix_double(ncoef, ncoef);
 
-    fmat = matrix_double(ndir, ncoef);
-    fitmat = matrix_double(ncoef, ncoef);
+    std::vector<int> indx(ncoef + 1, 0);
+    std::vector<double> fitvec(ncoef + 1, 0.0);
+    std::vector<double> er(ndir + 1, 0.0);
+    std::vector<double> d(2, 0.0);
+
+    std::vector<std::vector<double>> fmat;
+    init_matrix(fmat, ndir + 1, ncoef + 1, 0.0);
+
+    std::vector<std::vector<double>> fitmat;
+    init_matrix(fitmat, ncoef + 1, ncoef + 1, 0.0);
 
     /* Compute the LOGcurv.func. of the ellipsoid */
     for (i = 1; i <= ndir; i++)
@@ -91,12 +107,12 @@ void ellfit(double cg[], double a, double b, double c, int ndir, int ncoef, doub
     // For Unit tests reference only
     //printArray(cg, ncoef, "cg");
 
-    deallocate_matrix_double(fitmat, ncoef);
-    deallocate_matrix_double(fmat, ndir);
-    deallocate_vector((void *)fitvec);
-    deallocate_vector((void *)d);
-    deallocate_vector((void *)indx);
-    deallocate_vector((void *)er);
+    //deallocate_matrix_double(fitmat, ncoef);
+    //deallocate_matrix_double(fmat, ndir);
+    //deallocate_vector((void *)fitvec);
+    //deallocate_vector((void *)d);
+    //deallocate_vector((void *)indx);
+    //deallocate_vector((void *)er);
 
 }
 

@@ -1,12 +1,20 @@
-/* beta, lambda rotation matrix and its derivatives
-
-   8.11.2006
-*/
-
-#include <math.h>
 #include "globals.h"
 
-void blmatrix(double bet, double lam)
+/**
+ * @brief Computes the beta and lambda rotation matrix and its derivatives.
+ *
+ * This function calculates the rotation matrix and its derivatives with respect to beta and lambda angles.
+ * The rotation matrix represents a rotation in 3D space defined by the beta and lambda angles.
+ * The derivatives are computed for further use in optimization or sensitivity analysis.
+ *
+ * @param bet The beta angle (in radians).
+ * @param lam The lambda angle (in radians).
+ *
+ * @note The rotation matrix and its derivatives are stored in the global arrays Blmat and Dblm.
+ *
+ * @date 8.11.2006
+ */
+void blmatrix(const double bet, const double lam)
 {
     double cb, sb, cl, sl;
 
