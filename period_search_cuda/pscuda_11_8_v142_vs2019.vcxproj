@@ -474,7 +474,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <!-- <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries> -->
       <StackReserveSize>10000000</StackReserveSize>
-      <AdditionalDependencies>libboinc.lib;libboincapi.lib;cuda.lib;cudart.lib;nvml.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;ps_commond_v142.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboinc.lib;libboincapi.lib;cuda.lib;cudart.lib;nvml.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;ps_commond_v142.lib;DbgHelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Debug;..\period_search_common\x64_v142\Debug;$(CUDA_PATH_V11_8)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <!-- libcmtd.lib;libcpmtd.lib; -->
     </Link>

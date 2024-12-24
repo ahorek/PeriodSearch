@@ -735,7 +735,7 @@ int main(int argc, char** argv)
 			if (retval)
 			{
 				fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof buf), retval);
-				CUDAFree();   // TODO: Double check why this was placed after exit() method?
+				CUDAGlobalsFree();   // TODO: Double check why this was placed after exit() method?
 				exit(retval);
 			}
 			boinc_checkpoint_completed();
@@ -840,7 +840,7 @@ int main(int argc, char** argv)
 
 	out.close();
 
-	CUDAFree();
+	CUDAGlobalsFree();
 	free(stringTemp);
 
 	//auto clockRate = cudaDeviceGetAttribute()

@@ -21,6 +21,7 @@
 
 #include <cuda.h>
 #include <cstdio>
+
 #include "mfile.h"
 #include "globals.h"
 #include "globals_CUDA.h"
@@ -40,6 +41,9 @@
 
 #ifdef __GNUC__
 #include <ctime>
+#include <execinfo.h>
+#else
+
 #endif
 #include "ComputeCapability.h"
 #include "arrayHelpers.hpp"
@@ -85,6 +89,10 @@ int CUDA_grid_dim;
 double* pee, * pee0, * pWeight; 
 bool nvml_enabled = false;
 double* d_CUDA_tim;
+
+// Global variable to track the total size of allocations
+size_t totalAllocatedSize = 0;
+
 //bool if_freq_measured = false;
 
 // ReSharper disable All
@@ -130,63 +138,151 @@ bool SetCUDABlockingSync(const int device)
     return true;
 }
 
-cudaError_t safeCudaMalloc(void** d_ptr, size_t size)
+#if defined _DEBUG
+#if defined __GNUC__
+void printCallStack()
 {
-    cudaError_t err = cudaMalloc(d_ptr, size);
+    const int maxFrames = 64;
+    void* frames[maxFrames];
+    int numFrames = backtrace(frames, maxFrames);
+    char** symbols = backtrace_symbols(frames, numFrames);
+
+    std::cerr << "Call stack:" << std::endl;
+    for (int i = 0; i < numFrames; ++i) {
+        std::cerr << symbols[i] << std::endl;
+    }
+
+    free(symbols);
+}
+#else
+#define _WIN32_WINNT 0x0501 // Target Windows XP or later
+#include <Windows.h>
+#include <DbgHelp.h>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
+
+
+extern "C"
+USHORT WINAPI CaptureStackBackTrace(
+    ULONG FramesToSkip,
+    ULONG FramesToCapture,
+    PVOID * BackTrace,
+    PULONG BackTraceHash
+);
+
+void printCallStack()
+{
+    const int maxFrames = 64;
+    void* frames[maxFrames];
+    USHORT numFrames = CaptureStackBackTrace(0, maxFrames, frames, NULL);
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    HANDLE process = GetCurrentProcess();
+    SymInitialize(process, NULL, TRUE);
+
+    std::cerr << "Call stack:" << std::endl;
+    for (USHORT i = 0; i < numFrames; ++i) {
+        SymFromAddr(process, (DWORD64)(frames[i]), 0, symbol);
+        std::cerr << i << ": " << symbol->Name << " - 0x" << std::hex << symbol->Address << std::dec << std::endl;
+    }
+
+    free(symbol);
+}
+#endif
+#endif
+
+void CUDAGlobalsFree()
+{
+    cudaFree(pee);
+    cudaFree(pee0);
+    cudaFree(pWeight);
+    cudaFree(d_CUDA_tim);
+}
+
+// Template function for safe CUDA memory allocation
+template <typename T>
+cudaError_t safeCudaMalloc(T*& d_ptr, size_t size)
+{
+    cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&d_ptr), size * sizeof(T));
 
     if (err != cudaSuccess) {
         std::cerr << "CUDA memory allocation failed: " << cudaGetErrorString(err) << std::endl;
         std::cerr << "Attempting CPU memory allocation..." << std::endl;
-        *d_ptr = malloc(size);
+        d_ptr = static_cast<T*>(malloc(size * sizeof(T)));
 
-        if (*d_ptr == nullptr) {
+        if (d_ptr == nullptr) {
             std::cerr << "CPU memory allocation also failed." << std::endl;
             return cudaErrorMemoryAllocation;
         }
+    }
+    else
+    {
+        totalAllocatedSize += size * sizeof(T);
     }
 
     return cudaSuccess;
 }
 
-void handleCudaError(cudaError_t err, const char* function)
+void handleCudaError(cudaError_t err, const char* function, const char* symbol_name)
 {
     if (err != cudaSuccess) {
-        std::cerr << "CUDA error in " << function << ": " << cudaGetErrorString(err) << std::endl;
+        //std::cerr << "CUDA error in " << function << ": " << cudaGetErrorString(err) << std::endl;
+        std::cerr << "CUDA error in "<< function << " | memory copy to symbol \"" << symbol_name << "\" failed: " << cudaGetErrorString(err) << std::endl;
+#if defined _DEBUG
+        printCallStack();
+#endif
         // Handle the error (e.g., free resources, exit the program, etc.)
+        CUDAGlobalsFree();
+        exit(999);
     }
 }
 
-void copyToSymbol(double* beta_pole)
-{
-    cudaError_t err = cudaMemcpyToSymbol(CUDA_beta_pole, beta_pole, sizeof(double) * (N_POLES + 1));
-    handleCudaError(err, "cudaMemcpyToSymbol");
-}
+//void copyToSymbol(double* beta_pole)
+//{
+//    cudaError_t err = cudaMemcpyToSymbol(CUDA_beta_pole, beta_pole, sizeof(double) * (N_POLES + 1));
+//    handleCudaError(err, "cudaMemcpyToSymbol");
+//}
+
+// _____________________________
 
 
-
-// Template function for safe CUDA memcpy to symbol
+// Template function for safe CUDA memory copy to symbol
 template <typename T>
-cudaError_t safeCudaMemcpyToSymbol(const T& symbol, const T* src, size_t count)
+cudaError_t safeCudaMemcpyToSymbol(const T& symbol, const void* src, size_t count, const char* symbol_name)
 {
-    cudaError_t err = cudaMemcpyToSymbol(symbol, src, count * sizeof(T));
+    cudaError_t err = cudaMemcpyToSymbol(symbol, src, count);
+    handleCudaError(err, "cudaMemcpyToSymbol", symbol_name);
 
-    if (err != cudaSuccess) {
-        std::cerr << "CUDA memory copy to symbol failed: " << cudaGetErrorString(err) << std::endl;
-        // Handle the error appropriately
-    }
+    totalAllocatedSize += count * sizeof(T);
 
     return err;
 }
 
-// Example usage of the safeCudaMemcpyToSymbol template function
+//// Wrapper function to handle the type deduction for arrays
+//template <typename T, size_t N>
+//cudaError_t copyToSymbol(T(&symbol)[N], const T* src, size_t count)
+//{
+//    return safeCudaMemcpyToSymbol(reinterpret_cast<const void*>(&symbol), src, count * sizeof(T));
+//}
+
+// Wrapper function to handle the type deduction for arrays
 template <typename T, size_t N>
-void copyToSymbol(const T& symbol, const T(&beta_pole)[N])
+cudaError_t copyToSymbol(T(&symbol)[N], const T* src, size_t count, const char* symbol_name = {})
 {
-    cudaError_t err = safeCudaMemcpyToSymbol(symbol, beta_pole, N);
-    if (err != cudaSuccess) {
-        // Handle the error appropriately
-    }
+    return safeCudaMemcpyToSymbol(reinterpret_cast<const void*>(&symbol), src, count * sizeof(T), symbol_name);
 }
+
+// Overload for single numerical types
+template <typename T>
+cudaError_t copyToSymbol(T& symbol, const T* src, size_t count, const char* symbol_name = {})
+{
+    return safeCudaMemcpyToSymbol(reinterpret_cast<const void*>(&symbol), src, count * sizeof(T), symbol_name);
+}
+
+// _________________
 
 // Template function for safe CUDA memory copy
 template <typename T>
@@ -201,6 +297,19 @@ cudaError_t safeMemcopy(T* dest, const T* src, size_t count, cudaMemcpyKind kind
 
     return err;
 }
+
+// Template wrapper function for copying a device pointer to a device symbol
+template <typename T>
+cudaError_t copyPointerToSymbol(T** symbol, T* d_ptr, const char* symbol_name)
+{
+    return safeCudaMemcpyToSymbol(*symbol, &d_ptr, 1 * sizeof(T), symbol_name);
+}
+
+// Macro to simplify calling copyToSymbol with the symbol name and optional count
+#define CopyToSymbol(symbol, src, count) copyToSymbol(symbol, src, count, #symbol)
+
+// Macro to simplify calling copyPointerToSymbol with the symbol name
+#define CopyPointerToSymbol(symbol, d_ptr) copyPointerToSymbol(&symbol, d_ptr, #symbol)
 
 int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par, double cl, double Alamda_start, double Alamda_incr,
     std::vector<std::vector<double>>& ee, std::vector<std::vector<double>>& ee0, std::vector<double>& tim, 
@@ -299,34 +408,101 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
         fprintf(stderr, "Block dim: %d\n", CUDA_BLOCK_DIM);
     }
 
-    //Global parameters
-    cudaMemcpyToSymbol(CUDA_beta_pole, beta_pole, sizeof(double) * (N_POLES + 1));
-    cudaMemcpyToSymbol(CUDA_lambda_pole, lambda_pole, sizeof(double) * (N_POLES + 1));
-    cudaMemcpyToSymbol(CUDA_par, par, sizeof(double) * 4);
-    cudaMemcpyToSymbol(CUDA_cl, &cl, sizeof(cl));
-    cudaMemcpyToSymbol(CUDA_Alamda_start, &Alamda_start, sizeof(Alamda_start));
-    cudaMemcpyToSymbol(CUDA_Alamda_incr, &Alamda_incr, sizeof(Alamda_incr));
-    cudaMemcpyToSymbol(CUDA_Mmax, &m_max, sizeof(m_max));
-    cudaMemcpyToSymbol(CUDA_Lmax, &l_max, sizeof(l_max));
-    cudaMemcpyToSymbol(CUDA_Phi_0, &Phi_0, sizeof(Phi_0));
+    //Global parameters - old approach
+    //cudaMemcpyToSymbol(CUDA_beta_pole, beta_pole, sizeof(double) * (N_POLES + 1));
+    //cudaMemcpyToSymbol(CUDA_lambda_pole, lambda_pole, sizeof(double) * (N_POLES + 1));
+    //cudaMemcpyToSymbol(CUDA_par, par, sizeof(double) * 4);
+    //cudaMemcpyToSymbol(CUDA_cl, &cl, sizeof(cl));
+    //cudaMemcpyToSymbol(CUDA_Alamda_start, &Alamda_start, sizeof(Alamda_start));
+    //cudaMemcpyToSymbol(CUDA_Alamda_incr, &Alamda_incr, sizeof(Alamda_incr));
+    //cudaMemcpyToSymbol(CUDA_Mmax, &m_max, sizeof(m_max));
+    //cudaMemcpyToSymbol(CUDA_Lmax, &l_max, sizeof(l_max));
+    //cudaMemcpyToSymbol(CUDA_Phi_0, &Phi_0, sizeof(Phi_0));
 
-    cudaMalloc(reinterpret_cast<void**>(&d_CUDA_tim), tim.size() * sizeof(double));
-    cudaMemcpy(d_CUDA_tim, tim.data(), tim.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(CUDA_tim, &d_CUDA_tim, sizeof(double*));
+    //copyToSymbol(CUDA_beta_pole, beta_pole, (N_POLES + 1));
+    //copyToSymbol(CUDA_lambda_pole, lambda_pole, (N_POLES + 1));
+    //copyToSymbol(CUDA_par, par, 4);
+    //copyToSymbol(CUDA_cl, &cl, sizeof(cl));
+    //copyToSymbol(CUDA_Alamda_start, &Alamda_start, sizeof(Alamda_start));
+    //copyToSymbol(CUDA_Alamda_incr, &Alamda_incr, sizeof(Alamda_incr));
+    //copyToSymbol(CUDA_Mmax, &m_max, sizeof(m_max));
+    //copyToSymbol(CUDA_Lmax, &l_max, sizeof(l_max));
+    //copyToSymbol(CUDA_Phi_0, &Phi_0, sizeof(Phi_0));
 
-    cudaMalloc(reinterpret_cast<void**>(&pWeight), gl.Weight.size() * sizeof(double));
-    cudaMemcpy(pWeight, gl.Weight.data(), gl.Weight.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(CUDA_Weight, &pWeight, sizeof(double*));
+#if defined _DEBUG
+    // Get the current heap size limit using cudaDeviceGetLimit()
+    size_t limit = 0; 
+    cudaError err = cudaDeviceGetLimit(&limit, cudaLimitMallocHeapSize);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "Failed to get CUDA Malloc Heap Size Limit: " << cudaGetErrorString(err) << std::endl;
+        return 1;
 
+        // Exit with error code
+    }
+    std::cerr << "Default heap size limit is: " << limit / (1024 * 1024) << " MB" << std::endl;
+
+    //limit = 1024 * 1024 * 1024; // 1GB
+    //cudaDeviceSetLimit(cudaLimitMallocHeapSize, limit);
+
+    //// Get the new heap size limit using cudaDeviceGetLimit() 
+    //err = cudaDeviceGetLimit(&limit, cudaLimitMallocHeapSize);
+    //if (err != cudaSuccess)
+    //{
+    //    std::cerr << "Failed to get CUDA Malloc Heap Size Limit: " << cudaGetErrorString(err) << std::endl;
+    //    return 1;
+    //    // Exit with error code 
+    //}
+    //std::cout << "New heap size limit is: " << limit / (1024 * 1024) << " MB" << std::endl;
+
+    size_t freeMemory, totalMemory;
+    cudaMemGetInfo(&freeMemory, &totalMemory);
+    int freeMemoryMB = static_cast<int>(std::ceil(static_cast<double>(freeMemory) / (1024.0 * 1024.0)));
+    std::cerr << "Free memory:" << freeMemoryMB << " MB" << std::endl;
+    int totalMemoryMB = static_cast<int>(std::ceil(static_cast<double>(totalMemory) / (1024.0 * 1024.0)));
+    std::cerr << "Total memory:" << totalMemoryMB << " MB" << std::endl;
+#endif
+
+    // Using macro to achieve verbose error output
+    CopyToSymbol(CUDA_beta_pole, beta_pole, N_POLES + 1);
+    CopyToSymbol(CUDA_lambda_pole, lambda_pole, (N_POLES + 1));
+    CopyToSymbol(CUDA_par, par, 4);
+    CopyToSymbol(CUDA_cl, &cl, 1);
+    CopyToSymbol(CUDA_Alamda_start, &Alamda_start, 1);
+    CopyToSymbol(CUDA_Alamda_incr, &Alamda_incr, 1);
+    CopyToSymbol(CUDA_Mmax, &m_max, 1);
+    CopyToSymbol(CUDA_Lmax, &l_max, 1);
+    CopyToSymbol(CUDA_Phi_0, &Phi_0, 1);
+
+    //cudaMalloc(reinterpret_cast<void**>(&d_CUDA_tim), tim.size() * sizeof(double));
+    //cudaMemcpy(d_CUDA_tim, tim.data(), tim.size() * sizeof(double), cudaMemcpyHostToDevice);
+    //cudaMemcpyToSymbol(CUDA_tim, &d_CUDA_tim, sizeof(double*));
+    safeCudaMalloc(d_CUDA_tim, tim.size());
+    safeMemcopy(d_CUDA_tim, tim.data(), tim.size(), cudaMemcpyHostToDevice);
+    CopyPointerToSymbol(CUDA_tim, d_CUDA_tim);
+
+    //cudaMalloc(reinterpret_cast<void**>(&pWeight), gl.Weight.size() * sizeof(double));
+    //cudaMemcpy(pWeight, gl.Weight.data(), gl.Weight.size() * sizeof(double), cudaMemcpyHostToDevice);
+    //cudaMemcpyToSymbol(CUDA_Weight, &pWeight, sizeof(double*));
+    safeCudaMalloc(pWeight, gl.Weight.size());
+    safeMemcopy(pWeight, gl.Weight.data(), gl.Weight.size(), cudaMemcpyHostToDevice);
+    CopyPointerToSymbol(CUDA_Weight, pWeight);
+    
     auto flattened_ee = flatten2Dvector<double>(ee);
-    cudaMalloc(reinterpret_cast<void**>(&pee), flattened_ee.size() * sizeof(double));
-    cudaMemcpy(pee, flattened_ee.data(), flattened_ee.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(CUDA_ee, &pee, sizeof(double*));
+    //cudaMalloc(reinterpret_cast<void**>(&pee), flattened_ee.size() * sizeof(double));
+    //cudaMemcpy(pee, flattened_ee.data(), flattened_ee.size() * sizeof(double), cudaMemcpyHostToDevice);
+    //cudaMemcpyToSymbol(CUDA_ee, &pee, sizeof(double*));
+    safeCudaMalloc(pee, flattened_ee.size());
+    safeMemcopy(pee, flattened_ee.data(), flattened_ee.size(), cudaMemcpyHostToDevice);
+    CopyPointerToSymbol(CUDA_ee, pee);
 
     auto flattened_ee0 = flatten2Dvector<double>(ee0);
-    cudaMalloc(reinterpret_cast<void**>(&pee0), flattened_ee0.size() * sizeof(double));
-    cudaMemcpy(pee0, flattened_ee0.data(), flattened_ee0.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpyToSymbol(CUDA_ee0, &pee0, sizeof(double*));
+    //cudaMalloc(reinterpret_cast<void**>(&pee0), flattened_ee0.size() * sizeof(double));
+    //cudaMemcpy(pee0, flattened_ee0.data(), flattened_ee0.size() * sizeof(double), cudaMemcpyHostToDevice);
+    //cudaMemcpyToSymbol(CUDA_ee0, &pee0, sizeof(double*));
+    safeCudaMalloc(pee0, flattened_ee0.size());
+    safeMemcopy(pee0, flattened_ee0.data(), flattened_ee0.size(), cudaMemcpyHostToDevice);
+    CopyPointerToSymbol(CUDA_ee0, pee0);
 
     cudaError_t _err = cudaGetLastError();
     if (_err != cudaSuccess)
@@ -335,15 +511,12 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
         return 0;
     }
 
-    return 1;
-}
+#if defined _DEBUG
+    // Print the total allocated size
+    std::cerr << "Total allocated size: " << totalAllocatedSize << " bytes" << std::endl;
+#endif
 
-void CUDAFree()
-{
-    cudaFree(pee);
-    cudaFree(pee0);
-    cudaFree(pWeight);
-    cudaFree(d_CUDA_tim);
+    return 1;
 }
 
 int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_step, double stop_condition, int n_iter_min, double* conw_r,
@@ -563,6 +736,14 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
             while (!theEnd)
             {
                 count++;
+                if (count > 51)
+                {
+                    std::cerr << "CUDA Precalc routine went out of bounds!" << std::endl;
+                    CUDAGlobalsFree();
+                    // TODO: CUDALocalFree();
+                    exit(999);
+                }
+
                 CudaCalculateIter1Begin<<<CUDA_Grid_dim_precalc, 1>>>();
                 //mrqcof
                 CudaCalculateIter1Mrqcof1Start<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>();
