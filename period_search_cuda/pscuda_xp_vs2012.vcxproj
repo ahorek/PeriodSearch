@@ -109,12 +109,12 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Debug;..\period_search_common\x64_v110\Debug;$(CUDA_PATH_V6_0)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libboincd_staticcrt_v110.lib;libboincapid_staticcrt_v110.lib;cuda.lib;cudart_static.lib;Version.lib;ShLwApi.lib;libgraphics2d_v110.lib;ps_commond_v110.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libboincd_staticcrt_v110.lib;libboincapid_staticcrt_v110.lib;cuda.lib;cudart.lib;Version.lib;ShLwApi.lib;Dbghelp.lib;libgraphics2d_v110.lib;ps_commond_v110.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <StackReserveSize>10000000</StackReserveSize>
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <CudaCompile>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>

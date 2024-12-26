@@ -1,0 +1,79 @@
+# Define compiler paths
+
+BOINC_DIR = "C:\boincsdk\boinc"
+BOINC_API_DIR = $(BOINC_DIR)\api
+BOINC_LIB_DIR = $(BOINC_DIR)\lib
+BOINC_BUILD_DIR = $(BOINC_DIR)/win_build/Build/x64/Release
+CUDA_PATH = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v6.0"
+PS_COMMON_PATH = ../../period_search_common
+BUILD_PATH = mingw64
+
+# CXX_PATH = C:/msys64/mingw64/bin/g++
+CXX_PATH = "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\amd64"
+NVCC_PATH = "$(CUDA_PATH)/bin/nvcc.exe"
+
+# Define compilers and flags
+CXX = $(CXX_PATH)
+NVCC = $(NVCC_PATH)
+CXXFLAGS = -Wall -Wextra -g \
+	-I. \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(CUDA_PATH)/include \
+	-I$(PS_COMMON_PATH) \
+
+NVCCFLAGS = -allow-unsupported-compiler --ptxas-options=-v --generate-code arch=compute_50,code=sm_50 --generate-code arch=compute_52,code=sm_52 --generate-code arch=compute_53,code=sm_53 --generate-code arch=compute_60,code=sm_60 --generate-code arch=compute_61,code=sm_61 --generate-code arch=compute_62,code=sm_62 --generate-code arch=compute_70,code=sm_70 --generate-code arch=compute_72,code=sm_72 --generate-code arch=compute_75,code=sm_75 --generate-code arch=compute_80,code=sm_80 --generate-code arch=compute_86,code=sm_86 --generate-code arch=compute_87,code=sm_87 --generate-code arch=compute_89,code=sm_89 --maxrregcount=255 -rdc=true \
+	-I. \
+	-I$(CUDA_PATH)/include \
+	-I$(PS_COMMON_PATH) \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-ccbin $(CXX_PATH)/cl.exe
+
+# Define the target executable
+TARGET = $(BUILD_PATH)/my_executable.exe
+
+# Define the source files
+CPPSRC = areanorm.cpp ellfit.cpp error.cpp lubksb.cpp ludcmp.cpp period_search_BOINC.cpp sphfunc.cpp trifac.cpp VersionInfo.cpp
+CUDASRC = blmatrix.cu bright.cu ComputeCapability.cu conv.cu curv.cu curve2_CUDA.cu gauss_errc.cu matrix.cu mrqcof.cu mrqmin.cu phasec.cu Start.cu start_CUDA.cu
+
+# Define the object files
+CPPOBJ = $(CPPSRC:%.cpp=$(BUILD_PATH)/%.obj)
+CUDAOBJ = $(CUDASRC:%.cu=$(BUILD_PATH)/%.obj)
+
+# Define the static libraries
+STATICLIBS = libboinc.lib libboincapi.lib cuda.lib cudart.lib nvml.lib Version.lib ShLwApi.lib libgraphics2.lib DbgHelp.lib ps_common.lib
+
+# Default target to build the executable
+all: $(TARGET)
+
+# Rule to build the executable
+$(TARGET): $(CPPOBJ) $(CUDAOBJ) $(STATICLIBS)
+	$(CXX) -o $@ $^ -L$(BUILD_PATH) -lboinc -lboincapi -lcuda -lcudart -lnvml -lVersion -lShLwApi -lgraphics2 -lDbgHelp -lps_common
+
+# Rule to build C++ object files
+$(BUILD_PATH)/%.obj: %.cpp
+	if not exist $(BUILD_PATH) mkdir $(BUILD_PATH)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Rule to build CUDA object files
+$(BUILD_PATH)/%.obj: %.cu
+	if not exist $(BUILD_PATH) mkdir $(BUILD_PATH)
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+
+# Clean rule to remove compiled files
+clean:
+	-$(RM) $(CPPOBJ) $(CUDAOBJ) $(TARGET)
+	-$(RM) -r $(BUILD_PATH)
+
+# Define RM to handle different platforms
+RM = del /Q
+ifeq ($(OS),Windows_NT)
+	RM = del /Q
+else
+	RM = rm -f
+endif
+
+.PHONY: all clean

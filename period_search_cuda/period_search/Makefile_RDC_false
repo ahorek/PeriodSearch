@@ -1,0 +1,75 @@
+# This is still under construction to target older Nvidia GPUs with CC 1.0, 1.1, 1.2, which does not support RDC (--rdc=false)
+# Unfortunately using this Makefile it is still produces separate compilations. There are a bunch of warnings like:
+# D:\source\repos\AsteroidsAtHome\PeriodSearch\period_search_cuda\period_search\globals_CUDA.h(147): warning #20044-D: extern declaration of the entity CUDA_FR is treated as a static definition
+# which indicates separate compilation. Perhaps the CUDA code needs rearrangement. If so we need a separate project not to mess with the existing one. But is it worth it?
+#
+# NOTE: CUDA does not support minGW for Windows so using g++ is not possible and we're stuck with the MSVC compilers
+
+# Define compiler paths
+
+BOINC_DIR = D:/boincsdk/boinc
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+BOINC_BUILD_DIR = $(BOINC_DIR)/win_build/Build/x64/Release
+CUDA_PATH = "C:/Progra~1/NVIDIA~2/CUDA/v6.0"
+PS_COMMON_PATH = ../../period_search_common
+BUILD_PATH = mingw64
+
+# Path to the MinGW compiler
+# MINGW_PATH = C:/msys64/mingw64
+
+# CXX_PATH = $(MINGW_PATH)/bin/g++
+CXX_PATH = "C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\amd64"
+NVCC_PATH = "$(CUDA_PATH)/bin/nvcc.exe"
+
+# Define compilers and flags
+CXX = $(CXX_PATH)
+NVCC = $(NVCC_PATH)
+CXXFLAGS = -Wall -Wextra -g \
+	-I. \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(CUDA_PATH)/include \
+	-I$(PS_COMMON_PATH)
+
+NVCCFLAGS = --ptxas-options=-v --generate-code arch=compute_20,code=sm_20 --generate-code arch=compute_30,code=sm_30 --generate-code arch=compute_32,code=sm_32 --generate-code arch=compute_35,code=sm_35 --maxrregcount=255 -rdc=false \
+	-I. \
+	-I"$(CUDA_PATH)/include" \
+	-I$(PS_COMMON_PATH) \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-ccbin $(CXX_PATH)/cl.exe
+
+# Define the target executable
+TARGET = $(BUILD_PATH)/my_executable.exe
+
+# Define the source files
+CPPSRC = areanorm.cpp ellfit.cpp error.cpp lubksb.cpp ludcmp.cpp period_search_BOINC.cpp sphfunc.cpp trifac.cpp VersionInfo.cpp
+CUDASRC = blmatrix.cu bright.cu ComputeCapability.cu conv.cu curv.cu curve2_CUDA.cu gauss_errc.cu matrix.cu mrqcof.cu mrqmin.cu phasec.cu Start.cu start_CUDA.cu
+
+# Combine all source files
+SRC = $(CPPSRC) $(CUDASRC)
+
+# Default target to build the executable
+all: $(TARGET)
+
+# Rule to build the executable
+$(TARGET): $(SRC)
+	$(NVCC) $(NVCCFLAGS) $^ -o $@ -L$(BUILD_PATH) -lboinc -lboincapi -lcuda -lcudart -lnvml -lVersion -lShLwApi -lgraphics2 -lDbgHelp -lps_common
+
+# Clean rule to remove compiled files
+clean:
+	-$(RM) $(TARGET)
+	-$(RM) -r $(BUILD_PATH)
+
+# Define RM to handle different platforms
+RM = del /Q
+ifeq ($(OS),Windows_NT)
+	RM = del /Q
+else
+	RM = rm -f
+endif
+
+.PHONY: all clean

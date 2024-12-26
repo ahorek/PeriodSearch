@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <string>
+#include <cstring>
 #include <fstream>
 #include <numeric>
 #include <cstdio>
