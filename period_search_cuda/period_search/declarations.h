@@ -44,32 +44,32 @@ double bright(double ee[], double ee0[], double t, double cg[],
 			double dyda[], int ncoef);
 void shell(int n, double a[], int index[]);
 
-DEPRECATED("Use std::vector<T> and init_vector() instead")
-double *vector_double(int length);
-
-DEPRECATED("Use std::vector<T> and init_vector() instead")
-int *vector_int(int length);
-
-DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
-double **matrix_double(int rows, int columns);
-
-DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
-int **matrix_int(int rows, int columns);
-
-DEPRECATED("")
-double ***matrix_3_double(int n_1, int n_2, int n_3);
-
-DEPRECATED("")
-void deallocate_vector(void *p_x);
-
-DEPRECATED("")
-void deallocate_matrix_double(double **p_x, int rows);
-
-DEPRECATED("")
-void deallocate_matrix_int(int **p_x, int rows);
-
-DEPRECATED("")
-void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
+//DEPRECATED("Use std::vector<T> and init_vector() instead")
+//double *vector_double(int length);
+//
+//DEPRECATED("Use std::vector<T> and init_vector() instead")
+//int *vector_int(int length);
+//
+//DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
+//double **matrix_double(int rows, int columns);
+//
+//DEPRECATED("Use std::vector<std::vector<T>> and init_matrix() instead")
+//int **matrix_int(int rows, int columns);
+//
+//DEPRECATED("")
+//double ***matrix_3_double(int n_1, int n_2, int n_3);
+//
+//DEPRECATED("")
+//void deallocate_vector(void *p_x);
+//
+//DEPRECATED("")
+//void deallocate_matrix_double(double **p_x, int rows);
+//
+//DEPRECATED("")
+//void deallocate_matrix_int(int **p_x, int rows);
+//
+//DEPRECATED("")
+//void deallocate_matrix_3(void ***p_x, int n_1, int n_2);
 
 double hapke(double mi0, double mi, double alfa, double sc_param[]);
 

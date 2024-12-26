@@ -1,0 +1,39 @@
+# Define compiler and flags
+CXX = g++
+CXXFLAGS = -Wall -Wextra -g
+
+# Define the target library
+TARGET = mingw64/ps_commond.lib
+
+# Define the source files
+SRC = arrayHelpers.cpp dot_product.cpp LcHelpers.cpp
+
+# Define the object files
+OBJ = $(SRC:%.cpp=mingw64/%.obj)
+
+# Default target to build the library
+all: $(TARGET)
+
+# Rule to build the static library
+$(TARGET): $(OBJ)
+	ar rcs $@ $^
+
+# Rule to build object files
+mingw64/%.obj: %.cpp
+	if not exist mingw64 mkdir mingw64
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Clean rule to remove compiled files
+clean:
+	-$(RM) $(OBJ) $(TARGET)
+	-$(RM) -r mingw64
+
+# Define RM to handle different platforms
+RM = del /Q
+ifeq ($(OS),Windows_NT)
+	RM = del /Q
+else
+	RM = rm -f
+endif
+
+.PHONY: all clean

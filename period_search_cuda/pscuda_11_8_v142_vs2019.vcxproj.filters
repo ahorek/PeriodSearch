@@ -66,9 +66,6 @@
     <ClCompile Include="period_search\period_search_BOINC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\memory.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="period_search\ComputeCapability.h">
