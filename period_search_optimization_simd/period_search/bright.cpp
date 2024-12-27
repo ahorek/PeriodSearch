@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include "globals.h"
 #include "declarations.h"

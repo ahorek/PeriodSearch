@@ -66,7 +66,8 @@ void CalcStrategySse3::gauss_errc(struct globals& gl, const int n, std::vector<d
 //#endif
 
 #if defined __GNUC__
-    std::vector<short> ipiv(ipivsize, 0) __attribute__((aligned(16))); //is zero indexed
+    // std::vector<short> ipiv(ipivsize, 0) __attribute__((aligned(16))); //is zero indexed
+    alignas(16) std::vector<short> ipiv(ipivsize, 0);
 #else
 #if _MSC_VER >= 1900 // Visual Studio 2015 or later
     alignas(16) std::vector<short> ipiv(ipivsize, 0); //is zero indexed

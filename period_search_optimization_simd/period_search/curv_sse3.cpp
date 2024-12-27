@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include <pmmintrin.h>
 #include "globals.h"

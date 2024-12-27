@@ -49,7 +49,8 @@
 #include <cstring>
 
 #if defined _DEBUG
-#include <ctime>
+// #include <ctime>
+#include <time.h>
 #endif
 
 #include "declarations.h"
@@ -64,7 +65,7 @@
 #include "config.h"
 #include <cstdio>
 #include <cctype>
-#include <ctime>
+// #include <ctime>
 #include <cstring>
 #include <cstdlib>
 #include <csignal>
@@ -164,6 +165,23 @@ void update_shmem() {
     boinc_get_status(&shmem->status);
 }
 #endif
+
+// Helper function to allocate aligned memory
+void* allocate_aligned_memory(std::size_t alignment, std::size_t size) {
+    void* ptr = nullptr;
+    if (posix_memalign(&ptr, alignment, size) != 0) {
+        throw std::bad_alloc();
+    }
+    return ptr;
+}
+
+// Wrapper function to create an aligned std::vector
+std::vector<double> create_aligned_vector(std::size_t size, std::size_t alignment = 64) 
+{
+    double* aligned_memory = static_cast<double*>(allocate_aligned_memory(alignment, size * sizeof(double)));
+    return std::vector<double>(aligned_memory, aligned_memory + size);
+}
+
 
 /* global parameters */
 int Lmax, Mmax, Niter, Lastcall,
@@ -276,6 +294,9 @@ int main(int argc, char** argv)
 
     init_matrix(gl.covar, MAX_N_PAR + 1, MAX_N_PAR + 1, 0.0);
     init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
+    
+    // gl.covar = { create_aligned_vector(MAX_N_PAR + 1, 64), create_aligned_vector(MAX_N_PAR + 1, 64) };
+    // gl.alpha = { create_aligned_vector(MAX_N_PAR + 1, 64), create_aligned_vector(MAX_N_PAR + 1, 64) };
 
     // open the input file (resolve logical name first)
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -1068,7 +1089,7 @@ int main(int argc, char** argv)
         auto time = std::time(nullptr);   // get time now
         std::tm now{};
 #ifdef __GNUC__
-        std::localtime_r(&now, &time);
+        localtime_r(&time, &now);
 #else
         _localtime64_s(&now, &time);
 #endif

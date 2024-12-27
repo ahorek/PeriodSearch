@@ -2,6 +2,7 @@
 #
 # To detect memory leaks use: 
 #       valgrind -s --tool=memcheck --leak-check=full --show-leak-kinds=all  --track-origins=yes ./period_search_BOINC_linux_10222_x64_universal_Debug
+#  or   valgrind -s --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ./period_search_BOINC_linux_10222_x64_universal_Debug > valgrind_output.log 2>&1
 #
 
 BOINC_DIR = ../../../boinc_src

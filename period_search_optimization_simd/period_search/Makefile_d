@@ -6,23 +6,23 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
-CXXFLAGS = -march=x86-64 -O3 -std=c++17 -w -s \
-	-DAPP_GRAPHICS \
+CXXFLAGS = -march=x86-64 -std=c++17 -g -o -fsanitize=address\
+	-D_DEBUG \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
 	-I$(PS_COMMON_DIR) \
 	-L$(PS_COMMON_LIB_DIR) \
 	-L /usr/X11R6/lib \
-	-lps_common \
+	-lps_commond \
 	-L.
 
 CC=g++
 CXX=g++
-OPTFLAGS=-march=x86-64 -O3 -std=c++17 
+OPTFLAGS=-march=x86-64 -std=c++17 -g -o -fsanitize=address
 CFLAGS=$(OPTFLAGS) -w -s
-LDFLAGS=-lps_common -lm
-MY_LIBS=areanorm.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
+LDFLAGS=-lps_commond -lm
+MY_LIBS=dot_product.o areanorm.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
     bright_sse2.o bright_sse3.o conv.o conv_avx.o conv_avx512.o conv_fma.o conv_sse2.o \
     conv_sse3.o covsrt.o CpuInfo.o curv.o curv_sse3.o curv_avx.o curv_fma.o curv_avx512.o \
     curv_sse2.o ellfit.o EnumHelpers.o gauss_errc.o gauss_errc_avx.o gauss_errc_fma.o \
@@ -44,7 +44,7 @@ else
 	LIBJPEG = /usr/local/lib/libjpeg.a
 endif
 
-PROGS = period_search_BOINC_linux_10222_x64_universal_Release
+PROGS = period_search_BOINC_linux_10222_x64_universal_Debug
 # uc2_graphics
 # make this optional so compile doesn't break on systems without OpenGL
 
@@ -59,7 +59,7 @@ clean:
 distclean:
 	/bin/rm -f $(PROGS) *.o libstdc++.a
 
-install: period_search_BOINC_linux_10222_x64_universal_Release
+install: period_search_BOINC_linux_10222_x64_universal_Debug
 
 # specify library paths explicitly (rather than -l)
 # because otherwise you might get a version in /usr/lib etc.
@@ -69,10 +69,10 @@ install: period_search_BOINC_linux_10222_x64_universal_Release
 #	$(BOINC_API_DIR)/libboinc_api.a \
 #	$(BOINC_LIB_DIR)/libboinc.a
 
-period_search_BOINC_linux_10222_x64_universal_Release: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a \
-	$(PS_COMMON_LIB_DIR)/libps_common.a
+period_search_BOINC_linux_10222_x64_universal_Debug: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a \
+	$(PS_COMMON_LIB_DIR)/libps_commond.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
-	$(PS_COMMON_LIB_DIR)/libps_common.a \
+	$(PS_COMMON_LIB_DIR)/libps_commond.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a \
 	-lm

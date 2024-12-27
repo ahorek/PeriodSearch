@@ -52,3 +52,10 @@ double dot_product(const double a[4], const double b[4])
     return c;
 }
 
+void dot_product_new(double a[4], double b[4], double &c)
+{
+	c = a[1] * b[1];
+	c += (a[2] * b[2]);
+	c += (a[3] * b[3]);
+}
+

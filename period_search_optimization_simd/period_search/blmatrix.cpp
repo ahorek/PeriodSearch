@@ -1,4 +1,5 @@
 #include "globals.h"
+#include <cmath>
 
 /**
  * @brief Computes the beta and lambda rotation matrix and its derivatives.

@@ -27,7 +27,11 @@ struct AlignedAllocator
 
     T* allocate(const std::size_t n)
     {
+#if defined __GNUC__
+        void* ptr = std::aligned_alloc(alignment, n * sizeof(T));
+#else
         void* ptr = _aligned_malloc(n * sizeof(T), alignment);
+#endif
         if (!ptr)
         {
             throw std::bad_alloc();
@@ -37,7 +41,11 @@ struct AlignedAllocator
 
     void deallocate(T* p, std::size_t) noexcept
     {
+#if defined __GNUC__
+        free(p);
+#else        
         _aligned_free(p);
+#endif
     }
 };
 
@@ -47,7 +55,11 @@ struct AlignedDeleter
     void operator()(T* ptr) const
     {
         ptr->~T();			// Explicitly call the destructor
-        _aligned_free(ptr); // Free the aligned memory
+#if defined __GNUC__
+        free(ptr);
+#else        
+        _aligned_free(ptr);   // Free the aligned memory
+#endif 
     }
 };
 
@@ -76,4 +88,8 @@ std::shared_ptr<T> CreateAlignedShared(std::size_t alignment)
     auto ptr = std::shared_ptr<T>(new (AlignedAllocator<T>(alignment).allocate(1)) T(), AlignedDeleter<T>());
     return ptr;
 }
+
+// ***************************
+
+
 

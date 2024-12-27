@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include <emmintrin.h>
 #include "globals.h"
