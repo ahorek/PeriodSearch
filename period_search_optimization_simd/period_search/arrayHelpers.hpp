@@ -50,44 +50,6 @@ bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocator
 
 using AlignedInnerVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
 using AlignedOuterVector = std::vector<AlignedInnerVector, AlignedAllocatorNew<AlignedInnerVector, 64>>;
-
-
-
-// ------ OLDER VERSION ---------
-// // Custom aligned allocator
-// template <typename T, std::size_t Alignment>
-// class AlignedAllocatorNew {
-// public:
-//     using value_type = T;
-
-//     AlignedAllocatorNew() noexcept {}
-
-//     template <typename U>
-//     AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
-
-//     T* allocate(std::size_t n) {
-//         void* ptr = nullptr;
-//         if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-//             throw std::bad_alloc();
-//         }
-//         return static_cast<T*>(ptr);
-//     }
-
-//     void deallocate(T* p, std::size_t) noexcept {
-//         free(p);
-//     }
-
-//     template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
-// };
-
-// template <typename T, std::size_t Alignment>
-// bool operator==(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return true; }
-
-// template <typename T, std::size_t Alignment>
-// bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return false; }
-
-// // Define the custom allocator for double with 64-byte alignment
-// using AlignedVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
 #endif
 
 /**
@@ -271,8 +233,6 @@ struct globals
     double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
     double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
     double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> covar __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
     AlignedOuterVector covar __attribute__((aligned(64)));
     AlignedOuterVector alpha __attribute__((aligned(64)));
 #else
@@ -319,11 +279,6 @@ struct globals
     std::vector<double> ytemp;
     std::vector<double> Weight;
     std::vector<std::vector<double>> dytemp;
-    // std::vector<std::vector<double>> covar;
-    // std::vector<std::vector<double>> alpha;
-
-    //std::vector<AlignedVector> covar;
-    //std::vector<AlignedVector> alpha;
 
     // Function to initialize the vectors
 #if defined __GNUC__

@@ -1,14 +1,8 @@
+//#include "pch.h"
 #include <cstdio>
 #include <algorithm>
-
-void delete2Darray(double **&ary, int sizeX)
-{
-	for (int i = 0; i < sizeX; ++i) {
-		delete[] ary[i];
-	}
-
-	delete[] ary;
-}
+#include <memory>
+#include <vector>
 
 void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY)
 {
@@ -18,6 +12,15 @@ void init2Darray(double **&matrix, int dytemp_siszeX, int dytemp_sizeY)
 		matrix[i] = new double[dytemp_sizeY];
 		std::fill_n(matrix[i], dytemp_sizeY, 0.0);
 	}
+}
+
+void delete2Darray(double **&ary, int sizeX)
+{
+	for (int i = 0; i < sizeX; ++i) {
+		delete[] ary[i];
+	}
+
+	delete[] ary;
 }
 
 void printArray(int array[], int iMax, char msg[])

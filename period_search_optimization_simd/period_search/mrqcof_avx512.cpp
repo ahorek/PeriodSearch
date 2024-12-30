@@ -49,7 +49,11 @@ void CalcStrategyAvx512::mrqcof(std::vector<std::vector<double>>& x1, std::vecto
     std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
 {
     int i, j, k, l, m, np, np1, np2, jp, ic;
+#if defined __GNUC__
+    AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
+#else
     auto& alpha = isCovar ? gl.covar : gl.alpha;
+#endif
 
     /* N.B. curv and blmatrix called outside bright because output same for all points */
 	CalcStrategyAvx512::curv(a, gl);

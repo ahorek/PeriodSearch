@@ -166,21 +166,23 @@ void update_shmem() {
 }
 #endif
 
-// Helper function to allocate aligned memory
-void* allocate_aligned_memory(std::size_t alignment, std::size_t size) {
-    void* ptr = nullptr;
-    if (posix_memalign(&ptr, alignment, size) != 0) {
-        throw std::bad_alloc();
-    }
-    return ptr;
-}
-
-// Wrapper function to create an aligned std::vector
-std::vector<double> create_aligned_vector(std::size_t size, std::size_t alignment = 64) 
-{
-    double* aligned_memory = static_cast<double*>(allocate_aligned_memory(alignment, size * sizeof(double)));
-    return std::vector<double>(aligned_memory, aligned_memory + size);
-}
+//#if defined __GNUC__
+//// Helper function to allocate aligned memory
+//void* allocate_aligned_memory(std::size_t alignment, std::size_t size) {
+//    void* ptr = nullptr;
+//    if (posix_memalign(&ptr, alignment, size) != 0) {
+//        throw std::bad_alloc();
+//    }
+//    return ptr;
+//}
+//
+//// Wrapper function to create an aligned std::vector
+//std::vector<double> create_aligned_vector(std::size_t size, std::size_t alignment = 64)
+//{
+//    double* aligned_memory = static_cast<double*>(allocate_aligned_memory(alignment, size * sizeof(double)));
+//    return std::vector<double>(aligned_memory, aligned_memory + size);
+//}
+//#endif
 
 
 /* global parameters */
@@ -292,11 +294,12 @@ int main(int argc, char** argv)
     std::vector<std::vector<int>> ifp;
     init_matrix(ifp, MAX_N_FAC + 1, 4 + 1, 0);
 
+#if defined __GNUC__
+    gl.initializeVectors(MAX_N_PAR + 1, MAX_N_PAR + 8 + 1);
+#else
     init_matrix(gl.covar, MAX_N_PAR + 1, MAX_N_PAR + 1, 0.0);
     init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
-    
-    // gl.covar = { create_aligned_vector(MAX_N_PAR + 1, 64), create_aligned_vector(MAX_N_PAR + 1, 64) };
-    // gl.alpha = { create_aligned_vector(MAX_N_PAR + 1, 64), create_aligned_vector(MAX_N_PAR + 1, 64) };
+#endif
 
     // open the input file (resolve logical name first)
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -803,6 +806,7 @@ int main(int argc, char** argv)
                 prd = 1 / freq;
 #ifdef _DEBUG
                 printf(".");
+                fflush(stderr);
 #endif
                 /* starts from the initial ellipsoid */
                 for (i = 1; i <= Ncoef; i++)

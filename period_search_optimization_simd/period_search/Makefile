@@ -1,81 +1,70 @@
 # This should work on Linux.  Modify as needed for other platforms.
 
+# Define directories
+BUILD_DIR = build
 BOINC_DIR = ../../../boinc_src
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
-CXXFLAGS = -march=x86-64 -O3 -std=c++17 -w -s \
-	-DAPP_GRAPHICS \
+# Keep it commented out for the gitactions, but it's handy for local builds
+#MAKEFLAGS += -j8
+
+# Define compiler and flags
+CXX = g++
+CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -s \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
 	-I$(PS_COMMON_DIR) \
 	-L$(PS_COMMON_LIB_DIR) \
-	-L /usr/X11R6/lib \
-	-lps_common \
+	-L/usr/X11R6/lib \
 	-L.
 
-CC=g++
-CXX=g++
-OPTFLAGS=-march=x86-64 -O3 -std=c++17 
-CFLAGS=$(OPTFLAGS) -w -s
-LDFLAGS=-lps_common -lm
-MY_LIBS=areanorm.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
-    bright_sse2.o bright_sse3.o conv.o conv_avx.o conv_avx512.o conv_fma.o conv_sse2.o \
-    conv_sse3.o covsrt.o CpuInfo.o curv.o curv_sse3.o curv_avx.o curv_fma.o curv_avx512.o \
-    curv_sse2.o ellfit.o EnumHelpers.o gauss_errc.o gauss_errc_avx.o gauss_errc_fma.o \
-    gauss_errc_avx512.o gauss_errc_sse2.o gauss_errc_sse3.o lubksb.o ludcmp.o matrix.o \
-    mrqcof.o mrqcof_avx.o mrqcof_avx512.o mrqcof_fma.o mrqcof_sse2.o \
-    mrqcof_sse3.o mrqmin.o phasec.o sphfunc.o systeminfo.o \
-    trifac.o VersionInfo.o
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_BOINC_linux_10222_x64_universal_Release
 
-# the following should be freeglut; use nm to check
-# you may have to change the paths for your system
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_avx.cpp bright_avx512.cpp bright_fma.cpp \
+	bright_sse2.cpp bright_sse3.cpp conv.cpp conv_avx.cpp conv_avx512.cpp conv_fma.cpp conv_sse2.cpp \
+	conv_sse3.cpp covsrt.cpp CpuInfo.cpp curv.cpp curv_sse3.cpp curv_avx.cpp curv_fma.cpp curv_avx512.cpp \
+	curv_sse2.cpp ellfit.cpp EnumHelpers.cpp gauss_errc.cpp gauss_errc_avx.cpp gauss_errc_fma.cpp \
+	gauss_errc_avx512.cpp gauss_errc_sse2.cpp gauss_errc_sse3.cpp lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp mrqcof_avx.cpp mrqcof_avx512.cpp mrqcof_fma.cpp mrqcof_sse2.cpp \
+	mrqcof_sse3.cpp mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
 
-ifeq ($(wildcard /usr/local/lib/libglut.a),)
-	LIBGLUT = /usr/lib/libglut.a
-	LIBGLU = /usr/lib/libGLU.a
-	LIBJPEG = /usr/lib/libjpeg.a
-else
-	LIBGLUT = /usr/local/lib/libglut.a
-	LIBGLU = /usr/local/lib/libGLU.a
-	LIBJPEG = /usr/local/lib/libjpeg.a
-endif
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
 
-PROGS = period_search_BOINC_linux_10222_x64_universal_Release
-# uc2_graphics
-# make this optional so compile doesn't break on systems without OpenGL
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
 
-all: $(PROGS)
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-libstdc++.a:
-	ln -s `g++ -print-file-name=libstdc++.a`
-
-clean:
-	/bin/rm -f $(PROGS) *.o libstdc++.a
-
-distclean:
-	/bin/rm -f $(PROGS) *.o libstdc++.a
-
-install: period_search_BOINC_linux_10222_x64_universal_Release
-
-# specify library paths explicitly (rather than -l)
-# because otherwise you might get a version in /usr/lib etc.
-
-#uc2: uc2.o libstdc++.a $(BOINC_API_DIR)/libboinc_api.a #$(BOINC_LIB_DIR)/libboinc.a
-#	$(CXX) $(CXXFLAGS) -o uc2 uc2.o libstdc++.a -pthread \
-#	$(BOINC_API_DIR)/libboinc_api.a \
-#	$(BOINC_LIB_DIR)/libboinc.a
-
-period_search_BOINC_linux_10222_x64_universal_Release: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a \
-	$(PS_COMMON_LIB_DIR)/libps_common.a
-	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
+# Rule to build the static library
+$(TARGET): $(OBJ) $(BUILD_DIR)/libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(BUILD_DIR)/libstdc++.a -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a \
 	-lm
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $<
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Rule to create symbolic link for libstdc++.a
+$(BUILD_DIR)/libstdc++.a:
+	@mkdir -p $(BUILD_DIR)
+	ln -s `g++ -print-file-name=libstdc++.a` $(BUILD_DIR)/libstdc++.a
+
+# Clean rule to remove compiled files
+clean:
+	rm -rf $(BUILD_DIR)
+
+.PHONY: all clean

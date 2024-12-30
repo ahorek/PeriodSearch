@@ -51,10 +51,11 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
     std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
 {
     int i, j, k, l, m, np, np1, np2, jp, ic;
-    // auto& alpha = isCovar ? gl.covar : gl.alpha;
-    // std::vector<std::vector<double>>& alpha __attribute__((aligned(64))) = isCovar ? gl.covar : gl.alpha;
-    // alpha = isCovar ? gl.covar : gl.alpha;
-    std::vector<AlignedVector>& alpha = isCovar ? gl.covar : gl.alpha;
+#if defined __GNUC__
+    AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
+#else
+    auto& alpha = isCovar ? gl.covar : gl.alpha;
+#endif
 
     /* N.B. curv and blmatrix called outside bright
        because output same for all points */
@@ -71,7 +72,7 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
         for (k = 0; k <= j; k++)
         {
             alpha[j][k] = 0;
-            // if(isCovar) gl.covar[j][k] = 0; else gl.alpha[j][k] = 0;
+
         }
         beta[j] = 0;
     }
@@ -172,7 +173,6 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                     gl.wt = gl.dyda[0] * sig2iwght;
 
                     alpha[j][0] += gl.wt * gl.dyda[0];
-                    // if(isCovar) gl.covar[j][0] += gl.wt * gl.dyda[0]; else gl.alpha[j][0] += gl.wt * gl.dyda[0];
                     beta[j] += gl.dy * gl.wt;
                     j++;
                     //
@@ -184,17 +184,13 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                         //m=0
 
                         alpha[j][k] += gl.wt * gl.dyda[0];
-                        // if(isCovar) gl.covar[j][k] += gl.wt * gl.dyda[0]; else gl.alpha[j][k] += gl.wt * gl.dyda[0];
                         k++;
                         for (m = 1; m <= l; m += 4)
                         {
-                            __m256d avx_alpha = _mm256_loadu_pd(&alpha[j][k]);
-                            // __m256d avx_alpha;
-                            // if(isCovar) __m256d avx_alpha = _mm256_loadu_pd(&gl.covar[j][k]); else __m256d avx_alpha = _mm256_loadu_pd(&gl.alpha[j][k]);
+                            __m256d avx_alpha = _mm256_load_pd(&alpha[j][k]);
                             __m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                             avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
-                            _mm256_storeu_pd(&alpha[j][k], avx_alpha);
-                            // if(isCovar) _mm256_storeu_pd(&gl.covar[j][k], avx_alpha); else _mm256_storeu_pd(&gl.alpha[j][k], avx_alpha);
+                            _mm256_store_pd(&alpha[j][k], avx_alpha);
                             k += 4;
                         } /* m */
                         beta[j] += gl.dy * gl.wt;
@@ -209,18 +205,14 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                             k = 0;
                             //m=0
                             alpha[j][k] += gl.wt * gl.dyda[0];
-                            // if(isCovar) gl.covar[j][k] += gl.wt * gl.dyda[0]; else gl.alpha[j][k] += gl.wt * gl.dyda[0];
                             k++;
                             int kk = k;
                             for (m = 1; m <= lastone; m += 4)
                             {
-                                __m256d avx_alpha = _mm256_loadu_pd(&alpha[j][kk]);
-                                // __m256d avx_alpha;
-                                // if(isCovar) __m256d avx_alpha = _mm256_loadu_pd(&gl.covar[j][kk]); else __m256d avx_alpha = _mm256_loadu_pd(&gl.alpha[j][kk]);
+                                __m256d avx_alpha = _mm256_load_pd(&alpha[j][kk]);
                             	__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                                 avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
-                                _mm256_storeu_pd(&alpha[j][kk], avx_alpha);
-                                // if(isCovar) _mm256_storeu_pd(&gl.covar[j][kk], avx_alpha); else _mm256_storeu_pd(&gl.alpha[j][kk], avx_alpha);
+                                _mm256_store_pd(&alpha[j][kk], avx_alpha);
                                 kk += 4;
                             } /* m */
                             k += lastone;
@@ -228,7 +220,6 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                                 if (ia[m])
                                 {
                                     alpha[j][k] += gl.wt * gl.dyda[m];
-                                    // if(isCovar) gl.covar[j][k] += gl.wt * gl.dyda[m]; else gl.alpha[j][k] += gl.wt * gl.dyda[m];
 
                                     k++;
                                 }
@@ -265,12 +256,9 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                         for (m = 1; m <= l; m += 4)
                         {
                             __m256d avx_alpha = _mm256_load_pd(&alpha[j][k]);
-                            // __m256d avx_alpha;
-                            // if(isCovar) __m256d avx_alpha = _mm256_load_pd(&gl.covar[j][k]); else __m256d avx_alpha = _mm256_load_pd(&gl.alpha[j][k]);
                         	__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                             avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
                             _mm256_store_pd(&alpha[j][k], avx_alpha);
-                            // if(isCovar) _mm256_store_pd(&gl.covar[j][k], avx_alpha); else _mm256_store_pd(&gl.alpha[j][k], avx_alpha);
                             k += 4;
                         } /* m */
                         beta[j] += gl.dy * gl.wt;
@@ -288,20 +276,16 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                             for (m = 1; m <= lastone; m += 4)
                             {
                                 __m256d avx_alpha = _mm256_load_pd(&alpha[j][kk]);
-                                // __m256d avx_alpha;
-                                // if(isCovar) __m256d avx_alpha = _mm256_load_pd(&gl.alpha[j][kk]); else __m256d avx_alpha = _mm256_load_pd(&gl.alpha[j][kk]);
                             	__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                                 avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
                                 _mm256_store_pd(&alpha[j][kk], avx_alpha);
-                                // if(isCovar) _mm256_store_pd(&gl.covar[j][kk], avx_alpha); else _mm256_store_pd(&gl.alpha[j][kk], avx_alpha);
                                 kk += 4;
                             } /* m */
                             k = lastone;
                             for (m = lastone + 1; m <= l; m++)
                                 if (ia[m])
                                 {
-                                    // alpha[j][k] += gl.wt * gl.dyda[m];
-                                    if(isCovar) gl.covar[j][k] += gl.wt * gl.dyda[m]; else gl.alpha[j][k] += gl.wt * gl.dyda[m];
+                                     alpha[j][k] += gl.wt * gl.dyda[m];
                                     k++;
                                 }
                             beta[j] += gl.dy * gl.wt;
@@ -321,7 +305,6 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
         for (k = 0; k <= j - 1; k++)
         {
             alpha[k][j] = alpha[j][k];
-            // if(isCovar) gl.covar[k][j] = gl.covar[j][k]; else gl.alpha[k][j] = gl.alpha[j][k];
         }
 }
 

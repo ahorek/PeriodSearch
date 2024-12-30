@@ -41,7 +41,7 @@ private:
 	double dtm[4][4][4];
 
 	double cos_alpha;
-	double alpha;
+	// double alpha;
 	double cl;
 	double cls;
 	double dnom;

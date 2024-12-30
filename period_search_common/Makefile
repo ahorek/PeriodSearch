@@ -1,9 +1,9 @@
 # Define compiler and flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -O2
+CXXFLAGS = -march=x86-64 -O3 -std=c++17 -w -s 
 
 # Define the target library
-TARGET = build/libps_commonc.a
+TARGET = build/libps_common.a
 
 # Define the source files
 SRC = arrayHelpers.cpp dot_product.cpp LcHelpers.cpp
@@ -26,6 +26,7 @@ build/%.o: %.cpp
 # Clean rule to remove compiled files
 clean:
 	rm -f $(OBJ) $(TARGET)
-	rm -rf build
+
+#	rm -rf build
 
 .PHONY: all clean

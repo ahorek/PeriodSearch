@@ -5,33 +5,43 @@
 #  or   valgrind -s --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ./period_search_BOINC_linux_10222_x64_universal_Debug > valgrind_output.log 2>&1
 #
 
+
 BOINC_DIR = ../../../boinc_src
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
-# CXXFLAGS = -march=x86-64 -std=c++17 -g -o \
+# Keep it commented out for the gitactions, but it's handy for local builds
+MAKEFLAGS += -j8
 
-CXXFLAGS = -march=x86-64 -std=c++17 -g -o -fsanitize=address \
+# CXXFLAGS = -march=x86-64 -std=c++17 -g -o -fsanitize=address\
+
+CXXFLAGS = -march=x86-64 -std=c++2a -g \
 	-D_DEBUG \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-I$(PS_COMMON_LIB_DIR) \
 	-L /usr/X11R6/lib \
 	-L.
 
 CC=g++
 CXX=g++
-OPTFLAGS=-march=x86-64 -std=c++17 -g -o -fsanitize=address
-CFLAGS=$(OPTFLAGS)
+# OPTFLAGS=-march=x86-64 -std=c++17 -g -o -fsanitize=address
+
+OPTFLAGS=-march=x86-64 -std=c++2a -g
+CFLAGS=$(OPTFLAGS) -w -s -D_DEBUG 
 LDFLAGS=-lm
-MY_LIBS=areanorm.o arrayHelpers.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
+MY_LIBS=areanorm.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
     bright_sse2.o bright_sse3.o conv.o conv_avx.o conv_avx512.o conv_fma.o conv_sse2.o \
     conv_sse3.o covsrt.o CpuInfo.o curv.o curv_sse3.o curv_avx.o curv_fma.o curv_avx512.o \
-    curv_sse2.o dot_product.o ellfit.o EnumHelpers.o gauss_errc.o gauss_errc_avx.o gauss_errc_fma.o \
+    curv_sse2.o ellfit.o EnumHelpers.o gauss_errc.o gauss_errc_avx.o gauss_errc_fma.o \
     gauss_errc_avx512.o gauss_errc_sse2.o gauss_errc_sse3.o lubksb.o ludcmp.o matrix.o \
-    memory.o mrqcof.o mrqcof_avx.o mrqcof_avx512.o mrqcof_fma.o mrqcof_sse2.o \
+    mrqcof.o mrqcof_avx.o mrqcof_avx512.o mrqcof_fma.o mrqcof_sse2.o \
     mrqcof_sse3.o mrqmin.o phasec.o sphfunc.o systeminfo.o \
-    trifac.o VersionInfo.o LcHelpers.o
+    trifac.o VersionInfo.o
 
 # the following should be freeglut; use nm to check
 # you may have to change the paths for your system
@@ -71,10 +81,13 @@ install: period_search_BOINC_linux_10222_x64_universal_Debug
 #	$(BOINC_API_DIR)/libboinc_api.a \
 #	$(BOINC_LIB_DIR)/libboinc.a
 
-period_search_BOINC_linux_10222_x64_universal_Debug: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
+period_search_BOINC_linux_10222_x64_universal_Debug: period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_LIB_DIR)/libboinc.a  $(BOINC_API_DIR)/libboinc_api.a \
+	$(PS_COMMON_LIB_DIR)/libps_commond.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_commond.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
-	$(BOINC_LIB_DIR)/libboinc.a -lm
+	$(BOINC_LIB_DIR)/libboinc.a \
+	-lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
