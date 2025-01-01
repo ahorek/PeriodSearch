@@ -11,8 +11,14 @@ Cc::Cc(const cudaDeviceProp& deviceProp)
 }
 
 #if defined (_MSC_VER) & (_MSC_VER < 1900) // Visual Studio 2012 or previous
-Cc::~Cc(){}
+	Cc::~Cc(){}
+#else
+	Cc::~Cc() 
+	{ 
+		// Your cleanup code here, if any. 
+	}
 #endif
+
 
 int Cc::GetSmxBlock() const
 {
