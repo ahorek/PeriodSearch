@@ -25,15 +25,16 @@ public:
 
     T* allocate(std::size_t n) {
         void* ptr = nullptr;
-
         #if defined _WIN32
           ptr = _aligned_malloc(n * sizeof(T), Alignment);
+          if (ptr == NULL) {
+            throw std::bad_alloc();
+          }
         #else
-          posix_memalign(&ptr, Alignment, n * sizeof(T));
+          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+          }
         #endif
-        if (!ptr) {
-          throw std::bad_alloc();
-        }
         return static_cast<T*>(ptr);
     }
 
