@@ -6,6 +6,7 @@
 #include "declarations.h"
 #include "globals.h"
 #include "CalcStrategyNone.hpp"
+#include "SIMDHelpers.h"
 
 #if defined(__linux__) && (defined(__arm__) || defined(_M_ARM) || defined(__aarch64__) || defined(_M_ARM64))
   #include <sys/auxv.h>
@@ -40,7 +41,7 @@ void SetOptimizationStrategy(SIMDEnum useOptimization)
 	{
 		case SIMDEnum::OptNONE:
 		default:
-			calcCtx.set_strategy(std::make_unique<CalcStrategyNone>());
+			calcCtx.SetStrategy(CreateAlignedShared<CalcStrategyNone>(64));
 			break;
 	}
 }

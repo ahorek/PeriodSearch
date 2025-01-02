@@ -2,73 +2,68 @@
 # Updated 15-JAN-2024 for OS 10.14, g++ 4.2.1, XCode 11.3.1 by Gerogi Vidinski
 #
 
-BOINC_DIR = ../../../boinc
+# Define directories
+BUILD_DIR = build
+BOINC_DIR = ../../../boinc_src
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 BOINC_BUILD_DIR = $(BOINC_DIR)/mac_build/build/Deployment
 BOINC_CONFIG_DIR =  $(BOINC_DIR)/clientgui/mac
 FRAMEWORKS_DIR = /System/Library/Frameworks
 
-CXXFLAGS_ALL = -O3 -std=c++17 -w -s\
-    -I$(BOINC_CONFIG_DIR) \
-    -I$(BOINC_DIR) \
-    -I$(BOINC_LIB_DIR) \
-    -I$(BOINC_API_DIR) \
-    -L$(BOINC_BUILD_DIR) \
-    -L.
-
-CC = /Library/Developer/CommandLineTools/usr/bin/g++
 CXX = /Library/Developer/CommandLineTools/usr/bin/g++
-CXXFLAGS = -O3 -std=c++17 -arch x86_64 -mmacosx-version-min=10.14 \
-    -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk \
-    $(CXXFLAGS_ALL) -fvisibility=hidden -fvisibility-inlines-hidden
-CFLAGS = $(CXXFLAGS) -w -s
+CXXFLAGS = -O3 -std=c++2a -w -s -arch x86_64 -mmacosx-version-min=10.14 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -fvisibility=hidden -fvisibility-inlines-hidden \
+    -I$(BOINC_CONFIG_DIR) \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+    -L$(BOINC_BUILD_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L.
+
 LDFLAGS = -Wl,-syslibroot,/Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk,-arch,x86_64
 
-# CC_PPC = /usr/bin/gcc-4.0
-# CXX_PPC = /usr/bin/g++-4.0
-# CXXFLAGS_PPC = -arch ppc -mmacosx-version-min=10.4 \
-#     -isysroot /Developer/SDKs/MacOSX10.4u.sdk \
-#     $(CXXFLAGS_ALL) -fvisibility=hidden -fvisibility-inlines-hidden
-# LDFLAGS_PPC = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk,-arch,ppc
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_BOINC_macos_10222_x64_universal_Release
 
-# CC_i386 = /usr/bin/gcc-4.0
-# CXX_i386 = /usr/bin/g++-4.0
-# CXXFLAGS_i386 = -arch i386 -mmacosx-version-min=10.4  \
-#     -isysroot /Developer/SDKs/MacOSX10.4u.sdk \
-#     $(CXXFLAGS_ALL) -fvisibility=hidden -fvisibility-inlines-hidden
-# LDFLAGS_i386 = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.4u.sdk,-arch,i386
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_avx.cpp bright_avx512.cpp bright_fma.cpp \
+	bright_sse2.cpp bright_sse3.cpp conv.cpp conv_avx.cpp conv_avx512.cpp conv_fma.cpp conv_sse2.cpp \
+	conv_sse3.cpp covsrt.cpp CpuInfo.cpp curv.cpp curv_sse3.cpp curv_avx.cpp curv_fma.cpp curv_avx512.cpp \
+	curv_sse2.cpp ellfit.cpp EnumHelpers.cpp gauss_errc.cpp gauss_errc_avx.cpp gauss_errc_fma.cpp \
+	gauss_errc_avx512.cpp gauss_errc_sse2.cpp gauss_errc_sse3.cpp lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp mrqcof_avx.cpp mrqcof_avx512.cpp mrqcof_fma.cpp mrqcof_sse2.cpp \
+	mrqcof_sse3.cpp mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
 
-# CC_x86_64 = /usr/bin/gcc-4.0
-# CXX_x86_64 = /usr/bin/g++-4.0
-# CXXFLAGS_x86_64 = -arch x86_64 -mmacosx-version-min=10.5 \
-#     -isysroot /Developer/SDKs/MacOSX10.5.sdk \
-#     $(CXXFLAGS_ALL) -fvisibility=hidden -fvisibility-inlines-hidden
-# LDFLAGS_x86_64 = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.5.sdk,-arch,x86_64
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
 
-# LIBJPEG = ../../../jpeg-6b/libjpeg.a
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
 
-MY_LIBS=areanorm.o arrayHelpers.o blmatrix.o bright.o bright_avx.o bright_avx512.o bright_fma.o \
-    bright_sse2.o bright_sse3.o conv.o conv_avx.o conv_avx512.o conv_fma.o conv_sse2.o \
-    conv_sse3.o covsrt.o CpuInfo.o curv.o curv_sse3.o curv_avx.o curv_fma.o curv_avx512.o \
-    curv_sse2.o dot_product.o ellfit.o EnumHelpers.o gauss_errc.o gauss_errc_avx.o gauss_errc_fma.o \
-    gauss_errc_avx512.o gauss_errc_sse2.o gauss_errc_sse3.o lubksb.o ludcmp.o matrix.o \
-    memory.o mrqcof.o mrqcof_avx.o mrqcof_avx512.o mrqcof_fma.o mrqcof_sse2.o \
-    mrqcof_sse3.o mrqmin.o phasec.o sphfunc.o systeminfo.o \
-    trifac.o VersionInfo.o
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-PROGS = Period_search_BOINC_macos_10220_x86_64_universal_Release
+# Rule to build the static library
+$(TARGET): $(OBJ) $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_common.a \
+	$(BOINC_API_DIR)/libboinc_api.a \
+	$(BOINC_LIB_DIR)/libboinc.a \
+	-lm -framework AppKit
 
-all: $(PROGS)
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Clean rule to remove compiled files
 clean:
-	/bin/rm -f $(PROGS) *.o libstdc++.a
+	rm -rf $(BUILD_DIR)
 
-Period_search_BOINC_macos_10220_x86_64_universal_Release: period_search_BOINC.cpp $(MY_LIBS) $(BOINC_BUILD_DIR)/libboinc_api.a $(BOINC_BUILD_DIR)/libboinc.a
-	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< -pthread \
-	$(BOINC_BUILD_DIR)/libboinc_api.a \
-	$(BOINC_BUILD_DIR)/libboinc.a -lm \
-    -framework AppKit
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $<
+.PHONY: all clean
