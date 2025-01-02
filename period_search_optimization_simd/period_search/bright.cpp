@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include "globals.h"
 #include "declarations.h"
@@ -38,7 +39,7 @@ void CalcStrategyNone::bright(const double t, std::vector<double>& cg, const int
 	cl = exp(cg[ncoef - 1]);				/* Lambert */
 	cls = cg[ncoef];						/* Lommel-Seeliger */
 	dot_product_new(ee, ee0, cos_alpha);
-	alpha = acos(cos_alpha);
+	double alpha = acos(cos_alpha);
 
 	for (i = 1; i <= Nphpar; i++)
 		php[i] = cg[ncoef0 + i];

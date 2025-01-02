@@ -10,7 +10,7 @@
 /**
  * @brief Computes the coefficient matrix and right-hand side vector for the Marquardt method.
  *
- * This function calculates the coefficient matrix (alpha) and right-hand side vector (beta)
+ * This function calculates the coefficient matrix (alpha) and right-hand side vector (beta_sv)
  * for the nonlinear least-squares fitting using the Marquardt method. It also computes the
  * trial chi-squared value based on the given data and parameters.
  *
@@ -22,7 +22,7 @@
  * @param a A reference to a vector of doubles representing the initial parameters.
  * @param ia A reference to a vector of integers indicating which parameters are to be fitted.
  * @param ma An integer representing the total number of parameters.
- * @param beta A reference to a vector of doubles to store the right-hand side vector.
+ * @param beta_sv A reference to a vector of doubles to store the right-hand side vector.
  * @param mfit An integer representing the number of parameters to be fitted.
  * @param lastone An integer representing the last parameter to be fitted.
  * @param lastma An integer representing the last parameter in the list of all parameters.
@@ -33,16 +33,20 @@
  * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
  *		 'mrqcof' is used by 'mrqmin' to evaluate coefficients.
  *
- * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt’s method.
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardtï¿½s method.
  *
  * @date 8.11.2006
  */
 void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>>& x2, std::vector<double>& x3, std::vector<double>& y,
 	std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, int ma,
-	std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
+	std::vector<double>& beta_sv, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
 {
 	int i, j, k, l, m, np, np1, np2, jp, ic;
-	auto& alpha = isCovar ? gl.covar : gl.alpha;
+#if defined __GNUC__
+	AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
+#else
+	 auto& alpha = isCovar ? gl.covar : gl.alpha;
+#endif
 
 	/* N.B. curv and blmatrix called outside bright because output same for all points */
 	CalcStrategyNone::curv(a, gl);
@@ -59,7 +63,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 		{
 			alpha[j][k] = 0;
 		}
-		beta[j] = 0;
+		beta_sv[j] = 0;
 	}
 
 	trial_chisq = 0;
@@ -142,7 +146,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 					//l=0
 					gl.wt = gl.dyda[0] * sig2iwght;
 					alpha[j][0] += gl.wt * gl.dyda[0];
-					beta[j] += gl.dy * gl.wt;
+					beta_sv[j] += gl.dy * gl.wt;
 					j++;
 					//
 					for (l = 1; l <= lastone; l++)  //line of ones
@@ -157,7 +161,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 							alpha[j][k] += gl.wt * gl.dyda[m];
 							k++;
 						} /* m */
-						beta[j] += gl.dy * gl.wt;
+						beta_sv[j] += gl.dy * gl.wt;
 						j++;
 					} /* l */
 					for (; l <= lastma; l++)  //rest parameters
@@ -184,7 +188,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 									k++;
 								}
 							} /* m */
-							beta[j] += gl.dy * gl.wt;
+							beta_sv[j] += gl.dy * gl.wt;
 							j++;
 						}
 					} /* l */
@@ -219,7 +223,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 							alpha[j][k] += gl.wt * gl.dyda[m];
 							k++;
 						} /* m */
-						beta[j] += gl.dy * gl.wt;
+						beta_sv[j] += gl.dy * gl.wt;
 						j++;
 					} /* l */
 					for (; l <= lastma; l++)  //rest parameters
@@ -245,7 +249,7 @@ void CalcStrategyNone::mrqcof(std::vector<std::vector<double>>& x1, std::vector<
 									k++;
 								}
 							} /* m */
-							beta[j] += gl.dy * gl.wt;
+							beta_sv[j] += gl.dy * gl.wt;
 							j++;
 						}
 					} /* l */

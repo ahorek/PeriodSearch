@@ -1,9 +1,96 @@
 #pragma once
 //#include <iostream>
+#ifndef GLOBALS_H 
+#define GLOBALS_H
 
 #include <vector>
 #include <memory>
 #include "constants.h"
+#include <immintrin.h>
+#include <cstdlib>
+#include <iostream>
+
+#if defined __GNUC__
+#include <vector>
+#include <cstdlib>
+#include <stdexcept>
+
+// Custom Aligned Allocator
+template <typename T, std::size_t Alignment>
+class AlignedAllocatorNew {
+public:
+    using value_type = T;
+
+    AlignedAllocatorNew() noexcept {}
+
+    template <typename U>
+    AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
+
+    T* allocate(std::size_t n) {
+        void* ptr = nullptr;
+        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+        }
+        return static_cast<T*>(ptr);
+    }
+
+    void deallocate(T* p, std::size_t) noexcept {
+        free(p);
+    }
+
+    template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
+};
+
+template <typename T, std::size_t Alignment>
+bool operator==(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return true; }
+
+template <typename T, std::size_t Alignment>
+bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return false; }
+
+// Type alias for aligned vector
+// using AlignedDoubleVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
+
+using AlignedInnerVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
+using AlignedOuterVector = std::vector<AlignedInnerVector, AlignedAllocatorNew<AlignedInnerVector, 64>>;
+
+
+
+// ------ OLDER VERSION ---------
+// // Custom aligned allocator
+// template <typename T, std::size_t Alignment>
+// class AlignedAllocatorNew {
+// public:
+//     using value_type = T;
+
+//     AlignedAllocatorNew() noexcept {}
+
+//     template <typename U>
+//     AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
+
+//     T* allocate(std::size_t n) {
+//         void* ptr = nullptr;
+//         if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+//             throw std::bad_alloc();
+//         }
+//         return static_cast<T*>(ptr);
+//     }
+
+//     void deallocate(T* p, std::size_t) noexcept {
+//         free(p);
+//     }
+
+//     template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
+// };
+
+// template <typename T, std::size_t Alignment>
+// bool operator==(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return true; }
+
+// template <typename T, std::size_t Alignment>
+// bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return false; }
+
+// // Define the custom allocator for double with 64-byte alignment
+// using AlignedVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
+#endif
 
 /**
  * @brief Initializes a vector with a specified size and initial value.
@@ -55,6 +142,7 @@ void init_matrix(std::vector<std::vector<T>>& matrix, const int rows, const int 
     }
 }
 #else
+
 template <typename T>
 void init_matrix(std::vector<std::vector<T>>& matrix, const int rows, const int cols, T init_value = T{})
 {
@@ -64,6 +152,20 @@ void init_matrix(std::vector<std::vector<T>>& matrix, const int rows, const int 
         matrix[i].resize(cols, init_value); // Resize and initialize each inner vector with the specified value
     }
 }
+
+#if defined __GNUC__
+// // Overloaded function template for std::vector<AlignedVector>
+// void init_matrix(std::vector<AlignedVector>& matrix, const int rows, const int cols, double init_value = 0.0)
+// {
+//     matrix.resize(rows);
+//     // Resize the outer vector
+//     for (int i = 0; i < rows; ++i)
+//     {
+//         matrix[i].resize(cols, init_value);
+//         // Resize and initialize each inner vector with the specified value
+//     }
+// }
+#endif
 #endif
 
 /**
@@ -154,6 +256,7 @@ std::vector<T> flatten2Dvector(const std::vector<std::vector<T>>& matrix)
 
 double dot_product(const double a[], const double b[]);
 double optimized_dot_product(const double a[], const double b[]);
+void dot_product_new(double a[4], double b[4], double &c);
 
 void init2Darray(double**& matrix, int dytemp_siszeX, int dytemp_sizeY);
 void delete2Darray(double**& ary, int sizeY);
@@ -162,7 +265,7 @@ void printArray(double array[], int iMax, char msg[]);
 void printArray(double** array, int iMax, int jMax, char msg[]);
 void printArray(double*** array, int iMax, int jMax, int kMax, char msg[]);
 
-struct globals
+extern struct globals
 {
 #ifdef __GNUC__
     double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64)));
@@ -170,8 +273,10 @@ struct globals
     double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
     double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
     double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-    std::vector<std::vector<double>> covar __attribute__((aligned(64)));
-    std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
+    // std::vector<std::vector<double>> covar __attribute__((aligned(64)));
+    // std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
+    AlignedOuterVector covar __attribute__((aligned(64)));
+    AlignedOuterVector alpha __attribute__((aligned(64)));
 #else
 #if _MSC_VER >= 1900 // Visual Studio 2015 or later
     // NOTE: About MSVC - https://learn.microsoft.com/en-us/cpp/cpp/alignment-cpp-declarations?view=msvc-170
@@ -216,4 +321,20 @@ struct globals
     std::vector<double> ytemp;
     std::vector<double> Weight;
     std::vector<std::vector<double>> dytemp;
-};
+    // std::vector<std::vector<double>> covar;
+    // std::vector<std::vector<double>> alpha;
+
+    //std::vector<AlignedVector> covar;
+    //std::vector<AlignedVector> alpha;
+
+    // Function to initialize the vectors
+#if defined __GNUC__
+    void initializeVectors(size_t rows, size_t cols)
+    {
+        covar.resize(rows, AlignedInnerVector(cols));
+        alpha.resize(rows, AlignedInnerVector(cols));
+    }
+#endif
+} gl;
+
+#endif // GLOBALS_H

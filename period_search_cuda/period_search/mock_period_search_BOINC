@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Define the light green color code (Color 10)
+LIGHT_GREEN='\033[38;5;10m'
+# Define the reset color code
+NC='\033[0m' # No Color
+
+# Print the current working directory and list its contents for debugging
+# echo -e "${LIGHT_GREEN}Current working directory: $(pwd)"
+# echo -e "Contents of the directory:"
+# ls
+# echo -e "${NC}"
+
+# Check for "period_search_in" file existence
+if [ -f "period_search_in" ]; then
+    # Timer countdown from 5 to 0
+    for i in {5..0}; do
+        if [ "$i" -eq 0 ]; then
+            echo -ne "${LIGHT_GREEN}Working... done."
+        else
+            echo -ne "${LIGHT_GREEN}Working... $i\r"
+            sleep 1
+        fi
+    done
+
+    # Append the completion message
+    echo -e " Mock executable ran successfully.${NC}"
+
+    # Create "period_search_out" file
+    touch "period_search_out"
+
+    # Delete the input file
+    rm "period_search_in"
+else
+    echo -e "${LIGHT_GREEN}Error: 'period_search_in' file not found.${NC}"
+    exit 1
+fi

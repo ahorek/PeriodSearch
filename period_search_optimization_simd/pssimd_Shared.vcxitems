@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{2dccd7c2-8f63-409a-9703-2cf4df29887a}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\areanorm.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\arrayHelpers.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\blmatrix.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright_avx.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright_avx512.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright_fma.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright_sse2.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\bright_sse3.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv_avx.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv_avx512.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv_fma.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv_sse2.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\conv_sse3.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\CpuInfo.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv_avx.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv_avx512.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv_fma.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv_sse2.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\curv_sse3.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\dot_product.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\ellfit.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\EnumHelpers.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc_avx.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc_avx512.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc_fma.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc_sse2.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\gauss_errc_sse3.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\LcHelpers.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\lubksb.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\ludcmp.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\matrix.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof_avx.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof_avx512.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof_fma.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof_sse2.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqcof_sse3.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\mrqmin.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\pch.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\period_search_BOINC.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\phasec.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\sphfunc.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\systeminfo.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\trifac.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)period_search\VersionInfo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\arrayHelpers.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategy.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategyAvx.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategyAvx512.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategyFma.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategyNone.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategySse2.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\CalcStrategySse3.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\constants.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\declarations.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\Enums.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\framework.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\globals.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\LcHelpers.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\pch.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\SIMDHelpers.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\stdafx.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\systeminfo.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)period_search\VersionInfo.h" />
+  </ItemGroup>
+</Project>

@@ -59,8 +59,8 @@ void matrix(double omg, double t, double tmat[][4], double dtm[][4][4]);
 //void aligned_deallocate_matrix_double(double** p_x, int rows);
 //void deallocate_matrix_int(int** p_x, int rows);
 
-double dot_product(double a[4], double b[4]);
-void dot_product_new(double a[4], double b[4], double& c);
+//double dot_product(double a[4], double b[4]);
+//void dot_product_new(double a[4], double b[4], double& c);
 
 #if !defined __GNUC__ && defined _WIN32
 	bool GetVersionInfo(LPCTSTR filename, int& major, int& minor, int& build, int& revision);

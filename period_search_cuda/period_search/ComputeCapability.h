@@ -24,13 +24,14 @@ public:
 	int cudaVersion;
 
 	explicit Cc(const cudaDeviceProp& deviceProp);
+	int GetSmxBlock() const;
 
 #if defined (_MSC_VER) & (_MSC_VER >= 1900) // Visual Studio 2013 or later
-	Cc::~Cc() = default;
+	~Cc() = default;
+	void Exit() const;
 #else
 	~Cc();
+	void Exit() const;
 #endif
 	
-	int GetSmxBlock() const;
-	void Cc::Exit() const;
 };

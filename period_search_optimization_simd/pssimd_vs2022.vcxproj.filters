@@ -13,9 +13,6 @@
     <ClCompile Include="period_search\CpuInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\dot_product.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\ellfit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -157,15 +154,21 @@
     <ClCompile Include="period_search\mrqcof_asimd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="period_search\arrayHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\dot_product.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\LcHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="period_search\declarations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\globals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="period_search\CalcStrategy.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\CalcStrategyAvx.hpp">
@@ -199,6 +202,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="period_search\VersionInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\constants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\arrayHelpers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\LcHelpers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="period_search\SIMDHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

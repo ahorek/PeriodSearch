@@ -42,7 +42,7 @@ __attribute__((target("avx,fma")))
  * @note The function modifies the global variables related to the fitting process. Converted from Mikko's Fortran code.
  *		 'mrqcof' is used by 'mrqmin' to evaluate coefficients.
  *
- * @source Numerical Recipes: Nonlinear least-squares fit, Marquardt’s method.
+ * @source Numerical Recipes: Nonlinear least-squares fit, Marquardtï¿½s method.
  *
  * @date 8.11.2006
  */
@@ -51,7 +51,11 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
     std::vector<double>& beta, int mfit, int lastone, int lastma, double& trial_chisq, globals& gl, const bool isCovar)
 {
     int i, j, k, l, m, np, np1, np2, jp, ic;
+#if defined __GNUC__
+    AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
+#else
     auto& alpha = isCovar ? gl.covar : gl.alpha;
+#endif
 
     /* N.B. curv and blmatrix called outside bright
        because output same for all points */
@@ -66,7 +70,10 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
     for (j = 0; j < mfit; j++)
     {
         for (k = 0; k <= j; k++)
+        {
             alpha[j][k] = 0;
+
+        }
         beta[j] = 0;
     }
 
@@ -180,10 +187,10 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                         k++;
                         for (m = 1; m <= l; m += 4)
                         {
-                            __m256d avx_alpha = _mm256_loadu_pd(&alpha[j][k]);
+                            __m256d avx_alpha = _mm256_load_pd(&alpha[j][k]);
                             __m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                             avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
-                            _mm256_storeu_pd(&alpha[j][k], avx_alpha);
+                            _mm256_store_pd(&alpha[j][k], avx_alpha);
                             k += 4;
                         } /* m */
                         beta[j] += gl.dy * gl.wt;
@@ -202,10 +209,10 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                             int kk = k;
                             for (m = 1; m <= lastone; m += 4)
                             {
-                                __m256d avx_alpha = _mm256_loadu_pd(&alpha[j][kk]);
+                                __m256d avx_alpha = _mm256_load_pd(&alpha[j][kk]);
                             	__m256d avx_dyda = _mm256_loadu_pd(&gl.dyda[m]);
                                 avx_alpha = _mm256_fmadd_pd(avx_wt, avx_dyda, avx_alpha);
-                                _mm256_storeu_pd(&alpha[j][kk], avx_alpha);
+                                _mm256_store_pd(&alpha[j][kk], avx_alpha);
                                 kk += 4;
                             } /* m */
                             k += lastone;
@@ -213,6 +220,7 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                                 if (ia[m])
                                 {
                                     alpha[j][k] += gl.wt * gl.dyda[m];
+
                                     k++;
                                 }
                             beta[j] += gl.dy * gl.wt;
@@ -277,7 +285,7 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
                             for (m = lastone + 1; m <= l; m++)
                                 if (ia[m])
                                 {
-                                    alpha[j][k] += gl.wt * gl.dyda[m];
+                                     alpha[j][k] += gl.wt * gl.dyda[m];
                                     k++;
                                 }
                             beta[j] += gl.dy * gl.wt;
@@ -295,6 +303,8 @@ void CalcStrategyFma::mrqcof(std::vector<std::vector<double>>& x1, std::vector<s
 
     for (j = 1; j < mfit; j++)
         for (k = 0; k <= j - 1; k++)
+        {
             alpha[k][j] = alpha[j][k];
+        }
 }
 

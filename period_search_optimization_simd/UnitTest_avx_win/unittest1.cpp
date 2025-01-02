@@ -37,7 +37,7 @@ double Xx1[4], Xx2[4], _xx1[4], _xx2[4];
 double tmat[4][4], dtm[4][4][4], _tmat[4][4], _dtm[4][4][4];
 double php[N_PHOT_PAR + 1], dphp[N_PHOT_PAR + 1], _dphp[N_PHOT_PAR + 1];
 double *t, *f, *at, *af, *_at, *_af, *sig, *cg_first, *_cg_first, *d, *_d, **fitmat, **_fitmat, *fitvec, *_fitvec;
-double **ee, **_ee, **ee0, **_ee0, *tim, *_tim, *brightness, *_brightness, *cg, *_cg, **covar, **_covar, **aalpha, **_aalpha;
+double **ee, **_ee, **ee0, **_ee0, *tim, *_tim, *brightness, *_brightness, *cg, *_cg; // **covar, **_covar, **aalpha, **_aalpha;
 double Sclnw[MAX_LC + 1];
 double Yout[MAX_N_OBS + 1];
 double Weight[MAX_N_OBS + 1];
