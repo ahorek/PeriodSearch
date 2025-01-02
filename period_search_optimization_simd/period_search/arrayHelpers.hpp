@@ -31,9 +31,10 @@ public:
             throw std::bad_alloc();
           }
         #else
-          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-            throw std::bad_alloc();
-          }
+          posix_memalign(&ptr, Alignment, n * sizeof(T));
+          //if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+          //  throw std::bad_alloc();
+          //}
         #endif
         return static_cast<T*>(ptr);
     }
