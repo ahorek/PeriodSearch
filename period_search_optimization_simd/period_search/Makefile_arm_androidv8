@@ -19,7 +19,7 @@ ANDROID_NDK_BIN = $(ANDROID_NDK_DIR)/toolchains/llvm/prebuilt/linux-x86_64/bin
 
 CXX=$(ANDROID_NDK_BIN)/aarch64-linux-android34-clang++
 LD=$(ANDROID_NDK_BIN)/ld
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s -frecord-gcc-switches -static-libstdc++ -static -ldl \
+CXXFLAGS = -march=armv8-a -O0 -std=c++2a -w -g -frecord-gcc-switches -static-libstdc++ -static -ldl \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
