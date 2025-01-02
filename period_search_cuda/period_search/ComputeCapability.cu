@@ -13,10 +13,10 @@ Cc::Cc(const cudaDeviceProp& deviceProp)
 #if defined (_MSC_VER) & (_MSC_VER < 1900) // Visual Studio 2012 or previous
 	Cc::~Cc(){}
 #else
-	//Cc::~Cc() 
-	//{ 
-	//	// Your cleanup code here, if any. 
-	//}
+#if defined __GNUC__
+	Cc::~Cc() {}
+#endif
+
 #endif
 
 
