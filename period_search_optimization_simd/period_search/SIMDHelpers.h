@@ -28,7 +28,7 @@ struct AlignedAllocator
 
     T* allocate(const std::size_t n)
     {
-#if defined __GNUC__
+#if defined __GNUC__ && !defined _WIN32
         void* ptr = std::aligned_alloc(alignment, n * sizeof(T));
 #else
         void* ptr = _aligned_malloc(n * sizeof(T), alignment);
@@ -42,7 +42,7 @@ struct AlignedAllocator
 
     void deallocate(T* p, std::size_t) noexcept
     {
-#if defined __GNUC__
+#if defined __GNUC__ && !defined _WIN32
         free(p);
 #else
         _aligned_free(p);

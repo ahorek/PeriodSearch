@@ -4,7 +4,6 @@
 #include <vector>
 #include <memory>
 #include "constants.h"
-#include <immintrin.h>
 #include <cstdlib>
 #include <iostream>
 
@@ -26,14 +25,24 @@ public:
 
     T* allocate(std::size_t n) {
         void* ptr = nullptr;
-        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-            throw std::bad_alloc();
+
+        #if defined _WIN32
+          ptr = _aligned_malloc(n * sizeof(T), Alignment);
+        #else
+          posix_memalign(&ptr, Alignment, n * sizeof(T));
+        #endif
+        if (!ptr) {
+          throw std::bad_alloc();
         }
         return static_cast<T*>(ptr);
     }
 
     void deallocate(T* p, std::size_t) noexcept {
-        free(p);
+        #if defined _WIN32
+          _aligned_free(p);
+        #else
+          free(p);
+        #endif
     }
 
     template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
