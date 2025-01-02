@@ -33,10 +33,10 @@ struct AlignedAllocator
 #else
         void* ptr = _aligned_malloc(n * sizeof(T), alignment);
 #endif
-        if (!ptr)
-        {
-            throw std::bad_alloc();
-        }
+        //if (!ptr)
+        //{
+        //    throw std::bad_alloc();
+        //}
         return static_cast<T*>(ptr);
     }
 
