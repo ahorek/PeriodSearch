@@ -143,3 +143,7 @@ period_search_BOINC*
 diag/
 
 /period_search_optimization_simd/log
+
+# Include the .github directory and its contents
+!/.github/
+!/.github/**

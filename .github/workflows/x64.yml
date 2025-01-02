@@ -21,9 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { variant: 'cuda', os: 'ubuntu-latest', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
-          - { variant: 'opencl', os: 'ubuntu-latest', working-directory: './period_search_opencl_amd/period_search', makefile: 'Makefile' }
-          - { variant: 'cpu', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+          - { variant: 'cuda', os: 'ubuntu-20.04', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
+          - { variant: 'opencl', os: 'ubuntu-20.04', working-directory: './period_search_opencl_amd/period_search', makefile: 'Makefile' }
+          - { variant: 'cpu', os: 'ubuntu-20.04', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
 
     steps:
       - uses: actions/checkout@v4
@@ -51,13 +51,18 @@ jobs:
       - name: Install cuda
         if: success() && matrix.variant == 'cuda'
         run: |
-          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring_1.1-1_all.deb
           sudo apt-get update
           sudo apt-get -y install cuda-toolkit
 
           sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
+      - name: Build ps_common library
+        run: |
+          cd ./period_search_common
+          make -f Makefile
+          
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
         run: |
