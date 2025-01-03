@@ -31,25 +31,15 @@ struct AlignedAllocator
 #if defined __GNUC__ && !defined _WIN32
         //void* ptr = std::aligned_alloc(alignment, n * sizeof(T));
         void* ptr = nullptr;
-        int result = posix_memalign(&ptr, alignment, n * sizeof(T));
-        if (result != 0) {
-              std::cerr << result << std::endl;
-              std::cerr << alignment << std::endl;
-              std::cerr << n << std::endl;
-              std::cerr << sizeof(T) << std::endl;
-              throw std::bad_alloc();
-            }
+        if (posix_memalign(&ptr, alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+        }
 #else
-        void* ptr = _aligned_malloc(n * sizeof(T), alignment);
+        void* ptr = = _aligned_malloc(n * sizeof(T), alignment);
 #endif
         if (!ptr)
         {
-            try {
-              throw std::bad_alloc();
-            } catch(std::bad_alloc& e) {
-              std::cerr << "Error: Could not allocate memory 2";
-			  throw 1;
-		    }
+            throw std::bad_alloc();
         }
         return static_cast<T*>(ptr);
     }

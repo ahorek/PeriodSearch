@@ -27,26 +27,16 @@ public:
 
     T* allocate(std::size_t n) {
         void* ptr = nullptr;
-        try {
-          #if !defined _WIN32
-            int result = posix_memalign(&ptr, Alignment, n * sizeof(T));
-            if (result != 0) {
-              std::cerr << result << std::endl;
-              std::cerr << Alignment << std::endl;
-              std::cerr << n << std::endl;
-              std::cerr << sizeof(T) << std::endl;
-              throw std::bad_alloc();
-            }
-          #else
-            ptr = _aligned_malloc(n * sizeof(T), Alignment);
-            if (ptr == NULL) {
-              throw std::bad_alloc();
-            }
-          #endif
-        } catch(std::bad_alloc& e) {
-			std::cerr << "Error: Could not allocate memory";
-			throw 1;
-		}
+        #if !defined _WIN32
+          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+          }
+        #else
+          ptr = _aligned_malloc(n * sizeof(T), Alignment);
+          if (!ptr) {
+            throw std::bad_alloc();
+          }
+        #endif
         return static_cast<T*>(ptr);
     }
 
