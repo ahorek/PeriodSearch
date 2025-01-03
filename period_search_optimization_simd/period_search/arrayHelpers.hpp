@@ -31,7 +31,7 @@ public:
         void* ptr = nullptr;
         try {
           #if !defined _WIN32
-            int result = posix_memalign(&ptr, Alignment, n * sizeof(T))
+            int result = posix_memalign(&ptr, Alignment, n * sizeof(T));
             if (result != 0) {
               std::cerr << result << std::endl;
               std::cerr << Alignment << std::endl;
