@@ -142,7 +142,7 @@ period_search_BOINC*
 /*/GPUCache
 diag/
 
-/period_search_optimization_simd/log
+*/log
 
 # Include the .github directory and its contents
 !/.github/
