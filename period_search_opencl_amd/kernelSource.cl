@@ -289,10 +289,8 @@ void blmatrix(__global struct mfreq_context* CUDA_LCC, double bet, double lam)
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
-	cb = cos(bet);
-	sb = sin(bet);
-	cl = cos(lam);
-	sl = sin(lam);
+	sb = sincos(bet, &cb);
+  	sl = sincos(lam, &cl);
 	(*CUDA_LCC).Blmat[1][1] = cb * cl;
 	(*CUDA_LCC).Blmat[1][2] = cb * sl;
 	(*CUDA_LCC).Blmat[1][3] = -sb;
@@ -822,8 +820,7 @@ void matrix_neo(
 		//  matrix start
 		f = cg[(*CUDA_CC).Ncoef0] * t + (*CUDA_CC).Phi_0;
 		f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
-		cf = cos(f);
-		sf = sin(f);
+		sf = sincos(f, &cf);
 
 		//if (threadIdx.x == 0)
 		//	printf("jp[%3d] [%3d] cf: %10.7f, sf: %10.7f\n", jp, blockIdx.x, cf, sf);

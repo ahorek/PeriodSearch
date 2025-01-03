@@ -47,8 +47,7 @@ __device__ void matrix_neo(freq_context* CUDA_LCC, double cg[], int lnp1, int Lp
         //  matrix start
         f = cg[CUDA_ncoef0] * t + CUDA_Phi_0;
         f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
-        cf = cos(f);
-        sf = sin(f);
+        sincos(f, &sf, &cf);
 
         /* rotation matrix, Z axis, angle f */
         tmat = cf * (*CUDA_LCC).Blmat[1][1] + sf * (*CUDA_LCC).Blmat[2][1] + 0 * (*CUDA_LCC).Blmat[3][1];

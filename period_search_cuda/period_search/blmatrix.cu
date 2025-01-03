@@ -10,10 +10,8 @@ __device__ void blmatrix(freq_context *CUDA_LCC,double bet, double lam)
 {
    double cb, sb, cl, sl;
 
-   cb = cos(bet);
-   sb = sin(bet);
-   cl = cos(lam);
-   sl = sin(lam);
+   sincos(bet, &sb, &cb);
+   sincos(lam, &sl, &cl);
    (*CUDA_LCC).Blmat[1][1] = cb * cl;
    (*CUDA_LCC).Blmat[1][2] = cb * sl;
    (*CUDA_LCC).Blmat[1][3] = -sb;

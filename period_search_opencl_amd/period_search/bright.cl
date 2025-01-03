@@ -86,8 +86,7 @@ void matrix_neo(
 		//  matrix start
 		f = cg[(*CUDA_CC).Ncoef0] * t + (*CUDA_CC).Phi_0;
 		f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
-		cf = cos(f);
-		sf = sin(f);
+		sf = sincos(f, &cf);
 
 		//if (threadIdx.x == 0)
 		//	printf("jp[%3d] [%3d] cf: %10.7f, sf: %10.7f\n", jp, blockIdx.x, cf, sf);

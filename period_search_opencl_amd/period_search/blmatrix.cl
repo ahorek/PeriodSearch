@@ -13,10 +13,8 @@ void blmatrix(__global struct mfreq_context* CUDA_LCC, double bet, double lam)
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
 
-	cb = cos(bet);
-	sb = sin(bet);
-	cl = cos(lam);
-	sl = sin(lam);
+	sb = sincos(bet, &cb);
+  	sl = sincos(lam, &cl);
 	(*CUDA_LCC).Blmat[1][1] = cb * cl;
 	(*CUDA_LCC).Blmat[1][2] = cb * sl;
 	(*CUDA_LCC).Blmat[1][3] = -sb;
