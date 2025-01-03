@@ -9,6 +9,10 @@
 #include <cstdlib>
 #include <iostream>
 
+#if !defined __APPLE__
+#include <malloc.h>
+#endif
+
 #if defined __GNUC__
 #include <vector>
 #include <cstdlib>
