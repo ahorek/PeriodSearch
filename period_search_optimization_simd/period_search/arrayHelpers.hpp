@@ -30,6 +30,9 @@ public:
     T* allocate(std::size_t n) {
         void* ptr = nullptr;
         #if !defined _WIN32
+          std::cout << Alignment << std::endl;
+          std::cout << n << std::endl;
+          std::cout << sizeof(T) << std::endl;
           //ptr = std::aligned_alloc(Alignment, n * sizeof(T));
           ptr = memalign(Alignment, n * sizeof(T));
         #else
