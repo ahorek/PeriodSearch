@@ -39,7 +39,7 @@ public:
             }
           #endif
         } catch(std::bad_alloc& e) {
-			std::cerr << "Error: Could not allocate memory"
+			std::cerr << "Error: Could not allocate memory";
 			throw 1;
 		}
         return static_cast<T*>(ptr);

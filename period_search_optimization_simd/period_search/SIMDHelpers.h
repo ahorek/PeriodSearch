@@ -38,7 +38,7 @@ struct AlignedAllocator
             try {
               throw std::bad_alloc();
             } catch(std::bad_alloc& e) {
-             std::cerr << "Error: Could not allocate memory"
+              std::cerr << "Error: Could not allocate memory";
 			  throw 1;
 		    }
         }
