@@ -30,6 +30,7 @@ struct AlignedAllocator
     {
 #if defined __GNUC__ && !defined _WIN32
         //void* ptr = std::aligned_alloc(alignment, n * sizeof(T));
+        void* ptr = nullptr;
         int result = posix_memalign(&ptr, alignment, n * sizeof(T));
         if (result != 0) {
               std::cerr << result << std::endl;
