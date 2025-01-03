@@ -29,6 +29,9 @@ public:
         void* ptr = nullptr;
         try {
           #if !defined _WIN32
+            std::cerr << Alignment << std::endl;
+            std::cerr << n << std::endl;
+            std::cerr << sizeof(T) << std::endl;
             if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
               throw std::bad_alloc();
             }
