@@ -35,7 +35,7 @@ struct AlignedAllocator
             throw std::bad_alloc();
         }
 #else
-        void* ptr = = _aligned_malloc(n * sizeof(T), alignment);
+        void* ptr = _aligned_malloc(n * sizeof(T), alignment);
 #endif
         if (!ptr)
         {
