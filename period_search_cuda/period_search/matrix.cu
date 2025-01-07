@@ -16,8 +16,7 @@ __device__ void matrix(freq_context *CUDA_LCC,double omg, double t, double tmat[
    /* phase of rotation */
    f = omg * t + CUDA_Phi_0;
    f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
-   cf = cos(f);
-   sf = sin(f);
+   sincos(f, &sf, &cf);
    /* rotation matrix, Z axis, angle f */ 
    fmat[1][1] = cf;
    fmat[1][2] = sf;
