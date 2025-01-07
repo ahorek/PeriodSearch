@@ -254,7 +254,7 @@ void GetSupportedSIMDs()
     CPUopt.hasSSE3 = std_supported && ((std_ecx & (1 << 0)) || (std_ecx & (1 << 9)));
 
 #if !defined _VC140_XP
-    CPUopt.hasAVX = std_supported && (std_ecx & (1 << 28));
+    CPUopt.hasAVX = std_supported && IsAVXSupportedByOS() && (std_ecx & (1 << 28));
 
     if (CPUopt.hasAVX)
     {
