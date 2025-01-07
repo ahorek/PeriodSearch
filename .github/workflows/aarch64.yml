@@ -58,13 +58,20 @@ jobs:
           ./configure --host=aarch64-linux --with-boinc-platform="aarch64-unknown-linux-gnu" --disable-server --disable-manager --disable-client CXXFLAGS="-O3 "
           make -j
 
+      - name: Build ps_common library
+        run: |
+          cd ./period_search_common
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/bin:$PATH"
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/libexec/gcc/aarch64-linux-gnu/14.2.0:$PATH"
+          sed -i 's/CXX\s*=.*$/CXX = aarch64-linux-gnu-g++/' Makefile_arm
+          make -f Makefile_arm -j
+
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
         run: |
           export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/bin:$PATH"
           export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/libexec/gcc/aarch64-linux-gnu/14.2.0:$PATH"
           sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
-          sed -i 's/CC\s*=.*$/CC = aarch64-linux-gnu-g++/' ${{ matrix.makefile }}
           sed -i 's/CXX\s*=.*$/CXX = aarch64-linux-gnu-g++/' ${{ matrix.makefile }}
           sed -i 's/g++ -print-file-name=libstdc++.a/aarch64-linux-gnu-g++ -print-file-name=libstdc++.a/' ${{ matrix.makefile }}
           make -f ${{ matrix.makefile }} -j
@@ -76,5 +83,5 @@ jobs:
           retention-days: 1
           path: |
             ${{ matrix.working-directory }}/**/period_search_BOINC*
-            !${{ matrix.working-directory }}/period_search_BOINC.cpp
-            !${{ matrix.working-directory }}/period_search_BOINC.o
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o

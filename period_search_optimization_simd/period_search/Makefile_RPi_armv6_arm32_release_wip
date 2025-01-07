@@ -31,82 +31,63 @@
 #		echo | clang++ -dM -E -
 #
 
+BUILD_DIR = build
 BOINC_DIR = ../../../boinc_src_armv6
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
-# Use `readelf -p .GCC.command.line period_search_rpi_armv7_arm32` to see all used compiler commands
-CXXFLAGS = -march=armv6 -mcpu=arm6 -mfloat-abi=hard -mfpu=vfp -std=c++17 -O3 -frecord-gcc-switches \
-    -DARM32 \
-    -I$(BOINC_DIR) \
-    -I$(BOINC_LIB_DIR) \
-    -I$(BOINC_API_DIR) \
-	-I /usr/lib/arm-linux-gnueabihf \
-    -L /usr/lib \
-    -L.
-
-CC = arm-linux-gnueabihf-g++ 
 CXX = arm-linux-gnueabihf-g++ 
-# CC = g++ 
-# CXX = g++ 
-OPTFLAGS = -march=armv6 -mcpu=arm6 -mfloat-abi=hard -mfpu=vfp -std=c++17 -O3 -frecord-gcc-switches
-CFLAGS = $(OPTFLAGS) -Wall
-LDFLAGS = -lm
-MY_LIBS = trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o\
-        curv.o blmatrix.o conv.o covsrt.o phasec.o matrix.o bright.o memory.o\
-	    dot_product.o gauss_errc.o systeminfo.o CpuInfoArm32.o EnumHelpers.o VersionInfo.o
+# Use `readelf -p .GCC.command.line period_search_rpi_armv7_arm32` to see all used compiler commands
+CXXFLAGS = -march=armv6 -O3 -std=c++2a -w -s -frecord-gcc-switches -mfloat-abi=hard -mfpu=vfp \
+    -DARM32 \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I /usr/lib/arm-linux-gnueabihf \
+	-I$(PS_COMMON_DIR) \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L/usr/X11R6/lib \
+	-L.
 
-# the following should be freeglut; use nm to check
-# you may have to change the paths for your system
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_rpi_armv6_arm32
 
-ifeq ($(wildcard /usr/local/lib/libglut.a),)
-	LIBGLUT = /usr/lib/libglut.a
-	LIBGLU = /usr/lib/libGLU.a
-	LIBJPEG = /usr/lib/libjpeg.a
-else
-	LIBGLUT = /usr/local/lib/libglut.a
-	LIBGLU = /usr/local/lib/libGLU.a
-	LIBJPEG = /usr/local/lib/libjpeg.a
-endif
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp \
+	conv.cpp \
+	covsrt.cpp CpuInfoArm32.cpp curv.cpp \
+	ellfit.cpp EnumHelpers.cpp gauss_errc.cpp \
+	lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp \
+	mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
 
-PROGS = period_search_rpi_armv6_arm32 
-# uc2_graphics
-# make this optional so compile doesn't break on systems without OpenGL
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
 
-all: $(PROGS)
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-# libstdc++.a:
-# 	ln -s `arm-linux-gnueabihf-g++ -print-file-name=libstdc++.a`
-
-# clean:
-# 	/bin/rm -f $(PROGS) *.o libstdc++.a
-
-clean:
-	/bin/rm -f $(PROGS) *.o
-
-# distclean:
-# 	/bin/rm -f $(PROGS) *.o libstdc++.a
-
-distclean:
-	/bin/rm -f $(PROGS) *.o
-
-install: period_search_rpi_armv6_arm32
-
-# specify library paths explicitly (rather than -l)
-# because otherwise you might get a version in /usr/lib etc.
-
-#uc2: uc2.o libstdc++.a $(BOINC_API_DIR)/libboinc_api.a #$(BOINC_LIB_DIR)/libboinc.a
-#	$(CXX) $(CXXFLAGS) -o uc2 uc2.o libstdc++.a -pthread \
-#	$(BOINC_API_DIR)/libboinc_api.a \
-#	$(BOINC_LIB_DIR)/libboinc.a
-
-# $(OBJS) = $(patsubst %.o,another_folder/%.o,file1.o file2.o file3.o)
-# $(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< $(ANOTHER_DIR)/file1.o libstdc++.a -pthread \
-
-period_search_rpi_armv6_arm32: period_search_BOINC.o $(MY_LIBS) $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a
-	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< -pthread \
+ # Rule to build the static library
+$(TARGET): $(OBJ) $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
-	$(BOINC_LIB_DIR)/libboinc.a -lm 
+	$(BOINC_LIB_DIR)/libboinc.a \
+	-lm
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $<
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Clean rule to remove compiled files
+clean:
+	rm -rf $(BUILD_DIR)
+
+.PHONY: all clean

@@ -699,7 +699,7 @@
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
-      <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
+      <MinimumRequiredVersion>6.2</MinimumRequiredVersion>
       <AdditionalLibraryDirectories>C:\boincsdk\boinc\win_build\Build\x64\Release;..\period_search_common\x64_v142\Release;$(CUDA_PATH_V11_8)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>

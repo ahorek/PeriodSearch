@@ -56,6 +56,13 @@ jobs:
           ./configure --host=aarch64-linux --with-boinc-platform="aarch64-android-linux-gnu" --with-boinc-alt-platform="arm-android-linux-gnu" --disable-server --disable-manager --disable-client --enable-static CXXFLAGS="-O3 "
           make -j
 
+      - name: Build ps_common library
+        run: |
+          cd ./period_search_common
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/android-ndk-r26c/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          sed -i 's/CXX\s*=.*$/CXX = aarch64-linux-android34-clang++/' Makefile_arm
+          make -f Makefile_arm -j
+
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
         run: |
@@ -70,5 +77,5 @@ jobs:
           retention-days: 1
           path: |
             ${{ matrix.working-directory }}/**/period_search_BOINC*
-            !${{ matrix.working-directory }}/period_search_BOINC.cpp
-            !${{ matrix.working-directory }}/period_search_BOINC.o
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o

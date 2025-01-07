@@ -70,7 +70,7 @@ jobs:
       - name: Build ps_common library
         run: |
           cd ./period_search_common
-          make -f Makefile
+          make -f Makefile -j
           
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
@@ -85,5 +85,5 @@ jobs:
           retention-days: 1
           path: |
             ${{ matrix.working-directory }}/**/period_search_BOINC*
-            !${{ matrix.working-directory }}/period_search_BOINC.cpp
-            !${{ matrix.working-directory }}/period_search_BOINC.o
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o

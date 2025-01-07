@@ -5,7 +5,7 @@
 
 #if defined __GNUC__
 #pragma GCC optimize ("O2")
-#pragma GCC target ("avx2")
+//#pragma GCC target ("avx2")
 #else
 #pragma optimize( "gt", on ) // Enable global optimization and speed optimization
 //#pragma clang attribute push (__attribute__((target("avx2"))), apply_to=function) // TODO: Needs to be updated against MSVC compiler
