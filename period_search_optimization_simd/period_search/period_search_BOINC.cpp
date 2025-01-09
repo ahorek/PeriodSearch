@@ -256,11 +256,14 @@ int main(int argc, char** argv)
         std::exit(retval);
     }
 
+    // resolve logical name first
+    boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
+
     auto gl = globals();
-    auto res = PrepareLcData(gl, input_filename);
+    auto res = PrepareLcData(gl, input_path);
     if (res <= 0)
     {
-        fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", input_filename);
+        fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", input_path);
         fflush(stderr);
     }
 
@@ -301,8 +304,7 @@ int main(int argc, char** argv)
     init_matrix(gl.alpha, MAX_N_PAR + 1, MAX_N_PAR + 8 + 1, 0.0);
 #endif
 
-    // open the input file (resolve logical name first)
-    boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
+    // open the input file
     FILE* infile = boinc_fopen(input_path, "r");
     if (!infile) {
         fprintf(stderr,

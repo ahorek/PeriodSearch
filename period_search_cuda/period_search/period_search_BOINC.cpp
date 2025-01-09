@@ -188,8 +188,16 @@ int main(int argc, char** argv)
 		startFrequency, frequencyStep, endFrequency,
 		stopCondition;
 
+	// resolve logical name first
+	boinc_resolve_filename(input_filename, inputPath, sizeof(inputPath));
+
 	auto gl = globals();
-	PrepareLcData(gl, input_filename);
+	auto res = PrepareLcData(gl, inputPath);
+	if (res <= 0)
+	{
+		fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", inputPath);
+		fflush(stderr);
+	}
 
 	/* Minimum JD*/
 	double jdMin;
@@ -235,7 +243,7 @@ int main(int argc, char** argv)
 
 	ia_lambda_pole = ia_beta_pole = 1;
 
-    BOINC_OPTIONS options;
+	BOINC_OPTIONS options;
 	boinc_options_defaults(options);
 
 #if defined _DEBUG
@@ -277,9 +285,7 @@ int main(int argc, char** argv)
 //	}
 //#endif
 
-	// open the input file (resolve logical name first)
-	//
-	boinc_resolve_filename(input_filename, inputPath, sizeof(inputPath));
+	// open the input file 
 	infile = boinc_fopen(inputPath, "r");
 	if (!infile) {
 		fprintf(stderr,
