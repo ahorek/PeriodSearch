@@ -12,7 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="period_search\ComputeCapability.h" />
-    <ClInclude Include="period_search\constants.h" />
     <ClInclude Include="period_search\declarations.h" />
     <ClInclude Include="period_search\declarations_CUDA.h" />
     <ClInclude Include="period_search\globals.h" />
@@ -24,18 +23,17 @@
     <ClInclude Include="period_search\Version.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="period_search\areanorm.c" />
+    <ClCompile Include="period_search\areanorm.cpp" />
     <ClCompile Include="period_search\covsrt.c" />
-    <ClCompile Include="period_search\dot_product.c" />
-    <ClCompile Include="period_search\ellfit.c" />
+    <ClCompile Include="period_search\ellfit.cpp" />
     <ClCompile Include="period_search\error.cpp" />
-    <ClCompile Include="period_search\lubksb.c" />
-    <ClCompile Include="period_search\ludcmp.c" />
+    <ClCompile Include="period_search\lubksb.cpp" />
+    <ClCompile Include="period_search\ludcmp.cpp" />
     <ClCompile Include="period_search\memory.c" />
     <ClCompile Include="period_search\period_search_BOINC.cpp" />
-    <ClCompile Include="period_search\sphfunc.c" />
+    <ClCompile Include="period_search\sphfunc.cpp" />
     <ClCompile Include="period_search\stdfax.cpp" />
-    <ClCompile Include="period_search\trifac.c" />
+    <ClCompile Include="period_search\trifac.cpp" />
     <ClCompile Include="period_search\VersionInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -147,7 +145,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_WIN32;WIN64;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>D:\boincsdk\boinc\lib;D:\boincsdk\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\period_search_common;D:\boincsdk\boinc\lib;D:\boincsdk\boinc\api;%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -157,8 +155,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(CUDA_PATH_V12_0)\lib\x64;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libboinc.lib;libboincapi.lib;Version.lib;ShLwApi.lib;libgraphics2.lib;cuda.lib;cudart_static.lib;nvml.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;ps_common.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\period_search_common\x64\Release;$(CUDA_PATH_V12_0)\lib\x64;%(AdditionalLibraryDirectories);$(CudaToolkitLibDir)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
     </Link>

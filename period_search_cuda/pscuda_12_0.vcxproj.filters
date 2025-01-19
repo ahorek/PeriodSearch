@@ -15,9 +15,6 @@
     <ClInclude Include="period_search\ComputeCapability.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="period_search\constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="period_search\declarations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -47,25 +44,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="period_search\areanorm.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\covsrt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\dot_product.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\ellfit.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\error.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\lubksb.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="period_search\ludcmp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="period_search\memory.c">
@@ -74,16 +56,28 @@
     <ClCompile Include="period_search\period_search_BOINC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\sphfunc.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="period_search\stdfax.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\trifac.c">
+    <ClCompile Include="period_search\VersionInfo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="period_search\VersionInfo.cpp">
+    <ClCompile Include="period_search\areanorm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\ellfit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\ludcmp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\lubksb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\sphfunc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="period_search\trifac.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
