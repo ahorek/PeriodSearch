@@ -1,6 +1,8 @@
 
 name: aarch64
 
+on: [push, pull_request]
+
 env:
   BOINC_DIR: ./boinc
 

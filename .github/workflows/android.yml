@@ -1,6 +1,8 @@
 
 name: Android
 
+on: [push, pull_request]
+
 env:
   BOINC_DIR: ./boinc
 
