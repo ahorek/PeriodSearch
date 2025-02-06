@@ -49,6 +49,10 @@ int Cc::GetSmxBlockCuda12() const
 	auto smxBlock = 0;
 	switch (deviceCcMajor)
 	{
+	case 12:
+		if (cudaVersion < 12800) Exit();
+		smxBlock = GetSmxBlockCc12(); // Blackwell
+		break;
 	case 10:
 		smxBlock = 16; // Fall back to safe value
 		break;
@@ -161,6 +165,22 @@ int Cc::GetSmxBlockCuda6() const
 		break;
 	case 1:
 		smxBlock = GetSmxBlockCc1(); // Tesla
+		break;
+	default:
+		Exit();
+		break;
+	}
+
+	return smxBlock;
+}
+
+int Cc::GetSmxBlockCc12() const
+{
+	auto smxBlock = 0;
+	switch (deviceCcMinor)
+	{
+	case 0:
+		smxBlock = 32;	// Blackwell
 		break;
 	default:
 		Exit();
