@@ -647,8 +647,8 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
         cl_build_status buildStatus;
         err_num = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(buildStatus), &buildStatus, NULL);
 
-#if _DEBUG
-#if CL_TARGET_OPENCL_VERSION > 110
+//#if _DEBUG
+/*#if CL_TARGET_OPENCL_VERSION > 110
         size_t bufSize;
         size_t numKernels;
         err_num = clGetProgramInfo(program, CL_PROGRAM_NUM_KERNELS, sizeof(numKernels), &numKernels, NULL);
@@ -660,13 +660,14 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
         cerr << "Kernels: " << numKernels << endl;
         cerr << "Kernel names: " << endl << kernelNames << endl;
 #endif
+*/
         char buildOptions[1024];
         err_num = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_OPTIONS, sizeof(buildOptions), buildOptions, NULL);
         std::cerr << "Build options: " << buildOptions << std::endl;
         //std::string programSource = program.getInfo<CL_PROGRAM_SOURCE>();
         // std::cerr << "Program source: " << std::endl;
         // 	std::cerr << programSource << std::endl;
-#endif
+//#endif
         std::string buildlogStr = buildlog;
         if (buildStatus == 0)
         {
@@ -1370,11 +1371,11 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
             //clEnqueueUnmapMemObject(queue, CUDA_MCC2, pcc, 0, NULL, NULL);
             clEnqueueUnmapMemObject(queue, CUDA_CC2, pFb, 0, NULL, NULL);
             clFlush(queue);
-#ifdef _DEBUG
+//#ifdef _DEBUG
             // printf(".");
             cout << ".";
             cout.flush();
-#endif
+//#endif
             int count = 0;
             while (!theEnd)
             {
