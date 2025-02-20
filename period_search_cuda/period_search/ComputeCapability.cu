@@ -50,7 +50,7 @@ int Cc::GetSmxBlockCuda12() const
 	switch (deviceCcMajor)
 	{
 	case 12:
-		if (cudaVersion < 12800) Exit();
+		if (cudaVersion < 12600) Exit();
 		smxBlock = GetSmxBlockCc12(); // Blackwell
 		break;
 	case 10:
