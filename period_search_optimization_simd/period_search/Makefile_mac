@@ -14,7 +14,7 @@ BOINC_CONFIG_DIR =  $(BOINC_DIR)/clientgui/mac
 FRAMEWORKS_DIR = /System/Library/Frameworks
 
 CXX = /Library/Developer/CommandLineTools/usr/bin/g++
-CXXFLAGS = -O3 -std=c++2a -w -s -arch x86_64 -mmacosx-version-min=10.14 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -fvisibility=hidden -fvisibility-inlines-hidden \
+CXXFLAGS = -O3 -std=c++2a -w -s -arch x86_64 -mmacosx-version-min=10.14 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk -fvisibility=hidden -fvisibility-inlines-hidden \
     -I$(BOINC_CONFIG_DIR) \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
@@ -24,7 +24,7 @@ CXXFLAGS = -O3 -std=c++2a -w -s -arch x86_64 -mmacosx-version-min=10.14 -isysroo
 	-L$(PS_COMMON_LIB_DIR) \
 	-L.
 
-LDFLAGS = -Wl,-syslibroot,/Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk,-arch,x86_64
+LDFLAGS = -Wl,-syslibroot,/Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk,-arch,x86_64
 
 # Define the target executable
 TARGET = $(BUILD_DIR)/period_search_BOINC_macos_10222_x64_universal_Release

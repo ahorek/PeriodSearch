@@ -1,0 +1,76 @@
+
+name: Macos
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+  pull_request:
+    branches:
+      - main
+      - dev
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    name: >-
+      ${{ matrix.variant }} / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'arm64', os: 'macos-14', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm64_mac_11', ps_makefile: 'Makefile_arm' }
+          - { variant: 'x64', os: 'macos-13', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_mac', ps_makefile: 'Makefile' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare toolchain
+        run: |
+          brew update
+          brew install autoconf automake libtool gnu-sed
+
+      - name: Print gcc version
+        run: |
+          gcc -v
+
+      - name: Prepare boinc libraries
+        run: |
+          export PATH="/opt/homebrew/opt/libtool/libexec/gnubin:/usr/local/opt/libtool/libexec/gnubin:$PATH"
+          git clone --depth 1 https://github.com/BOINC/boinc.git
+          cd ./boinc
+          sh ./_autosetup
+          sh ./configure --disable-server --disable-client --disable-manager CXXFLAGS="-O3 "
+          make -j
+
+      - name: Build ps_common library
+        run: |
+          cd ./period_search_common
+          make -f ${{ matrix.ps_makefile }} -j
+          
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          gsed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}_${{ matrix.os }}
+          retention-days: 1
+          path: |
+            ${{ matrix.working-directory }}/**/period_search_BOINC*
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o
