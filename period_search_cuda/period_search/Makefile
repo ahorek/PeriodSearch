@@ -17,6 +17,7 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 CUDA_PATH = ../../../cuda-11.8
+NVCC_PATH = $(CUDA_PATH)/bin
 BUILD_DIR = ./build
 # END DO-NOT-CHANGE
 
@@ -103,7 +104,7 @@ $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release: $(BUILD_DIR)/period_s
 
 # Compilation rules for CUDA and C++ files
 $(BUILD_DIR)/%.o: %.cu
-	$(CUDA_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile $< -o $@
@@ -113,7 +114,7 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # Special rule for pscuda.device-link.o
 $(BUILD_DIR)/pscuda.device-link.o: $(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
-	$(CUDA_PATH)/bin/nvcc -dlink -o $@ --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+	$(NVCC_PATH)/nvcc -dlink -o $@ --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		$(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
