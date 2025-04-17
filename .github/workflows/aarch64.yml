@@ -31,6 +31,7 @@ jobs:
       matrix:
         include:
           - { variant: 'cpu aarch64', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm' }
+          - { variant: 'cuda aarch64', os: 'ubuntu-20.04', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
 
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +58,16 @@ jobs:
           ./_autosetup
           ./configure --host=aarch64-linux --with-boinc-platform="aarch64-unknown-linux-gnu" --disable-server --disable-manager --disable-client CXXFLAGS="-O3 "
           make -j
+
+      - name: Install cuda
+        if: success() && matrix.variant == 'cuda'
+        run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/cross-linux-aarch64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get -y install cuda-toolkit-11-8
+
+          sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
       - name: Build ps_common library
         run: |
