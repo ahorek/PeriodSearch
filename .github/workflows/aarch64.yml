@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - { variant: 'cpu aarch64', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm' }
-          - { variant: 'cuda aarch64', os: 'ubuntu-20.04', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
+          - { variant: 'cuda aarch64', os: 'ubuntu-latest', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
 
     steps:
       - uses: actions/checkout@v4
