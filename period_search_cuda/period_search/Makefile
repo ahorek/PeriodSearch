@@ -17,7 +17,8 @@ BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 CUDA_PATH = ../../../cuda-11.8
-NVCC_PATH = $(CUDA_PATH)/bin
+# NVCC_PATH = $(CUDA_PATH)/bin
+NVCC_PATH = /usr/local/cuda/bin
 BUILD_DIR = ./build
 # END DO-NOT-CHANGE
 
