@@ -61,6 +61,7 @@ jobs:
 
           ls -l /usr/local/cuda-12.8/targets
           ls -l /usr/local/cuda-12.8/targets/aarch64-linux/lib
+          ls -l /usr/local/cuda-12.8/targets/aarch64-linux/lib/stubs
 
           sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda-12.8\/targets\/aarch64-linux/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
