@@ -82,7 +82,7 @@ jobs:
           sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
           sed -i 's/CXX\s*=.*$/CXX = aarch64-linux-gnu-g++/' ${{ matrix.makefile }}
           sed -i 's/g++ -print-file-name=libstdc++.a/aarch64-linux-gnu-g++ -print-file-name=libstdc++.a/' ${{ matrix.makefile }}
-          make ${{ matrix.makefile }} -j
+          make -f ${{ matrix.makefile }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
