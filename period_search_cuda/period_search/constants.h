@@ -1,12 +1,12 @@
 #pragma once
 
-#define POINTS_MAX         2047             /* max number of data points in one lc. 2000 */
-#define MAX_N_OBS         10000             /* max number of data points 20000 */
-#define MAX_LC               23             /* max number of lightcurves 80 */
+//#define POINTS_MAX         2047             /* max number of data points in one lc. 2000 */
+#define MAX_N_OBS         20000             /* max number of data points 20000 */
+#define MAX_LC              200             /* max number of lightcurves 80 */
 #define MAX_LINE_LENGTH    1000             /* max length of line in an input file */
-#define MAX_N_FAC           319             /* max number of facets 383 */
+#define MAX_N_FAC           400             /* max number of facets 383 */
 #define MAX_N_ITER           60             /* maximum number of iterations 128, 60*/
-#define MAX_N_PAR            87             /* maximum number of parameters 207*/
+#define MAX_N_PAR           200             /* maximum number of parameters 207*/
 #define MAX_LM               15             /* maximum degree and order of sph. harm. */
 #define N_PHOT_PAR            5             /* maximum number of parameters in scattering law */
 #define TINY                  1e-8          /* precision parameter for mu, mu0 */
