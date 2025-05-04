@@ -22,6 +22,7 @@ BUILD_DIR = ./build
 # END DO-NOT-CHANGE
 
 CXXFLAGS = -O3 -s \
+    -DDISABLE_NVML \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
@@ -70,7 +71,7 @@ libstdc++.a:
 libcuda.so:
 	ln -s $(CUDA_PATH)/lib/stubs/libcuda.so libcuda.so
 
-# https://github.com/ollama/ollama/issues/3098 for compatibility with older Jetpacks
+# https://github.com/ollama/ollama/issues/3098 to improve compatibility with earlier Jetpack versions
 # libnvidia-ml.so:
 #	ln -f -s $(CUDA_PATH)/lib/stubs/libnvidia-ml.so libnvidia-ml.so
 

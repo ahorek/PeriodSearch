@@ -39,7 +39,7 @@
 //#include <cuda_occupancy.h>
 //#include <device_launch_parameters.h>
 
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
+#if !defined(DISABLE_NVML) && (defined(CUDA_VERSION) && (CUDA_VERSION >= 10020))
 #include <nvml.h>
 #endif
 
@@ -476,7 +476,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 	// TODO: Check if this will help to free some CPU core utilization
 	//cudaSetDeviceFlags(cudaDeviceScheduleYield);
 
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
+#if !defined(DISABLE_NVML) && (defined(CUDA_VERSION) && (CUDA_VERSION >= 10020))
 	try
 	{
 		nvmlInit();
@@ -499,7 +499,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 		auto sharedMemorySm = deviceProp.sharedMemPerMultiprocessor;
 		auto sharedMemoryBlock = deviceProp.sharedMemPerBlock;
 
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
+#if !defined(DISABLE_NVML) && (defined(CUDA_VERSION) && (CUDA_VERSION >= 10020))
 		char drv_version_str[NVML_DEVICE_PART_NUMBER_BUFFER_SIZE + 1];
 		if (nvml_enabled)
 		{
@@ -519,7 +519,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 		fprintf(stderr, "CUDA version: %d\n", cudaVersion);
 		fprintf(stderr, "CUDA Device number: %d\n", cudadev);
 		fprintf(stderr, "CUDA Device: %s %lluMB \n", deviceProp.name, totalGlobalMemory);
-#if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
+#if !defined(DISABLE_NVML) && (defined(CUDA_VERSION) && (CUDA_VERSION >= 10020))
 		fprintf(stderr, "CUDA Device driver: %s\n", drv_version_str);
 #endif
 		fprintf(stderr, "Compute capability: %d.%d\n", deviceProp.major, deviceProp.minor);
