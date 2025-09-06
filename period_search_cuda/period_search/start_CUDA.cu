@@ -158,7 +158,7 @@ bool SetCUDABlockingSync(const int device)
 	if (status != CUDA_SUCCESS)
 		return false;
 
-	status = cuCtxCreate(&hcuContext, 0x4, hcuDevice);
+	status = cuCtxCreate(&hcuContext, CU_CTX_SCHED_BLOCKING_SYNC, hcuDevice);
 	if (status != CUDA_SUCCESS)
 		return false;
 
