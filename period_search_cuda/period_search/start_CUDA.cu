@@ -495,8 +495,8 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 #endif
 
 	// determine gridDim
-	cudaDeviceProp deviceProp;
-	cudaGetDeviceProperties(&deviceProp, cudadev);
+	char deviceName[256];
+	cuDeviceGetName(deviceName, 256, cudadev)
     size_t freeMem, totalMem;
 	int computeMajor = 0;
 	int computeMinor = 0;
@@ -507,8 +507,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
     cudaDeviceGetAttribute(&sharedMemPerSM, cudaDevAttrMaxSharedMemoryPerMultiprocessor, cudadev);
     cudaDeviceGetAttribute(&sharedMemPerBlock, cudaDevAttrMaxSharedMemoryPerBlock, cudadev);
     cudaDeviceGetAttribute(&multiprocessorCount, cudaDevAttrMultiProcessorCount, cudadev);
-    cudaDeviceGetAttribute(&computeMajor, cudaDevAttrComputeCapabilityMajor, cudadev);
-    cudaDeviceGetAttribute(&computeMinor, cudaDevAttrComputeCapabilityMinor, cudadev);
+	cuDeviceComputeCapability(&computeMajor, &computeMinor, cudadev);
 
 	if (!checkex)
 	{
@@ -536,7 +535,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 
 		fprintf(stderr, "CUDA version: %d\n", cudaVersion);
 		fprintf(stderr, "CUDA Device number: %d\n", cudadev);
-		fprintf(stderr, "CUDA Device: %s %lluMB \n", deviceProp.name, totalGlobalMemory);
+		fprintf(stderr, "CUDA Device: %s %lluMB \n", deviceName, totalGlobalMemory);
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
 		fprintf(stderr, "CUDA Device driver: %s\n", drv_version_str);
 #endif
