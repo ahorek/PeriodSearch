@@ -23,7 +23,11 @@ Cc::Cc(const cudaDeviceProp& deviceProp)
 int Cc::GetSmxBlock() const
 {
 	auto result = 0;
-	if (cudaVersion >= 12000 && cudaVersion < 13000)
+	if (cudaVersion >= 13000 && cudaVersion < 14000)
+	{
+		result = GetSmxBlockCuda13();
+	}
+	else if (cudaVersion >= 12000 && cudaVersion < 13000)
 	{
 		result = GetSmxBlockCuda12();
 	}
@@ -39,10 +43,41 @@ int Cc::GetSmxBlock() const
 	{
 		result = GetSmxBlockCuda6();
 	}
+	else
+	{
+	    Exit();
+	}
 
 	return result;
 }
 
+int Cc::GetSmxBlockCuda13() const
+{
+	auto smxBlock = 0;
+	switch (deviceCcMajor)
+	{
+	case 12:
+		smxBlock = GetSmxBlockCc12(); // Blackwell
+		break;
+	case 10:
+		smxBlock = 16; // Fall back to safe value
+		break;
+	case 9:
+		smxBlock = GetSmxBlockCc9(); // Hopper
+		break;
+	case 8:
+		smxBlock = GetSmxBlockCc8(); // Ampere micro architecture CC 8.0, 8.6; Ada Lovelace - CC 8.9
+		break;
+	case 7:
+		smxBlock = GetSmxBlockCc7(); // 7.0, 7.2: Volta; 7.5: Turing 
+		break;
+	default:
+		Exit();
+		break;
+	}
+
+	return smxBlock;
+}
 
 int Cc::GetSmxBlockCuda12() const
 {
