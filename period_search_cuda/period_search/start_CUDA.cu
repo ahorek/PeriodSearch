@@ -496,13 +496,13 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 
 	// determine gridDim
 	char deviceName[256];
-	cuDeviceGetName(deviceName, 256, cudadev)
     size_t freeMem, totalMem;
 	int computeMajor = 0;
 	int computeMinor = 0;
 	int sharedMemPerSM = 0;
 	int sharedMemPerBlock = 0;
 	int multiprocessorCount = 0;
+	cuDeviceGetName(deviceName, 256, cudadev);
     cudaMemGetInfo(&freeMem, &totalMem);
     cudaDeviceGetAttribute(&sharedMemPerSM, cudaDevAttrMaxSharedMemoryPerMultiprocessor, cudadev);
     cudaDeviceGetAttribute(&sharedMemPerBlock, cudaDevAttrMaxSharedMemoryPerBlock, cudadev);
