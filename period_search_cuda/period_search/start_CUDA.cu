@@ -496,14 +496,26 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 
 	// determine gridDim
 	cudaDeviceProp deviceProp;
-
 	cudaGetDeviceProperties(&deviceProp, cudadev);
+    size_t freeMem, totalMem;
+	int computeMajor = 0;
+	int computeMinor = 0;
+	int sharedMemPerSM = 0;
+	int sharedMemPerBlock = 0;
+	int multiprocessorCount = 0;
+    cudaMemGetInfo(&freeMem, &totalMem);
+    cudaDeviceGetAttribute(&sharedMemPerSM, cudaDevAttrMaxSharedMemoryPerMultiprocessor, cudadev);
+    cudaDeviceGetAttribute(&sharedMemPerBlock, cudaDevAttrMaxSharedMemoryPerBlock, cudadev);
+    cudaDeviceGetAttribute(&multiprocessorCount, cudaDevAttrMultiProcessorCount, cudadev);
+    cudaDeviceGetAttribute(&computeMajor, cudaDevAttrComputeCapabilityMajor, cudadev);
+    cudaDeviceGetAttribute(&computeMinor, cudaDevAttrComputeCapabilityMinor, cudadev);
+
 	if (!checkex)
 	{
 		auto cudaVersion = CUDA_VERSION;
-		auto totalGlobalMemory = deviceProp.totalGlobalMem / 1048576;
-		auto sharedMemorySm = deviceProp.sharedMemPerMultiprocessor;
-		auto sharedMemoryBlock = deviceProp.sharedMemPerBlock;
+		auto totalGlobalMemory = totalMem / 1048576;
+		auto sharedMemorySm = sharedMemPerSM;
+		auto sharedMemoryBlock = sharedMemPerBlock;
 
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
 		char drv_version_str[NVML_DEVICE_PART_NUMBER_BUFFER_SIZE + 1];
@@ -528,10 +540,10 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 #if defined(CUDA_VERSION) && (CUDA_VERSION >= 10020)
 		fprintf(stderr, "CUDA Device driver: %s\n", drv_version_str);
 #endif
-		fprintf(stderr, "Compute capability: %d.%d\n", deviceProp.major, deviceProp.minor);
+		fprintf(stderr, "Compute capability: %d.%d\n", computeMajor, computeMinor);
 		//fprintf(stderr, "Device peak clock: %d MHz\n", devicePeakClock);
 		fprintf(stderr, "Shared memory per Block | per SM: %llu | %llu\n", sharedMemoryBlock, sharedMemorySm);
-		fprintf(stderr, "Multiprocessors: %d\n", deviceProp.multiProcessorCount);
+		fprintf(stderr, "Multiprocessors: %d\n", multiprocessorCount);
 
 	}
 
@@ -539,7 +551,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 	// NOTE: Also this https://stackoverflow.com/questions/4391162/cuda-determining-threads-per-block-blocks-per-grid
 	// NOTE: NB - Always set MaxUsedRegisters to 32 in order to achieve 100% SM occupancy (project's Configuration properties -> CUDA C/C++ -> Device)
 
-	Cc cc(deviceProp);
+	Cc cc(computeMajor, computeMinor);
 #ifndef CUDART_VERSION
 #error CUDART_VERSION Undefined!
 #endif
@@ -553,12 +565,12 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 	}
 
 	//CUDA_grid_dim = 2 * deviceProp.multiProcessorCount * smxBlock;
-	CUDA_grid_dim = deviceProp.multiProcessorCount * smxBlock;
+	CUDA_grid_dim = multiprocessorCount * smxBlock;
 
 	if (!checkex)
 	{
 		fprintf(stderr, "Resident blocks per multiprocessor: %d\n", smxBlock);
-		fprintf(stderr, "Grid dim: %d = %d*%d\n", CUDA_grid_dim, deviceProp.multiProcessorCount, smxBlock);
+		fprintf(stderr, "Grid dim: %d = %d*%d\n", CUDA_grid_dim, multiprocessorCount, smxBlock);
 		fprintf(stderr, "Block dim: %d\n", CUDA_BLOCK_DIM);
 	}
 

@@ -3,11 +3,11 @@
 #include <cuda_runtime_api.h>
 #include "ComputeCapability.h"
 
-Cc::Cc(const cudaDeviceProp& deviceProp)
+Cc::Cc(const int& computeMajor, const int& computeMinor)
 {
 	this->cudaVersion = CUDART_VERSION;
-	deviceCcMajor = deviceProp.major;
-	deviceCcMinor = deviceProp.minor;
+	deviceCcMajor = computeMajor;
+	deviceCcMinor = computeMinor;
 }
 
 #if defined (_MSC_VER) & (_MSC_VER < 1900) // Visual Studio 2012 or previous

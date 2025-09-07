@@ -25,7 +25,7 @@ public:
 
 	int cudaVersion;
 
-	explicit Cc(const cudaDeviceProp& deviceProp);
+	explicit Cc(const int& computeMajor, const int& computeMinor);
 	int GetSmxBlock() const;
 
 #if defined (_MSC_VER) & (_MSC_VER >= 1900) // Visual Studio 2013 or later
