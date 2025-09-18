@@ -1,0 +1,54 @@
+
+
+BUILD_DIR = build
+BOINC_DIR = ../../../boinc_src
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
+
+CXX = mips-openwrt-linux-g++
+
+CXXFLAGS = -march=mips32 -mtune=mips32 -O3 -std=c++2a -frecord-gcc-switches \
+	-DMIPS \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L /home/hector/Developments/openwrt/staging_dir/toolchain-mips_mips32_gcc-13.3.0_musl/lib \
+	-L.
+
+
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_openwrt_mips
+
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp \
+	conv.cpp \
+	covsrt.cpp curv.cpp \
+	ellfit.cpp EnumHelpers.cpp gauss_errc.cpp \
+	lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp \
+	mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
+
+$(TARGET): $(OBJ)
+
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
+
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Clean rule to remove compiled files
+clean:
+	rm -rf $(BUILD_DIR)
