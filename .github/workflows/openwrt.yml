@@ -27,7 +27,9 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+            path: PeriodSearch
 
       - name: Download and setup OpenWRT SDK
         run: |
@@ -45,6 +47,14 @@ jobs:
             echo "Toolchain not found, listing staging_dir contents:"
             ls -la openwrt/staging_dir/
           fi
+    
+      - name: Checkout BOINC
+        uses: actions/checkout@v5
+        with:
+          repository: BOINC/boinc
+          path: boinc_src
+
+      - run: ls
 
     #   - name: Prepare boinc libraries
     #     run: |
