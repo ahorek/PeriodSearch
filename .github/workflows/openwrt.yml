@@ -35,7 +35,7 @@ jobs:
         run: |
           # Download OpenWRT SDK for aarch64_cortex-a53
           wget https://downloads.openwrt.org/releases/24.10.3/targets/mediatek/mt7622/openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
-          tar -xJf openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          tar --zstd -xJf openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
           mv openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64 openwrt
 
       - name: Print toolchain info
