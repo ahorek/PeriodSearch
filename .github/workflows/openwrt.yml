@@ -72,21 +72,17 @@ jobs:
           sed -i 's/gcc-13\.3\.0/gcc-13.3.0/g' Makefile_OpenWRT_aarch64
           make -f Makefile_OpenWRT_aarch64 -j
 
-    #   - name: Run make
-    #     working-directory: ${{ matrix.working-directory }}
-    #     run: |
-    #       export STAGING_DIR=$PWD/../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-12.3.0_musl
-    #       # Update Makefile with correct paths and GCC version
-    #       sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/..\/boinc_src/' ${{ matrix.makefile }}
-    #       sed -i 's/gcc-13\.3\.0/gcc-12.3.0/g' ${{ matrix.makefile }}
-    #       make -f ${{ matrix.makefile }} -j
+      - name: Build period_search
+        working-directory: PeriodSearch/period_search_optimization_simd/period_search
+        run: |
+          export STAGING_DIR=$PWD/../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-12.3.0_musl
+          # Update Makefile with correct paths and GCC version
+          sed -i 's/gcc-13\.3\.0/gcc-13.3.0/g' Makefile_OpenWRT_aarch64
+          make -f Makefile_OpenWRT_aarch64 -j
 
-    #   - name: Upload artifact
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: ${{ matrix.variant }}_${{ matrix.os }}
-    #       retention-days: 1
-    #       path: |
-    #         ${{ matrix.working-directory }}/**/period_search_openwrt*
-    #         !${{ matrix.working-directory }}/**/*.o
-    #         !${{ matrix.working-directory }}/**/*.cpp
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenWRT_aarch64
+          retention-days: 1
+          path: PeriodSearch/period_search_optimization_simd/period_search/build/period_search_openwrt_aarch64
