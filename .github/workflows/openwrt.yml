@@ -59,18 +59,18 @@ jobs:
         run: |
           ./_autosetup
           # Configure BOINC for cross-compilation
-          export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-12.3.0_musl
+          export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
           export PATH="$STAGING_DIR/bin:$PATH"
           ./configure --disable-server --disable-client --disable-manager --build=aarch64-unknown-linux-gnu
           make -j
 
-    #   - name: Build ps_common library
-    #     run: |
-    #       cd ./period_search_common
-    #       export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-12.3.0_musl
-    #       # Update Makefile with correct GCC version
-    #       sed -i 's/gcc-13\.3\.0/gcc-12.3.0/g' Makefile_OpenWRT_aarch64
-    #       make -f Makefile_OpenWRT_aarch64 -j
+      - name: Build ps_common library
+        working-directory: ./PeriodSearch/period_search_common
+        run: |
+          export STAGING_DIR=$PWD/../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+          # Update Makefile with correct GCC version
+          sed -i 's/gcc-13\.3\.0/gcc-13.3.0/g' Makefile_OpenWRT_aarch64
+          make -f Makefile_OpenWRT_aarch64 -j
 
     #   - name: Run make
     #     working-directory: ${{ matrix.working-directory }}
