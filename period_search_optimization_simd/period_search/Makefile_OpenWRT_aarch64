@@ -27,7 +27,7 @@ CXXFLAGS = -march=armv8-a -O3 -std=c++2a -frecord-gcc-switches \
 	-L.
 
 # Define the target executable
-TARGET = $(BUILD_DIR)/period_search_openwrt_armv8_arm64 
+TARGET = $(BUILD_DIR)/period_search_openwrt_aarch64
 
 # Define the source files
 SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_asimd.cpp \
