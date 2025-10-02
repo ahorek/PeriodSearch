@@ -1,9 +1,36 @@
-# This should work on Linux.
+# This should work on Linux with OpenWRT SDK.
 #
-#	Prepare BOINC API as follows:	
-#		./_autosetup # Only first time
-#		./configure --disable-server --disable-client --disable-manager --build=aarch64-unknown-linux-gnu
-#		make
+# Compilation process:
+#
+# 1. Download OpenWRT SDK for aarch64_cortex-a53:
+#    wget https://downloads.openwrt.org/releases/24.10.3/targets/mediatek/mt7622/openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#    tar --zstd -xf openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#    mv openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64 ../../../openwrt
+#    rm openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#
+# 2. Prepare BOINC API:
+#    git clone --depth 1 -b client_release/8.2/8.2.4 https://github.com/BOINC/boinc.git ../../../boinc_src
+#    cd ../../../boinc_src
+#    ./_autosetup
+#    export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    export PATH="$STAGING_DIR/bin:$PATH"
+#    ./configure --disable-server --disable-client --disable-manager --host=aarch64-openwrt-linux-musl
+#    make -j
+#
+# 3. Build ps_common library:
+#    cd ../../period_search_common
+#    export STAGING_DIR=$PWD/../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    make -f Makefile_OpenWRT_aarch64 -j
+#
+# 4. Build period_search:
+#    cd ../period_search_optimization_simd/period_search
+#    export STAGING_DIR=$PWD/../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    make -f Makefile_OpenWRT_aarch64 -j
+#
+# Output binary: build/period_search_openwrt_aarch64
+# Target: ARM64 (armv8-a) with ASIMD/NEON optimizations
+# C Library: musl (lightweight, ideal for embedded systems)
+# Toolchain: aarch64-openwrt-linux-musl-g++ (GCC 13.3.0)
 
 
 BUILD_DIR = build
