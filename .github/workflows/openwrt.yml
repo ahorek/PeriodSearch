@@ -59,7 +59,7 @@ jobs:
           # Configure BOINC for cross-compilation
           export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
           export PATH="$STAGING_DIR/bin:$PATH"
-          ./configure --disable-server --disable-client --disable-manager --build=aarch64-openwrt-linux-musl
+          ./configure --disable-server --disable-client --disable-manager --host=aarch64-openwrt-linux-musl
           make -j
 
       - name: Build ps_common library
