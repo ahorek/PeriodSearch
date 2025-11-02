@@ -515,7 +515,7 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 				fprintf(stderr, "%s\n", nvmlErrorString(retval));
 				return 1;
 			} else if (CUDA_VERSION >= 13000 && atoi(drv_version_str) < 580) {
-				fprintf(stderr, "Please update your graphics driver\n");
+				fprintf(stderr, "Please update your graphics driver, as the current version appears to be old\n");
 			}
 		}
 #endif
