@@ -1,16 +1,7 @@
 
 name: x64 Linux
 
-on:
-  push:
-    branches:
-      - main
-      - dev
-
-  pull_request:
-    branches:
-      - main
-      - dev
+on: [push, pull_request]
 
 env:
   BOINC_DIR: ./boinc
@@ -40,6 +31,7 @@ jobs:
       - name: Print gcc version
         run: |
           gcc -v
+          cat /proc/cpuinfo
 
       - name: Prepare boinc libraries
         run: |
