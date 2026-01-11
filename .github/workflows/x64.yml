@@ -1,16 +1,7 @@
 
 name: x64 Linux
 
-on:
-  push:
-    branches:
-      - main
-      - dev
-
-  pull_request:
-    branches:
-      - main
-      - dev
+on: [push, pull_request]
 
 env:
   BOINC_DIR: ./boinc
@@ -30,9 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { variant: 'cuda', os: 'ubuntu-20.04', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
-          - { variant: 'opencl', os: 'ubuntu-20.04', working-directory: './period_search_opencl_amd/period_search', makefile: 'Makefile' }
-          - { variant: 'cpu', os: 'ubuntu-20.04', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+          - { variant: 'cuda', os: 'ubuntu-latest', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
+          - { variant: 'opencl', os: 'ubuntu-latest', working-directory: './period_search_opencl_amd/period_search', makefile: 'Makefile' }
+          - { variant: 'cpu', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
 
     steps:
       - uses: actions/checkout@v4
