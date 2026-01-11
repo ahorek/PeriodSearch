@@ -61,12 +61,12 @@ void CalcStrategyAvx512::curv(std::vector<double>& cg, globals &gl)
             _mm512_store_pd(&gl.Dg[i - 1][k - 1], avx_pom);
         }
 
-        if (k < n) {
-           int rem = n - k;
-           __mmask8 mask = _mm512_int2mask((1 << rem) - 1);
-           __m512d avx_pom = _mm512_maskz_loadu_pd(mask, &Dsph[i][k]);
-           avx_pom = _mm512_mask_mul_pd(avx_pom, mask, avx_pom, avx_g);
-           _mm512_mask_store_pd(&gl.Dg[i - 1][k - 1], mask, avx_pom);
+        int rem = n - (k - 1);  // Elements remaining
+        if (rem > 0) {
+            __mmask8 mask = _mm512_int2mask((1 << rem) - 1);
+            __m512d avx_pom = _mm512_maskz_loadu_pd(mask, &Dsph[i][k]);
+            avx_pom = _mm512_mask_mul_pd(avx_pom, mask, avx_pom, avx_g);
+            _mm512_mask_storeu_pd(&gl.Dg[i - 1][k - 1], mask, avx_pom);
         }
 
         //if (k <= n) gl.Dg[i - 1][k - 1] = g * Dsph[i][k];               //last odd value
