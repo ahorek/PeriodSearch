@@ -5,6 +5,7 @@
 #include <vector>
 #include "declarations.h"
 #include <immintrin.h>
+#include "bitcount.h"
 #include "CalcStrategyAvx.hpp"
 
 #if defined(__GNUC__)
@@ -48,35 +49,66 @@ void CalcStrategyAvx::gauss_errc(struct globals& gl, const int n, std::vector<do
 	//memset(ipiv, 0, n * sizeof(int));
 	std::vector<int> ipiv(n + 1 + 1, 0);
 
+	__m256d avx_ones = _mm256_set1_pd(1.0);
+	__m256d avx_zeros = _mm256_set1_pd(0.0);
+	__m256d sign_mask = _mm256_set1_pd(-0.0);
+	__m256d avx_big = _mm256_set1_pd(0.0);
 
 	for (i = 1; i <= n; i++)
 	{
 		big = 0.0;
-		for (j = 0; j < n; j++)
+		avx_big = _mm256_set1_pd(0.0);
+		for (j = 0; j < n; j++) {
 			if (ipiv[j] != 1)
 			{
-				for (k = 0; k < n; k++)
-				{
-					if (ipiv[k] == 0)
-					{
-						if (fabs(a[j][k]) >= big)
-						{
-							big = fabs(a[j][k]);
-							irow = j;
-							icol = k;
+                for (k = 0; k + 4 < n; k += 4) {
+					__m256d avx_ipiv = _mm256_set_pd(ipiv[k + 3], ipiv[k + 2], ipiv[k + 1], ipiv[k]);
+					__m256d avx_iserror = _mm256_cmp_pd(avx_ipiv, avx_ones, _CMP_GT_OS);
+                    if (_mm256_movemask_pd(avx_iserror)) {
+					    error = 1;
+					    return;
+					} else {
+						__m256d avx_iszero = _mm256_cmp_pd(avx_ipiv, avx_zeros, _CMP_GT_OS); // zero mask
+                        if (_mm256_movemask_pd(avx_iszero) == 15) { // all ipiv[k] == 1
+                            continue;
+                        }
+						__m256d avx_val = _mm256_load_pd(&a[j][k]);
+                        __m256d avx_abs = _mm256_andnot_pd(sign_mask, avx_val); // abs
+						__m256d avx_active = _mm256_or_pd(avx_abs, avx_iszero); // keep ipiv[k] == 0 values
+    					avx_active = _mm256_xor_pd(avx_active, avx_iszero); // set 0 for skipped values ipiv[k] == 1
+
+						__m256d tmp = _mm256_permute2f128_pd(avx_active, avx_active, 1); // maximum
+    					__m256d avx_max = _mm256_max_pd(avx_active, tmp);
+    					tmp = _mm256_permute_pd(avx_max, 0b0101);
+    					avx_max = _mm256_max_pd(avx_max, tmp);
+						
+    					__m256d cmp = _mm256_cmp_pd(avx_big, avx_max, _CMP_LE_OS);
+						if(_mm256_movemask_pd(cmp)) { // update new maximum and indexes
+						  __m256d avx_index = _mm256_cmp_pd(avx_active, avx_max, _CMP_EQ_OS); // icol mask, last max value
+   						  int mask = _mm256_movemask_pd(avx_index);
+   						  int idx = ctz(mask); // get icol index [0-3]
+						  icol = k + idx;
+						  irow = j;
+						  avx_big = avx_max;
 						}
 					}
-					else if (ipiv[k] > 1)
-					{
-						//deallocate_vector((void*)indxc);
-						//deallocate_vector((void*)indxr);
-						//deallocate_vector((void*)ipiv);
-						error = 1;
+					big = _mm256_cvtsd_f64(avx_big);
+                }
 
-						return;
-					}
-				}
+                for (; k < n; k++) {
+                    if (ipiv[k] == 0) {
+                        if (fabs(a[j][k]) >= big) {
+                            big = fabs(a[j][k]);
+                            irow = j;
+                            icol = k;
+                        }
+                    } else if (ipiv[k] > 1) {
+                        error = 1;
+                        return;
+                    }
+                }
 			}
+		}
 		++(ipiv[icol]);
 		if (irow != icol)
 		{

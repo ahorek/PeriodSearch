@@ -53,7 +53,6 @@ void CalcStrategyAvx512::curv(std::vector<double>& cg, globals &gl)
 		gl.Area[i - 1] = gl.Darea[i - 1] * g;
         const __m512d avx_g = _mm512_set1_pd(g);
 
-        //const int cycle = (n >> 2) << 2;
         for (k = 1; k <= n - 7; k += 8)
         {
             __m512d avx_pom = _mm512_loadu_pd(&Dsph[i][k]);
@@ -61,17 +60,13 @@ void CalcStrategyAvx512::curv(std::vector<double>& cg, globals &gl)
             _mm512_store_pd(&gl.Dg[i - 1][k - 1], avx_pom);
         }
 
-        int rem = n - (k - 1);  // Elements remaining
+        int rem = n - (k - 1);
         if (rem > 0) {
             __mmask8 mask = _mm512_int2mask((1 << rem) - 1);
             __m512d avx_pom = _mm512_maskz_loadu_pd(mask, &Dsph[i][k]);
             avx_pom = _mm512_mask_mul_pd(avx_pom, mask, avx_pom, avx_g);
             _mm512_mask_storeu_pd(&gl.Dg[i - 1][k - 1], mask, avx_pom);
         }
-
-        //if (k <= n) gl.Dg[i - 1][k - 1] = g * Dsph[i][k];               //last odd value
-        //if (k + 1 <= n) gl.Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1];   //last odd value
-        //if (k + 2 <= n) gl.Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2];   //last odd value
     }
 
     // For Unit tests
