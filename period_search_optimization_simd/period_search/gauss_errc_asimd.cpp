@@ -91,7 +91,7 @@ void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<
 						uint64x2_t cmp_mask = vceqq_f64(abs_vec, vdupq_n_f64(max_val));
 						icol = k;
 						if (vgetq_lane_u64(cmp_mask, 1)) {
-							icol++
+							icol++;
 						}
 						irow = j;
 						big = max_val;
