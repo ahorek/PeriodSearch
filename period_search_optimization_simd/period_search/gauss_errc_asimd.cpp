@@ -52,8 +52,8 @@ void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<
 	std::vector<int> ipiv(n + 1 + 1, 0);
 
 	float64x2_t avx_ones = vdupq_n_f64(1.0);
-    float64x2_t avx_zeros = vdupq_n_f64(0.0);
-    float64x2_t avx_big = vdupq_n_f64(0.0);
+	float64x2_t avx_zeros = vdupq_n_f64(0.0);
+	float64x2_t avx_big = vdupq_n_f64(0.0);
 
 	for (i = 1; i <= n; i++)
 	{
@@ -69,23 +69,22 @@ void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<
 					ipiv_vec = vsetq_lane_f64((double)ipiv[k+1], ipiv_vec, 1);
 
 					uint64x2_t error_mask = vcgtq_f64(ipiv_vec, avx_ones);
-					if (vmaxvq_f64(error_mask)) {
+					if (vgetq_lane_u64(error_mask, 0) | vgetq_lane_u64(error_mask, 1)) {
 						error = 1;
 						return;
 					}
 
 					uint64x2_t zero_mask = vceqq_f64(ipiv_vec, avx_zeros);
-					if (vmaxvq_f64(zero_mask) == 0) {
+					if ((vgetq_lane_u64(zero_mask, 0) | vgetq_lane_u64(zero_mask, 1)) == 0) {
 						continue;
 					}
 
 					float64x2_t val_vec = vld1q_f64(&a[j][k]);
 					float64x2_t abs_vec = vabsq_f64(val_vec);
 					abs_vec = vbslq_f64(zero_mask, abs_vec, avx_zeros);
-					float64_t max_val = vmaxvq_f64(abs_vec);
-					float64_t current_big = vgetq_lane_f64(avx_big, 0);
+					double max_val = vmaxvq_f64(abs_vec);
 
-					if (max_val >= current_big) {
+					if (max_val >= big) {
 						avx_big = vsetq_lane_f64(max_val, avx_big, 0);
 
 						uint64x2_t cmp_mask = vceqq_f64(abs_vec, vdupq_n_f64(max_val));
