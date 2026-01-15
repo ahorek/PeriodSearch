@@ -8,7 +8,7 @@ PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 CXX = g++
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s -frecord-gcc-switches \
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s -frecord-gcc-switches -static \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
