@@ -75,7 +75,8 @@ void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<
 
 					uint64x2_t error_mask = vcgtq_f64(ipiv_vec, avx_ones);
 					if (vmaxvq_f64((float64x2_t)error_mask)) {
-						return 1;
+						error = 1;
+						return;
 					}
 
 					float64x2_t val_vec = vld1q_f64(&a[j][k]);
