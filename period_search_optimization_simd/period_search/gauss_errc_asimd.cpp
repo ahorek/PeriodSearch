@@ -68,15 +68,14 @@ void CalcStrategyAsimd::gauss_errc(struct globals& gl, const int n, std::vector<
 					ipiv_vec = vsetq_lane_f64((double)ipiv[k], ipiv_vec, 0);
 					ipiv_vec = vsetq_lane_f64((double)ipiv[k+1], ipiv_vec, 1);
 
-					uint64x2_t error_mask = vcgtq_f64(ipiv_vec, avx_ones);
-					if (vgetq_lane_u64(error_mask, 0) | vgetq_lane_u64(error_mask, 1)) {
-						error = 1;
-						return;
+					uint64x2_t zero_mask = vceqq_f64(ipiv_vec, avx_zeros);
+					if (vmaxvq_f64((float64x2_t)zero_mask) == 0) {
+						continue;
 					}
 
-					uint64x2_t zero_mask = vceqq_f64(ipiv_vec, avx_zeros);
-					if ((vgetq_lane_u64(zero_mask, 0) | vgetq_lane_u64(zero_mask, 1)) == 0) {
-						continue;
+					uint64x2_t error_mask = vcgtq_f64(ipiv_vec, avx_ones);
+					if (vmaxvq_f64((float64x2_t)error_mask)) {
+						return 1;
 					}
 
 					float64x2_t val_vec = vld1q_f64(&a[j][k]);
