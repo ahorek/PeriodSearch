@@ -249,7 +249,10 @@ int main(int argc, char** argv)
     //wiringPiSetupSys();
     //pinMode(LED, OUTPUT);
 
-    int retval = boinc_init();
+    BOINC_OPTIONS options;
+	boinc_options_defaults(options);
+	options.normal_thread_priority = true;
+    int retval = boinc_init(&options);
     if (retval)
     {
         fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
