@@ -1,0 +1,89 @@
+
+name: x64 Linux
+
+on: [push, pull_request]
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    name: >-
+      ${{ matrix.variant }} / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'cuda', os: 'ubuntu-latest', working-directory: './period_search_cuda/period_search', makefile: 'Makefile' }
+          - { variant: 'opencl', os: 'ubuntu-latest', working-directory: './period_search_opencl_amd/period_search', makefile: 'Makefile' }
+          - { variant: 'cpu', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Print gcc version
+        run: |
+          sudo apt-get install mingw-w64 g++-mingw-w64-x86-64-win32
+          x86_64-w64-mingw32-gcc -v
+
+      - name: Prepare boinc libraries
+        run: |
+          export CC=x86_64-w64-mingw32-gcc
+          export CXX=x86_64-w64-mingw32-g++
+          git clone --depth 1 https://github.com/BOINC/boinc.git
+          cd ./boinc
+          sh ./_autosetup
+          sh ./configure --host=x86_64-w64-mingw32 --with-boinc-platform="windows_x86_64" --with-boinc-alt-platform="windows_intelx86" --disable-server --disable-client --disable-manager CXXFLAGS="-O3 " --disable-shared --enable-static
+          make -j
+
+      - name: Install opencl
+        if: success() && matrix.variant == 'opencl'
+        run: |
+          sudo apt-get install opencl-headers ocl-icd-opencl-dev pocl-opencl-icd
+
+          sed -i 's/OPENCL_PATH\s*=.*$/OPENCL_PATH = \/usr\/include\/CL/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+          sed -i 's/OPENCL_LIB_PATH\s*=.*$/OPENCL_LIB_PATH = \/usr\/lib\/x86_64-linux-gnu/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+
+      - name: Install cuda
+        if: success() && matrix.variant == 'cuda'
+        run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get -y install cuda-toolkit
+
+          sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+
+      - name: Build ps_common library
+        run: |
+          export CC=x86_64-w64-mingw32-gcc
+          export CXX=x86_64-w64-mingw32-g++
+          cd ./period_search_common
+          sed -i 's/CXX\s*=.*$/CXX = x86_64-w64-mingw32-g++/' Makefile
+          make -f Makefile -j
+          
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          export CC=x86_64-w64-mingw32-gcc
+          export CXX=x86_64-w64-mingw32-g++
+          sed -i 's/CXX\s*=.*$/CXX = x86_64-w64-mingw32-g++/' Makefile
+          sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}_${{ matrix.os }}
+          retention-days: 1
+          path: |
+            ${{ matrix.working-directory }}/**/period_search_BOINC*
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o
