@@ -49,7 +49,7 @@ CC=g++
 CXX=g++
 OPTFLAGS=-O3 -s
 CFLAGS=$(OPTFLAGS) -Wall
-LDFLAGS=-lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common -static-libgcc -static-libstdc++
+LDFLAGS=-lm -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common -static-libgcc -static-libstdc++
 
 MY_LIBS=$(addprefix $(BUILD_DIR)/, trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o curv.o blmatrix.o conv.o matrix.o \
 	bright.o gauss_errc.o pscuda.device-link.o start_CUDA.o curve2_CUDA.o Start.o ComputeCapability.o)
@@ -64,8 +64,8 @@ libstdc++.a:
 # libcudart.so:
 # 	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
 
-libcuda.lib:
-	ln -s $(CUDA_PATH)/libcuda.lib libcuda.lib
+cuda.lib:
+	ln -s $(CUDA_PATH)/cuda.lib cuda.lib
 
 nvml.lib:
 	ln -f -s $(CUDA_PATH)/nvml.lib nvml.lib
@@ -90,11 +90,11 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
-	libcuda.lib nvml.lib $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/cudart_static.lib
+	cuda.lib nvml.lib $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/cudart_static.lib
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(CUDA_PATH)/cudart_static.lib \
-	$(BOINC_API_DIR)/libboinc_api.a libcuda.lib nvml.lib \
+	$(BOINC_API_DIR)/libboinc_api.a cuda.lib nvml.lib \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 
 # libcudart.so
