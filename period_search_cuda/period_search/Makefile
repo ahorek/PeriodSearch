@@ -63,21 +63,21 @@ libstdc++.a:
 # libcudart.so:
 # 	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
 
-libcuda.so:
-	ln -s $(CUDA_PATH)/lib64/stubs/libcuda.so libcuda.so
+libcuda.lib:
+	ln -s $(CUDA_PATH)/libcuda.lib libcuda.lib
 
-libnvidia-ml.so:
-	ln -f -s $(CUDA_PATH)/lib64/stubs/libnvidia-ml.so libnvidia-ml.so
+nvml.lib:
+	ln -f -s $(CUDA_PATH)/nvml.lib nvml.lib
 
 # clean:
 # 	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcudart.so libcuda.so
 clean:
-	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcuda.so
+	/bin/rm -f $(BUILD_DIR)/* libstdc++.a
 
 # distclean:
 # 	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcudart.so libcuda.so
 distclean:
-	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcuda.so
+	/bin/rm -f $(BUILD_DIR)/* libstdc++.a
 
 install: $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release
 
@@ -89,11 +89,11 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
-	libcuda.so libnvidia-ml.so $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/lib64/libcudart_static.a
+	libcuda.lib nvml.lib $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/lib64/libcudart_static.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(CUDA_PATH)/lib64/libcudart_static.a \
-	$(BOINC_API_DIR)/libboinc_api.a  libcuda.so libnvidia-ml.so \
+	$(BOINC_API_DIR)/libboinc_api.a  libcuda.lib nvml.lib \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 
 # libcudart.so
