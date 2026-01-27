@@ -3,7 +3,7 @@
 //#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 //#define __CL_ENABLE_EXCEPTIONS - redefinition warning
 
-#include <CL/cl.hpp>
+#include <cl/cl.hpp>
 #include "globals.h"
 #include <vector>
 #include <iostream>

@@ -22,7 +22,7 @@ typedef unsigned int uint;
 
 
 // #include <CL/opencl.hpp>
-#include <CL/cl.h>
+#include <cl/cl.h>
 #include "opencl_helper.h"
 
 // https://stackoverflow.com/questions/18056677/opencl-double-precision-different-from-cpu-double-precision

@@ -1,5 +1,5 @@
 #pragma once
-#include <CL/cl.h>
+#include <cl/cl.h>
 #include "mfile.h"
 
 
