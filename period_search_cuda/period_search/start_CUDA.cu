@@ -6,11 +6,11 @@
 //#define _WIN32_WINNT _WIN32_WINNT_WINXP 
 //#define NTDDI_VERSION NTDDI_WINXPSP3 
 
-#include <Windows.h>
+#include <windows.h>
 #include <math.h>
 //#include <math_functions.h>
 #include <cuda.h>
-#include <Dbghelp.h>
+#include <dbghelp.h>
 //#include <wtypes.h> 
 //#include <unknwn.h> 
 //#include <objbase.h>

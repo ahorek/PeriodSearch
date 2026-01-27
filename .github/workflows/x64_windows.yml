@@ -1,5 +1,5 @@
 
-name: x64 Linux
+name: x64 Windows
 
 on: [push, pull_request]
 

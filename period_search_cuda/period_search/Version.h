@@ -6,7 +6,7 @@
 	const int _build = 2;
 	const int _revision = 1;
 #else // _WIN32
-#include "Windows.h"
+#include "windows.h"
 #endif
 
 
