@@ -31,7 +31,7 @@ CXXFLAGS = -O2 -w -s -std=c++17 -m64 -fstack-protector-strong -fstack-clash-prot
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
-	-I$(OPENCL_PATH)/include \
+	-I$(OPENCL_PATH) \
 	-L$(OPENCL_LIB_PATH) \
 	-L /usr/X11R6/lib \
 	-L. 
@@ -47,7 +47,7 @@ CFLAGS=$(OPTFLAGS) \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
-	-I$(OPENCL_PATH)/include \
+	-I$(OPENCL_PATH) \
 	-L$(OPENCL_LIB_PATH) \
 	-L. 
 
@@ -72,22 +72,22 @@ $(OBJ_DIR)/libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
 
 $(OBJ_DIR)/libOpenCL.a:
-	ln -s $(OPENCL_LIB_PATH)/libOpenCL.a $(OBJ_DIR)/libOpenCL.a
+	ln -s $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
 
 clean:
-	/bin/rm -f $(OBJ_DIR)/$(PROGS) *.o $(OBJ_DIR)/*.o $(OBJ_DIR)/libstdc++.a $(OBJ_DIR)/libOpenCL.a
+	/bin/rm -f $(OBJ_DIR)/$(PROGS) *.o $(OBJ_DIR)/*.o $(OBJ_DIR)/libstdc++.a $(OBJ_DIR)/OpenCL.lib
 
 distclean:
-	/bin/rm -f $(OBJ_DIR)/$(PROGS) $(OBJ_DIR)/*.o $(OBJ_DIR)/libstdc++.a $(OBJ_DIR)/libOpenCL.a
+	/bin/rm -f $(OBJ_DIR)/$(PROGS) $(OBJ_DIR)/*.o $(OBJ_DIR)/libstdc++.a $(OBJ_DIR)/OpenCL.lib
 
 install: period_search_BOINC_linux_amd_opencl_110_x64_Release
 
 # specify library paths explicitly (rather than -l)
 # because otherwise you might get a version in /usr/lib etc.
 
-$(EXECUTABLE_FILES): period_search_BOINC.cpp  $(OBJECT_FILES) $(OBJ_DIR)/libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a $(OBJ_DIR)/libOpenCL.a
+$(EXECUTABLE_FILES): period_search_BOINC.cpp  $(OBJECT_FILES) $(OBJ_DIR)/libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a $(OBJ_DIR)/OpenCL.lib
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJECT_FILES) $< $(OBJ_DIR)/libstdc++.a -pthread \
-	$(BOINC_API_DIR)/libboinc_api.a $(OBJ_DIR)/libOpenCL.a \
+	$(BOINC_API_DIR)/libboinc_api.a $(OBJ_DIR)/OpenCL.lib \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 	@echo "Build successful!"
 
