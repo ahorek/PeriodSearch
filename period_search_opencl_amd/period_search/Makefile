@@ -51,7 +51,7 @@ CFLAGS=$(OPTFLAGS) \
 	-L$(OPENCL_LIB_PATH) \
 	-L. 
 
-LDFLAGS=-lm -lrt -Xlinker -rpath -m64 .
+LDFLAGS=-lm -Xlinker -rpath -m64 .
 
 MY_LIBS=$(OBJ_DIR)/trifac.o $(OBJ_DIR)/areanorm.o $(OBJ_DIR)/sphfunc.o $(OBJ_DIR)/ellfit.o $(OBJ_DIR)/ludcmp.o $(OBJ_DIR)/lubksb.o\
 	$(OBJ_DIR)/covsrt.o $(OBJ_DIR)/memory.o $(OBJ_DIR)/host_dot_product.o\
@@ -72,6 +72,7 @@ $(OBJ_DIR)/libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
 
 $(OBJ_DIR)/OpenCL.lib:
+    ls -l $(OPENCL_LIB_PATH)
 	ln -s $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
 
 clean:

@@ -26,6 +26,7 @@ CXXFLAGS = -O3 -s \
 	-I$(BOINC_API_DIR) \
 	-I$(PS_COMMON_DIR) \
 	-I$(CUDA_PATH)/include \
+	-I/usr/local/cuda/include \
 	-L$(PS_COMMON_LIB_DIR) \
 	-L /usr/X11R6/lib \
 	-L.
@@ -89,18 +90,18 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
-	libcuda.lib nvml.lib $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/lib64/libcudart_static.a
+	libcuda.lib nvml.lib $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/cudart_static.lib
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
-	$(CUDA_PATH)/lib64/libcudart_static.a \
-	$(BOINC_API_DIR)/libboinc_api.a  libcuda.lib nvml.lib \
+	$(CUDA_PATH)/cudart_static.lib \
+	$(BOINC_API_DIR)/libboinc_api.a libcuda.lib nvml.lib \
 	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
 
 # libcudart.so
 
 # Compilation rules for CUDA and C++ files
 $(BUILD_DIR)/%.o: %.cu
-	$(CUDA_PATH)/bin/nvcc $(OPTIMIZATION) \
+	/usr/local/cuda/bin/nvcc $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile $< -o $@
@@ -110,7 +111,7 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # Special rule for pscuda.device-link.o
 $(BUILD_DIR)/pscuda.device-link.o: $(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
-	$(CUDA_PATH)/bin/nvcc -dlink -o $@ $(OPTIMIZATION) \
+	/usr/local/cuda/bin/nvcc -dlink -o $@ $(OPTIMIZATION) \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		$(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
