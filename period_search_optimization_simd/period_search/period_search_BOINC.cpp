@@ -59,8 +59,8 @@
 
 #ifdef _WIN32
 #include "boinc_win.h"
-#include <Shlwapi.h>
-#include "WinBase.h"
+#include <shlwapi.h>
+#include "winbase.h"
 #else
 #include "config.h"
 #include <cstdio>
