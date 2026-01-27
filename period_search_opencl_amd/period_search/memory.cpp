@@ -23,7 +23,7 @@
 #endif
 #endif
 
-#include <cl/cl.h>
+#include <CL/cl.h>
 
 #include <stdlib.h>
 #include <stdio.h>

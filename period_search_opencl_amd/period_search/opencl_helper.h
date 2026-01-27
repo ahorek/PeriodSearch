@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include <cl/cl.h>
+#include <CL/cl.h>
 
 #define CL_WRAPPER(FUNC) \
     { \

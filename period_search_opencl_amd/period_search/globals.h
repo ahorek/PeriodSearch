@@ -16,7 +16,7 @@
 #endif
 #endif
 
-#include <cl/cl.h>
+#include <CL/cl.h>
 
 #include <cstdio>
 #include "constants.h"

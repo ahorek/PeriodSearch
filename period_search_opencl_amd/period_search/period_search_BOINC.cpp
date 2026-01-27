@@ -62,7 +62,7 @@
 #pragma warning( push )
 #pragma warning( disable : 4996 )
 
-#include <cl/cl.h>
+#include <CL/cl.h>
 //#include "stdafx.h"
 #include <cstdio>
 #include <cstdlib>

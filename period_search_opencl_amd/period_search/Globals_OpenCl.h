@@ -3,7 +3,7 @@
 //#define __CL_ENABLE_EXCEPTIONS
 #pragma pack(8)
 
-#include <cl/cl.h>
+#include <CL/cl.h>
 //#include <CL/cl.hpp>
 #include "constants.h"
 #include <vector>
