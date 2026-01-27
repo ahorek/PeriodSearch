@@ -71,7 +71,7 @@ all: $(EXECUTABLE_FILES)
 $(OBJ_DIR)/libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
 
-$(OBJ_DIR)/libOpenCL.a:
+$(OBJ_DIR)/OpenCL.lib:
 	ln -s $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
 
 clean:
