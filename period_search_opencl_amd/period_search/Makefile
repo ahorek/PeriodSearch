@@ -72,7 +72,9 @@ $(OBJ_DIR)/libstdc++.a:
 	ln -s `g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
 
 $(OBJ_DIR)/OpenCL.lib:
-	ln -s $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
+	cp $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
+
+# ln -s $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
 
 clean:
 	/bin/rm -f $(OBJ_DIR)/$(PROGS) *.o $(OBJ_DIR)/*.o $(OBJ_DIR)/libstdc++.a $(OBJ_DIR)/OpenCL.lib
