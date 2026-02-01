@@ -59,7 +59,7 @@ PROGS = $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release
 all: $(BUILD_DIR) $(PROGS)
 
 libstdc++.a:
-	ln -s `g++ -print-file-name=libstdc++.a`
+	ln -s `x86_64-w64-mingw32-g++ -print-file-name=libstdc++.a`
 
 # libcudart.so:
 # 	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so

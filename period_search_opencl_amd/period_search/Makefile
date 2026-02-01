@@ -69,7 +69,7 @@ EXECUTABLE_FILES = $(PROGS:%=$(OBJ_DIR)/%)
 all: $(EXECUTABLE_FILES)
 
 $(OBJ_DIR)/libstdc++.a:
-	ln -s `g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
+	ln -s `x86_64-w64-mingw32-g++ -print-file-name=libstdc++.a` $(OBJ_DIR)/libstdc++.a
 
 $(OBJ_DIR)/OpenCL.lib:
 	cp $(OPENCL_LIB_PATH)/OpenCL.lib $(OBJ_DIR)/OpenCL.lib
