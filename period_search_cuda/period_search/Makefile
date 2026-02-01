@@ -101,7 +101,7 @@ $(BUILD_DIR)/period_search_BOINC_cuda11800_v10222_Release: $(BUILD_DIR)/period_s
 
 # Compilation rules for CUDA and C++ files
 $(BUILD_DIR)/%.o: %.cu
-	/usr/local/cuda/bin/nvcc $(OPTIMIZATION) --compiler-bindir=/usr/bin/x86_64-w64-mingw32-gcc \
+	/usr/local/cuda/bin/nvcc $(OPTIMIZATION) --compiler-bindir=/usr/bin/x86_64-w64-mingw32-gcc --allow-unsupported-compiler \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		--compile $< -o $@
@@ -111,7 +111,7 @@ $(BUILD_DIR)/%.o: %.cpp
 
 # Special rule for pscuda.device-link.o
 $(BUILD_DIR)/pscuda.device-link.o: $(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
-	/usr/local/cuda/bin/nvcc -dlink -o $@ $(OPTIMIZATION) --compiler-bindir=/usr/bin/x86_64-w64-mingw32-gcc \
+	/usr/local/cuda/bin/nvcc -dlink -o $@ $(OPTIMIZATION) --compiler-bindir=/usr/bin/x86_64-w64-mingw32-gcc --allow-unsupported-compiler \
 		$(NVCCFLAGS) \
 		--compiler-options="$(CXXFLAGS)" \
 		$(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
