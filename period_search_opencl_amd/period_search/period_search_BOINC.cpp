@@ -661,13 +661,13 @@ int main(int argc, char** argv)
 		conwR = conw / escl / escl;
 		newConw = 0;
 		boinc_fraction_done(0.0001); //signal start
-#if _DEBUG
+//#if _DEBUG
 		std::time_t time = std::time(nullptr);   // get time now
 		auto now = std::localtime(&time);
 		printf("%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
 		fprintf(stderr, "%02d:%02d:%02d | Fraction done: 0.0001%% (start signal)\n", now->tm_hour, now->tm_min, now->tm_sec);
 		//fprintf(stderr, "WU cpu time: %f\n", aid.wu_cpu_time);
-#endif
+//#endif
 	}
 	while ((newConw != 1) && ((conwR * escl * escl) < 10.0))
 	{
