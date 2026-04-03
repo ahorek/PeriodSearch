@@ -624,6 +624,7 @@ int main(int argc, char** argv)
         std::cerr << "Application: " << argv[0] << std::endl;
 #endif
         std::cerr << "Version: " << major << "." << minor << "." << build << "." << revision << std::endl;
+        std::cerr << "Compiled with: " << GetCompilerInfo() << std::endl;
     }
 
 #if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64) || defined __APPLE__

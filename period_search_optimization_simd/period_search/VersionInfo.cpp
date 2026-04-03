@@ -1,4 +1,7 @@
 #include "stdafx.h"
+#include <string>
+#include <sstream>
+
 #if defined __GNUC__
 // TODO: This has be extracted in a header file!
 const int _major = 102;
@@ -9,6 +12,23 @@ const int _revision = 1;
 #include <windows.h>
 #include <tchar.h>
 #endif
+
+std::string GetCompilerInfo()
+{
+    std::ostringstream s;
+    #if defined(__clang__)
+      s << "clang-" << __clang_major__ << "." << __clang_minor__ << "." << __clang_patchlevel__;
+    #elif defined(__GNUC__)
+      s << "gcc-" << __GNUC__ << "." << __GNUC_MINOR__ << "." << __GNUC_PATCHLEVEL__;
+    #elif defined(_MSC_VER)
+      s << "msvc-" << _MSC_VER / 100 << "." << _MSC_VER % 100;
+    #elif defined(__VERSION__)
+      s << __VERSION__;
+    #else
+      s << "unknown compiler";
+    #endif
+    return s.str();
+}
 
 #if !defined __GNUC__ && defined _WIN32
 /**
