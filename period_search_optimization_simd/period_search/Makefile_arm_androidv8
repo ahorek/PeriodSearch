@@ -40,7 +40,7 @@ SRC = areanorm.cpp blmatrix.cpp bright.cpp \
 	lubksb.cpp ludcmp.cpp matrix.cpp \
 	mrqcof.cpp \
 	mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
-	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp benchmark.cpp
 
 # Define the object files
 OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
