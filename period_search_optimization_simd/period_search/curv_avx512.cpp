@@ -62,7 +62,7 @@ void CalcStrategyAvx512::curv(std::vector<double>& cg, globals &gl)
 
         int rem = n - (k - 1);
         if (rem > 0) {
-            __mmask8 mask = _mm512_int2mask((1 << rem) - 1);
+            __mmask8 mask = (__mmask8)((1u << rem) - 1);
             __m512d avx_pom = _mm512_maskz_loadu_pd(mask, &Dsph[i][k]);
             avx_pom = _mm512_mask_mul_pd(avx_pom, mask, avx_pom, avx_g);
             _mm512_mask_storeu_pd(&gl.Dg[i - 1][k - 1], mask, avx_pom);

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 #include <vector>
 #include <immintrin.h>
 #include "globals.h"
@@ -65,6 +66,23 @@ void CalcStrategyFma::curv(std::vector<double>& cg, globals &gl)
         if (k + 1 <= n) gl.Dg[i - 1][k - 1 + 1] = g * Dsph[i][k + 1];   //last odd value
         if (k + 2 <= n) gl.Dg[i - 1][k - 1 + 2] = g * Dsph[i][k + 2];   //last odd value
     }
+
+    //for (int p = 0; p < Numfac; p++)
+    //{
+    //    std::cout << "Area[" << p << "]: " << gl.Area[p] << std::endl;
+    //}
+    //exit(0);
+
+    
+    /*for (int q = 0; q <= Ncoef; q++)
+    {
+    	for (int p = 0; p <= Numfac; p++)
+        {
+			std::cout << "Dg[" << p << "][" << q << "]: " << gl.Dg[p][q] << std::endl;
+        }
+    }
+        
+    exit(0);*/
 
     // For Unit tests
     /*printf("\nDg[%d][%d:\n", 288, 24);

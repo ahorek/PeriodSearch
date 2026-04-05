@@ -140,7 +140,7 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 		int rem = n - (l - 1);
         if (rem > 0) {
 		    int rem = n - l;
-            __mmask8 mask = _mm512_int2mask((1 << rem) - 1);
+            __mmask8 mask = (__mmask8)((1 << rem) - 1);
             __m512d avx_a1 = _mm512_maskz_loadu_pd(mask, &a[icol][l]);
 		    avx_a1 = _mm512_mask_mul_pd(avx_a1, mask, avx_a1, avx_pivinv);
 		    _mm512_mask_storeu_pd(&a[icol][l], mask, avx_a1);
@@ -165,7 +165,7 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 				int rem = n - (l - 1);
         		if (rem > 0) {
             		int rem = n - l;
-                	__mmask8 mask = _mm512_int2mask((1 << rem) - 1);
+                	__mmask8 mask = (__mmask8)((1u << rem) - 1);
                     __m512d avx_a = _mm512_maskz_loadu_pd(mask, &a[ll][l]);
                     __m512d avx_aa = _mm512_maskz_loadu_pd(mask, &a[icol][l]);
                 	avx_a = _mm512_mask_fnmadd_pd(avx_aa, mask, avx_dum, avx_a);

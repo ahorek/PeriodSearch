@@ -215,6 +215,45 @@ std::vector<double> da;
 
 int main(int argc, char** argv)
 {
+
+
+    GetSupportedSIMDs();
+
+    SIMDEnum useOptimization = SIMDEnum::Undefined;
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--optimization") == 0 && i + 1 < argc)
+        {
+            auto index = atoi(argv[++i]);
+            useOptimization = static_cast<SIMDEnum>(index);
+            std::cerr << "Manual Optimization Override: " << getSIMDEnumName(useOptimization) << std::endl;
+        }
+    }
+
+    useOptimization = useOptimization == SIMDEnum::Undefined
+        ? GetBestSupportedSIMD()
+        : CheckSupportedSIMDs(useOptimization);
+
+    SetOptimizationStrategy(useOptimization);
+
+
+
+
+
+
+
+
+
+    RunBenchmark();
+    exit(0);
+
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--benchmark") == 0)
+        {
+            RunBenchmark();
+            return 0;
+        }
+    }
+
     int nlines = 0, ntestperiods, checkpoint_exists, n_start_from;
     char input_path[512], output_path[512], chkpt_path[512], buf[256];
     MFILE out;
@@ -637,6 +676,7 @@ int main(int argc, char** argv)
 #endif
 
     // --- Set desired CPU SIMD optimization ---
+    /*
     GetSupportedSIMDs();
 
     SIMDEnum useOptimization = SIMDEnum::Undefined;
@@ -648,6 +688,7 @@ int main(int argc, char** argv)
             std::cerr << "Manual Optimization Override: " << getSIMDEnumName(useOptimization) << std::endl;
         }
     }
+        */
 
     // TEST
     //CPUopt.hasAVX512dq = false;
@@ -658,11 +699,13 @@ int main(int argc, char** argv)
     //CPUopt.hasSSE2 = false;
     //CPUopt.hasASIMD = false;
 
+    /*
     useOptimization = useOptimization == SIMDEnum::Undefined
         ? GetBestSupportedSIMD()
         : CheckSupportedSIMDs(useOptimization);
 
     SetOptimizationStrategy(useOptimization);
+    */
 
     // -------------
 

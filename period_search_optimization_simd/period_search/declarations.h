@@ -74,4 +74,5 @@ void GetSupportedSIMDs();
 SIMDEnum CheckSupportedSIMDs(SIMDEnum simd);
 void SetOptimizationStrategy(SIMDEnum useOptimization);
 const std::string getSIMDEnumName(SIMDEnum simdEnum);
+void RunBenchmark();
 //void prepareLcData(struct globals &gl, const char *filename);

@@ -2,7 +2,7 @@
 
 # Define directories
 BUILD_DIR = build
-BOINC_DIR = ../../../boinc_src
+BOINC_DIR = c:\moje\boinc\boinc
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
@@ -13,7 +13,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 # Define compiler and flags
 CXX = g++
-CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -g -mavx512f -mavx512dq -static \
+CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -g -static \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
@@ -33,7 +33,7 @@ SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_avx.cpp bright_avx512.cpp brig
 	gauss_errc_avx512.cpp gauss_errc_sse2.cpp gauss_errc_sse3.cpp lubksb.cpp ludcmp.cpp matrix.cpp \
 	mrqcof.cpp mrqcof_avx.cpp mrqcof_avx512.cpp mrqcof_fma.cpp mrqcof_sse2.cpp \
 	mrqcof_sse3.cpp mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
-	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp benchmark.cpp
 
 # Define the object files
 OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
