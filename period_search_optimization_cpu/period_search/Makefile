@@ -5,7 +5,7 @@ BOINC_DIR = ../../../boinc_src
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 
-CXXFLAGS = -m64 -O3 -w -s \
+CXXFLAGS = -m64 -O3 -w -g -mavx2 \
     -DAPP_GRAPHICS \
     -I$(BOINC_DIR) \
     -I$(BOINC_LIB_DIR) \
@@ -16,7 +16,7 @@ CXXFLAGS = -m64 -O3 -w -s \
 CC=g++
 CXX=g++
 OPTFLAGS= -m64 -O3
-CFLAGS=$(OPTFLAGS) -w -s
+CFLAGS=$(OPTFLAGS) -w -g -mavx2
 LDFLAGS=-lm
 MY_LIBS=trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o\
         curv.o blmatrix.o conv.o covsrt.o phasec.o matrix.o bright.o memory.o\
