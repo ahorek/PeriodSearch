@@ -1401,11 +1401,11 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
             //clEnqueueUnmapMemObject(queue, CUDA_MCC2, pcc, 0, NULL, NULL);
             clEnqueueUnmapMemObject(queue, CUDA_CC2, pFb, 0, NULL, NULL);
             clFlush(queue);
-#ifdef _DEBUG
+//#ifdef _DEBUG
             // printf(".");
             cout << ".";
             cout.flush();
-#endif
+//#endif
             int count = 0;
             while (!theEnd)
             {
@@ -1562,9 +1562,9 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
             if (res[m - 1].isReported == 1)
             {
                 sum_dark_facet = sum_dark_facet + res[m - 1].dark_best;
-#if defined _DEBUG
+//#if defined _DEBUG
                 printf("[%3d] res[%3d].dark_best: %10.16f, sum_dark_facet: %10.16f\n", m, m - 1, res[m - 1].dark_best, sum_dark_facet);
-#endif
+//#endif
             }
         }
 
@@ -2124,7 +2124,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
             auto fractionDone2 = oldFractionDone + inner;
             boinc_fraction_done(fractionDone2);
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
             float fraction2 = fractionDone2 * 100;
             //float fraction = fractionDone * 100;
             std::time_t t = std::time(nullptr);   // get time now
@@ -2132,7 +2132,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
             printf("%02d:%02d:%02d | Fraction done: %.4f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction2);
             fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.4f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction2);
-#endif
+//#endif
 
             theEnd = 0;  //zero global End signal
             err = clEnqueueWriteBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);

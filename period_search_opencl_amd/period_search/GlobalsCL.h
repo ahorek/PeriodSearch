@@ -65,7 +65,7 @@ typedef struct mfreq_context
 
 	int Niter;
 	int np, np1, np2;
-	int isInvalid, isAlamda, isNiter;
+	unsigned int flags;
 	int icol;
 	//double conw_r;
 
@@ -139,5 +139,6 @@ struct freq_context
 struct freq_result
 {
 	double dark_best, per_best, dev_best, dev_best_x2, la_best, be_best, freq;
-	int isReported, isInvalid, isNiter;
+	int isReported;
+	unsigned int flags;
 };

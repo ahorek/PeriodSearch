@@ -1,0 +1,2 @@
+./mergecl.sh kernelSource.cl ./period_search/constants.h ./period_search/GlobalsCL.h ./period_search/Intrinsics.cl ./period_search/swap.cl ./period_search/blmatrix.cl ./period_search/curv.cl ./period_search/Curv2.cl ./period_search/bright.cl ./period_search/conv.cl ./period_search/mrqcof.cl ./period_search/gauss_errc.cl ./period_search/mrqmin.cl ./period_search/Start.cl
+python3 oclProgramFileToString.py kernelSource.cl ./period_search/kernels.cpp

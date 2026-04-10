@@ -1,7 +1,12 @@
+#ifndef M_PI
+  #define M_PI 3.14159265358979323846
+#endif
+
 #define POINTS_MAX         2000             /* max number of data points in one lc. */
 #define MAX_N_OBS         20000             /* max number of data points */
 #define MAX_LC              200             /* max number of lightcurves */
 #define MAX_LINE_LENGTH    1000             /* max length of line in an input file */
+#define MAX_N_FPOINTS    500000             /* max number of frequency points */
 #define MAX_N_FAC          1000             /* max number of facets */
 #define MAX_N_ITER          100             /* maximum number of iterations */
 #define MAX_N_PAR           200             /* maximum number of parameters */
@@ -22,6 +27,7 @@
 #else
 #define BLOCK_DIM 128
 #endif
+
 #pragma OPENCL FP_CONTRACT ON
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
@@ -89,7 +95,7 @@ typedef struct mfreq_context
 
 	int Niter;
 	int np, np1, np2;
-	int isInvalid, isAlamda, isNiter;
+	unsigned int flags;
 	int icol;
 	//double conw_r;
 
@@ -163,8 +169,10 @@ struct freq_context
 struct freq_result
 {
 	double dark_best, per_best, dev_best, dev_best_x2, la_best, be_best, freq;
-	int isReported, isInvalid, isNiter;
+	int isReported;
+	unsigned int flags;
 };
+
 /*
     FROM stackoverflow: https://stackoverflow.com/questions/42856717/intrinsics-equivalent-to-the-cuda-type-casting-intrinsics-double2loint-doub
     You can express these operations via a union. This will not create extra overhead with modern compilers as long as optimization is on (nvcc -O3 ...).
@@ -269,12 +277,14 @@ int double2loint(double val)
 //    return result;
 //}
 
+
 void SwapDouble(double a, double b) 
 { 
 	double temp = a; 
 	a = b; 
 	b = temp; 
-} //beta, lambda rotation matrix and its derivatives
+}
+ //beta, lambda rotation matrix and its derivatives
 
  //  8.11.2006
 
@@ -330,6 +340,7 @@ void blmatrix(__global struct mfreq_context* CUDA_LCC, double bet, double lam)
 	(*CUDA_LCC).Dblm[2][3][2] = sb * cl;
 	(*CUDA_LCC).Dblm[2][3][3] = 0;
 }
+
  //Curvature function (and hence facet area) from Laplace series
 
  //  8.11.2006
@@ -405,6 +416,7 @@ void curv(
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
 }
+
 
 void mrqcof_curve2(
 	__global struct mfreq_context* CUDA_LCC,
@@ -731,6 +743,7 @@ void mrqcof_curve2(
 		(*CUDA_LCC).trial_chisq = ltrial_chisq;
 	}
 }
+
 
 //computes integrated brightness of all visible and iluminated areas
 //  and its derivatives
@@ -1086,20 +1099,10 @@ void bright(
 	ncoef0 -= 3;
 	int m, m1, mr, iStart;
 	int d, d1, dr;
-	if (Inrel)
-	{
-		iStart = 2;
-		//m = blockIdx.x * CUDA_Dg_block + 2 * (CUDA_Numfac1);
-		m = 2 * (*CUDA_CC).Numfac1;
-		d = jp + 2 * (Lpoints1);
-	}
-	else
-	{
-		iStart = 1;
-		//m = blockIdx.x * CUDA_Dg_block + (CUDA_Numfac1);
-		m = (*CUDA_CC).Numfac1;
-		d = jp + (Lpoints1);
-	}
+
+	iStart = Inrel + 1;
+	m = iStart * (*CUDA_CC).Numfac1;
+	d = jp + (Lpoints1 << Inrel);
 
 	m1 = m + (*CUDA_CC).Numfac1;
 	mr = 2 * (*CUDA_CC).Numfac1;
@@ -1146,6 +1149,7 @@ void bright(
 
 	//return(0);
 }
+
 //Convexity regularization function
 
 //  8.11.2006
@@ -1230,6 +1234,7 @@ double conv(
 
 	return (tmp);
 }
+
  //slighly changed code from Numerical Recipes
  //  converted from Mikko's fortran code
 
@@ -1549,6 +1554,7 @@ double mrqcof_end(
 	return (*CUDA_LCC).trial_chisq;
 }
 
+
 //int gauss_errc(freq_context* CUDA_LCC, const int ma)
 //mrqmin_1_end(CUDA_LCC, CUDA_ma, CUDA_mfit, CUDA_mfit1, block);
 //int gauss_errc(struct mfreq_context* CUDA_LCC, struct freq_context* CUDA_CC, int* sh_icol, int* sh_irow, double* sh_big, int icol, double pivinv)
@@ -1811,6 +1817,7 @@ int gauss_errc(
 // #undef SWAP
  //from Numerical Recipes
 
+
 //N.B. The foll. L-M routines are modified versions of Press et al.
 //  converted from Mikko's fortran code
 
@@ -1939,7 +1946,7 @@ void mrqmin_2_end(
 
 
 }
-kernel void k(){}
+
 kernel void ClCheckEnd(
     __global int* CUDA_End,
     int theEnd)
@@ -2834,3 +2841,4 @@ __kernel void ClCalculateFinishPole(
     (*CUDA_LFR).chck[3]=(*CUDA_LCC).chck[3];*/
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
+

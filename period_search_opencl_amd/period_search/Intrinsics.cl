@@ -102,3 +102,40 @@ int double2loint(double val)
 //    return result;
 //}
 
+
+/*
+setFlag(isInvalid, tid);
+void setFlag(uint i, int idx)
+{
+  uint *a = &Flags[idx]; 
+  __stwb(a, __ldg(a) | i); 
+}
+
+__device__ void __forceinline__ resetFlag(uint i, int idx)
+{
+  uint *a = &Flags[idx]; 
+  __stwb(a, __ldg(a) & ~i); 
+}
+
+__device__ void __forceinline__ clearFlag(int idx)
+{
+  __stwb(&Flags[idx], 0);
+}
+
+
+__device__ uint __forceinline__ getFlags(int idx)
+{
+  return __ldg(&Flags[idx]);
+}
+
+
+__device__ bool __forceinline__ isAllTrue(uint flags, int idx)
+{
+  return (__ldg(&Flags[idx]) & flags) == flags;
+}
+
+__device__ bool __forceinline__ isAnyTrue(uint flags, int idx)
+{
+  return (__ldg(&Flags[idx]) & flags) != 0;
+}
+*/

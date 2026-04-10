@@ -6,6 +6,7 @@
 #define MAX_N_OBS         20000             /* max number of data points */
 #define MAX_LC              200             /* max number of lightcurves */
 #define MAX_LINE_LENGTH    1000             /* max length of line in an input file */
+#define MAX_N_FPOINTS    500000             /* max number of frequency points */
 #define MAX_N_FAC          1000             /* max number of facets */
 #define MAX_N_ITER          100             /* maximum number of iterations */
 #define MAX_N_PAR           200             /* maximum number of parameters */
@@ -26,3 +27,7 @@
 #else
 #define BLOCK_DIM 128
 #endif
+
+#define isInvalid 1U
+#define isNiter   2U
+#define isAlambda 4U
