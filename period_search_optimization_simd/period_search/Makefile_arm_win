@@ -1,0 +1,71 @@
+# This should work on Linux.  Modify as needed for other platforms.
+
+# Define directories
+BUILD_DIR = build
+BOINC_DIR = ../../../boinc_src
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
+
+# Keep it commented out for the gitactions, but it's handy for local builds
+#MAKEFLAGS += -j8
+
+# Define compiler and flags
+CXX = aarch64-w64-mingw32-g++
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L/usr/X11R6/lib \
+	-L.
+
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_BOINC_windows_10222_aarch64_universal_Release
+
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp \
+	conv.cpp \
+	covsrt.cpp CpuInfoArm64.cpp curv.cpp \
+	ellfit.cpp EnumHelpers.cpp gauss_errc.cpp \
+    bright_asimd.cpp conv_asimd.cpp curv_asimd.cpp gauss_errc_asimd.cpp mrqcof_asimd.cpp \
+	lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp \
+	mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
+
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
+
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Rule to build the static library
+$(TARGET): $(OBJ) $(BUILD_DIR)/libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(BUILD_DIR)/libstdc++.a -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_common.a \
+	$(BOINC_API_DIR)/libboinc_api.a \
+	$(BOINC_LIB_DIR)/libboinc.a \
+	-lm
+
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Rule to create symbolic link for libstdc++.a
+$(BUILD_DIR)/libstdc++.a:
+	@mkdir -p $(BUILD_DIR)
+	ln -s `aarch64-w64-mingw32-g++ -print-file-name=libstdc++.a` $(BUILD_DIR)/libstdc++.a
+
+# Clean rule to remove compiled files
+clean:
+	rm -rf $(BUILD_DIR)
+
+.PHONY: all clean

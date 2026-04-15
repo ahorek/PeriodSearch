@@ -1,0 +1,67 @@
+
+name: aarch64 Windows
+
+on: [push, pull_request]
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    name: >-
+      ${{ matrix.variant }} / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'cpu', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm_win' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare mingw toolchain
+        run: |
+          wget https://github.com/mstorsjo/llvm-mingw/releases/download/20260407/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64.tar.xz
+          tar -zxvf llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64.tar.xz
+
+      - name: Print gcc version
+        run: |
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64/bin:$PATH"
+          aarch64-w64-mingw32-g++ -v
+
+      - name: Prepare boinc libraries
+        run: |
+          git clone --depth 1 https://github.com/ahorek/boinc.git -b winarm64
+          cd ./boinc
+          ./_autosetup
+          ./configure --host=aarch64-w64-mingw32 --with-boinc-platform="windows_arm64" --disable-server --disable-manager --disable-client --disable-shared --enable-static --disable-shared CXXFLAGS="-O3 "
+          make -j
+
+      - name: Build ps_common library
+        run: |
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64/bin:$PATH"
+          cd ./period_search_common
+          make -f Makefile_arm_win -j
+          
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}_${{ matrix.os }}
+          retention-days: 1
+          path: |
+            ${{ matrix.working-directory }}/**/period_search_BOINC*
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o
