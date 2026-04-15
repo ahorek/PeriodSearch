@@ -29,7 +29,7 @@ jobs:
       - name: Prepare mingw toolchain
         run: |
           wget https://github.com/mstorsjo/llvm-mingw/releases/download/20260407/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64.tar.xz
-          tar -zxvf llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64.tar.xz
+          tar -Jxf llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64.tar.xz
 
       - name: Print gcc version
         run: |
