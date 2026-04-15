@@ -54,6 +54,7 @@ jobs:
       - name: Run make
         working-directory: ${{ matrix.working-directory }}
         run: |
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64/bin:$PATH"
           sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
           make -f ${{ matrix.makefile }} -j
 
