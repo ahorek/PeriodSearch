@@ -38,6 +38,7 @@ jobs:
 
       - name: Prepare boinc libraries
         run: |
+          export PATH="/home/runner/work/PeriodSearch/PeriodSearch/llvm-mingw-20260407-msvcrt-ubuntu-22.04-x86_64/bin:$PATH"
           git clone --depth 1 https://github.com/ahorek/boinc.git -b winarm64
           cd ./boinc
           ./_autosetup
