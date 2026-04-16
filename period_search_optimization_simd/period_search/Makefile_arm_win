@@ -2,7 +2,7 @@
 
 # Define directories
 BUILD_DIR = build
-BOINC_DIR = ../../../boinc_src
+BOINC_DIR = /home/ahorek/boincwin/boinc
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
@@ -13,7 +13,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 # Define compiler and flags
 CXX = aarch64-w64-mingw32-g++
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s \
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s -static-libstdc++ -static \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
@@ -47,8 +47,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Rule to build the static library
-$(TARGET): $(OBJ) $(BUILD_DIR)/libc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(BUILD_DIR)/libc++.a -pthread \
+$(TARGET): $(OBJ) $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a \
@@ -58,11 +58,6 @@ $(TARGET): $(OBJ) $(BUILD_DIR)/libc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Rule to create symbolic link for libc++.a
-$(BUILD_DIR)/libc++.a:
-	@mkdir -p $(BUILD_DIR)
-	ln -s `aarch64-w64-mingw32-g++ -print-file-name=libc++.a` $(BUILD_DIR)/libc++.a
 
 # Clean rule to remove compiled files
 clean:
