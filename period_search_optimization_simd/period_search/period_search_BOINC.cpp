@@ -215,6 +215,8 @@ std::vector<double> da;
 
 int main(int argc, char** argv)
 {
+    printf("start");
+
     int nlines = 0, ntestperiods, checkpoint_exists, n_start_from;
     char input_path[512], output_path[512], chkpt_path[512], buf[256];
     MFILE out;
@@ -249,12 +251,16 @@ int main(int argc, char** argv)
     //wiringPiSetupSys();
     //pinMode(LED, OUTPUT);
 
+    printf("preboinc");
+
     int retval = boinc_init();
     if (retval)
     {
         fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
         std::exit(retval);
     }
+
+    printf("after boinc");
 
     // resolve logical name first
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
@@ -266,6 +272,8 @@ int main(int argc, char** argv)
         fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", input_path);
         fflush(stderr);
     }
+
+    printf("after lc");
 
     /* Time in JD*/
     std::vector<double> tim(gl.maxDataPoints + 4 + 1, 0.0);
@@ -360,6 +368,8 @@ int main(int argc, char** argv)
     update_shmem();
     boinc_register_timer_callback(update_shmem);
 #endif
+
+printf("read file");
 
     int err = 0;
 
@@ -610,6 +620,8 @@ int main(int argc, char** argv)
 
         int major, minor, build, revision;
 
+        printf("version");
+
 #if !defined __GNUC__ && defined _WIN32
         char nameBuffer[MAX_PATH];
         GetModuleFileNameA(nullptr, nameBuffer, MAX_PATH);
@@ -806,10 +818,10 @@ int main(int argc, char** argv)
             for (m = 1; m <= N_POLES; m++)
             {
                 prd = 1 / freq;
-#ifdef _DEBUG
+//#ifdef _DEBUG
                 printf(".");
                 fflush(stderr);
-#endif
+//#endif
                 /* starts from the initial ellipsoid */
                 for (i = 1; i <= Ncoef; i++)
                     cg[i] = cg_first[i];
@@ -935,9 +947,9 @@ int main(int argc, char** argv)
                 }
             } /* pole loop */
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
             printf("\n");
-#endif
+//#endif
             if (la_best < 0)
                 la_best += 360;
 
@@ -1090,18 +1102,18 @@ int main(int argc, char** argv)
         fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
         boinc_fraction_done(fraction_done);
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
         auto fraction = fraction_done * 100;
         auto time = std::time(nullptr);   // get time now
         std::tm now{};
-#ifdef __GNUC__
+#if defined __GNUC__ && !defined _WIN32
         localtime_r(&time, &now);
 #else
         _localtime64_s(&now, &time);
 #endif
         printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
         fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
-#endif
+//#endif
 
         freq = freq_start - (n - 1) * freq_step;
 
