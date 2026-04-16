@@ -1,6 +1,6 @@
 # Define compiler and flags
 CXX = aarch64-w64-mingw32-g++
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s 
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -g 
 
 # Define the target library
 TARGET = build/libps_common.a
@@ -16,7 +16,7 @@ all: $(TARGET)
 
 # Rule to build the static library
 $(TARGET): $(OBJ)
-	ar rcs $@ $^
+	aarch64-w64-mingw32-ar rcs $@ $^
 
 # Rule to build object files
 build/%.o: %.cpp
