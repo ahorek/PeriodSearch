@@ -1,6 +1,6 @@
 # Define compiler and flags
 CXX = aarch64-w64-mingw32-g++
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -g 
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -w -s 
 
 # Define the target library
 TARGET = build/libps_common.a
