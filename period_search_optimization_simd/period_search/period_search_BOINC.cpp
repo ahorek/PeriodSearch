@@ -1314,18 +1314,3 @@ printf("read file");
 
     boinc_finish(0);
 }
-
-#ifdef _WIN32
-
-int WINAPI WinMain(_In_ HINSTANCE hInst, _In_opt_ HINSTANCE hPrevInst, _In_ LPSTR Args, _In_ int WinMode)
-{
-	LPSTR command_line;
-	char* argv[100];
-	int argc;
-
-	command_line = GetCommandLine();
-	argc = parse_command_line(command_line, argv);
-	return main(argc, argv);
-}
-
-#endif
