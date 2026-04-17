@@ -15,5 +15,7 @@ jobs:
 
       - name: Run test
         run: |
+          dir
           cd C:\a\PeriodSearch\PeriodSearch\test
+          dir
           xperiod_search_BOINC_windows_10222_aarch64_universal_Release.exe
