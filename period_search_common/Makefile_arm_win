@@ -1,6 +1,6 @@
 # Define compiler and flags
 CXX = aarch64-w64-mingw32-g++
-CXXFLAGS = -O3 -std=c++2a -w -g 
+CXXFLAGS = -O0 -std=c++2a -w -g 
 
 # Define the target library
 TARGET = build/libps_common.a
