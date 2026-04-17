@@ -249,6 +249,8 @@ inline FILE * boinc_fopen(const char * const path, const char * const mode)
 	return std::fopen(path, mode);
 }
 
+inline int boinc_is_standalone() { return 1; }
+
 inline int boinc_time_to_checkpoint() { static int cnt = 0; if (++cnt == 20) { cnt = 0; return 1; } return 0; }
 inline int boinc_checkpoint_completed() { return 0; }
 
@@ -307,7 +309,7 @@ int main(int argc, char** argv)
 
     printf("preboinc");
 
-    //int retval = boinc_init();
+    int retval = 0;//boinc_init();
     //if (retval)
     //{
     //    fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
@@ -369,10 +371,11 @@ int main(int argc, char** argv)
     // open the input file
     FILE* infile = boinc_fopen(input_path, "r");
     if (!infile) {
-        fprintf(stderr,
-            "%s Couldn't find input file, resolved name %s.\n",
-            boinc_msg_prefix(buf, sizeof(buf)), input_path
-        );
+        printf("error infile");
+        //fprintf(stderr,
+        //    "%s Couldn't find input file, resolved name %s.\n",
+        //    boinc_msg_prefix(buf, sizeof(buf)), input_path
+        //);
         std::exit(-1);
     }
 
@@ -400,16 +403,20 @@ int main(int argc, char** argv)
         retval = out.open(output_path, "w");
     }
     if (retval) {
+        /*
         fprintf(stderr, "%s APP: period_search output open failed:\n",
             boinc_msg_prefix(buf, sizeof(buf))
         );
         fprintf(stderr, "%s resolved name %s, retval %d\n",
             boinc_msg_prefix(buf, sizeof(buf)), output_path, retval
         );
+        */
+        printf("error open");
         perror("open");
         std::exit(1);
     }
 
+    /*
 #ifdef APP_GRAPHICS
     // create shared mem segment for graphics, and arrange to update it
     //
@@ -422,6 +429,7 @@ int main(int argc, char** argv)
     update_shmem();
     boinc_register_timer_callback(update_shmem);
 #endif
+*/
 
 printf("read file");
 
@@ -1018,9 +1026,9 @@ printf("read file");
             sum_dark_facet += dark_best;
 
             if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
-                retval = DoCheckpoint(out, 0, new_conw, conw_r, sum_dark_facet, n); //zero lines
-                if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
-                boinc_checkpoint_completed();
+                //retval = DoCheckpoint(out, 0, new_conw, conw_r, sum_dark_facet, n); //zero lines
+                //if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
+                //boinc_checkpoint_completed();
             }
 
         } /* period loop */
@@ -1035,10 +1043,10 @@ printf("read file");
 
 
         if (boinc_time_to_checkpoint() || boinc_is_standalone()) {
-            retval = DoCheckpoint(out, 0, new_conw, conw_r, 0.0, 0); //zero lines,zero sum dark facets, zero testperiods
+            //retval = DoCheckpoint(out, 0, new_conw, conw_r, 0.0, 0); //zero lines,zero sum dark facets, zero testperiods
             if (retval)
             {
-                fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval);
+                //fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval);
             }
 
             boinc_checkpoint_completed();
@@ -1323,9 +1331,9 @@ printf("read file");
 
         if (boinc_time_to_checkpoint() || boinc_is_standalone())
         {
-            retval = DoCheckpoint(out, n, new_conw, conw_r, 0.0, 0);
-            if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
-            boinc_checkpoint_completed();
+            //retval = DoCheckpoint(out, n, new_conw, conw_r, 0.0, 0);
+            //if (retval) { fprintf(stderr, "%s APP: period_search checkpoint failed %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval); std::exit(retval); }
+            //boinc_checkpoint_completed();
         }
 
     } /* period loop */
