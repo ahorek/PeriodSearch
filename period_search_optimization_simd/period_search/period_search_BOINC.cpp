@@ -318,6 +318,19 @@ int main(int argc, char** argv)
 
     printf("after boinc");
 
+    // resolve logical name first
+    boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
+
+    auto gl = globals();
+    auto res = PrepareLcData(gl, input_path);
+    if (res <= 0)
+    {
+        fprintf(stderr, "\nCouldn't find input file, resolved name %s.\n", input_path);
+        fflush(stderr);
+    }
+
+    printf("after lc");
+
 }
 
 #ifdef _WIN32
