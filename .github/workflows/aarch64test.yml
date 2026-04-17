@@ -1,0 +1,19 @@
+
+name: aarch64 Windows Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-11-arm
+
+    name: >-
+      "arm test"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run test
+        run: |
+          cd test
+          xperiod_search_BOINC_windows_10222_aarch64_universal_Release.exe
