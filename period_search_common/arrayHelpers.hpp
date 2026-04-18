@@ -35,28 +35,28 @@ public:
 
         void* ptr = nullptr;
 
-    #if !defined(_WIN32)
+    //#if !defined(_WIN32)
         static_assert(Alignment % sizeof(void*) == 0,
                       "Alignment must be multiple of pointer size");
         if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
             throw std::bad_alloc();
         }
-    #else
-        ptr = _aligned_malloc(n * sizeof(T), Alignment);
-        if (!ptr) {
-            throw std::bad_alloc();
-        }
-    #endif
+    //#else
+        //ptr = _aligned_malloc(n * sizeof(T), Alignment);
+        //if (!ptr) {
+            //throw std::bad_alloc();
+        //}
+    //#endif
 
         return static_cast<T*>(ptr);
     }
 
     void deallocate(T* p, std::size_t) noexcept {
-    #if !defined(_WIN32)
+    //#if !defined(_WIN32)
         free(p);
-    #else
-        _aligned_free(p);
-    #endif
+    //#else
+      //  _aligned_free(p);
+    //#endif
     }
 
     template <typename U>
