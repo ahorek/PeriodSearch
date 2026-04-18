@@ -8,7 +8,6 @@
 #include "constants.h"
 #include <cstdlib>
 #include <iostream>
-#include <new>
 
 #if defined __GNUC__
 #include <vector>
@@ -21,19 +20,43 @@ class AlignedAllocatorNew {
 public:
     using value_type = T;
 
+    static_assert(Alignment >= alignof(T), "Alignment must satisfy T alignment");
+    static_assert((Alignment & (Alignment - 1)) == 0, "Alignment must be power of two");
+
     AlignedAllocatorNew() noexcept = default;
 
     template <typename U>
     AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
 
     T* allocate(std::size_t n) {
-        return static_cast<T*>(
-            ::operator new(n * sizeof(T), std::align_val_t(Alignment))
-        );
+        if (n > SIZE_MAX / sizeof(T)) {
+            throw std::bad_alloc();
+        }
+
+        void* ptr = nullptr;
+
+    #if !defined(_WIN32)
+        static_assert(Alignment % sizeof(void*) == 0,
+                      "Alignment must be multiple of pointer size");
+        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            throw std::bad_alloc();
+        }
+    #else
+        ptr = _aligned_malloc(n * sizeof(T), Alignment);
+        if (!ptr) {
+            throw std::bad_alloc();
+        }
+    #endif
+
+        return static_cast<T*>(ptr);
     }
 
-    void deallocate(T* p, std::size_t n) noexcept {
-        ::operator delete(p, n * sizeof(T), std::align_val_t(Alignment));
+    void deallocate(T* p, std::size_t) noexcept {
+    #if !defined(_WIN32)
+        free(p);
+    #else
+        _aligned_free(p);
+    #endif
     }
 
     template <typename U>
@@ -329,13 +352,13 @@ extern struct globals
     //std::vector<AlignedVector> alpha;
 
     // Function to initialize the vectors
-//#if defined __GNUC__
-//    void initializeVectors(size_t rows, size_t cols)
-//    {
-//        covar.resize(rows, AlignedInnerVector(cols));
-//        alpha.resize(rows, AlignedInnerVector(cols));
-//    }
-//#endif
+#if defined __GNUC__
+    void initializeVectors(size_t rows, size_t cols)
+    {
+        covar.resize(rows, AlignedInnerVector(cols));
+        alpha.resize(rows, AlignedInnerVector(cols));
+    }
+#endif
 } gl;
 
 #endif // GLOBALS_H
