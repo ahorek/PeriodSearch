@@ -27,16 +27,16 @@ public:
 
     T* allocate(std::size_t n) {
         void* ptr = nullptr;
-        #if !defined _WIN32
-          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-            throw std::bad_alloc();
-          }
-        #else
-          ptr = _aligned_malloc(n * sizeof(T), Alignment);
-          if (!ptr) {
-            throw std::bad_alloc();
-          }
-        #endif
+        //#if !defined _WIN32
+//          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+  //          throw std::bad_alloc();
+    //      }
+      //  #else
+        //  ptr = _aligned_malloc(n * sizeof(T), Alignment);
+          //if (!ptr) {
+//            throw std::bad_alloc();
+  //        }
+    //    #endif
         return static_cast<T*>(ptr);
     }
 
@@ -277,12 +277,74 @@ void printArray(double*** array, int iMax, int jMax, int kMax, char msg[]);
 
 extern struct globals
 {
+#ifdef __GNUC__
+    double Nor[3][MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Area[MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
+    double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
+    double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
+    // std::vector<std::vector<double>> covar __attribute__((aligned(64)));
+    // std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
+    AlignedOuterVector covar __attribute__((aligned(64)));
+    AlignedOuterVector alpha __attribute__((aligned(64)));
+#else
+#if _MSC_VER >= 1900 // Visual Studio 2015 or later
+    // NOTE: About MSVC - https://learn.microsoft.com/en-us/cpp/cpp/alignment-cpp-declarations?view=msvc-170
+    alignas(64) double Nor[3][MAX_N_FAC + 8];
+    alignas(64) double Area[MAX_N_FAC + 8];
+    alignas(64) double Darea[MAX_N_FAC + 8];
+    alignas(64) double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8];
+    alignas(64) double dyda[MAX_N_PAR + 16];
+    alignas(64) std::vector<std::vector<double>> covar;
+    alignas(64) std::vector<std::vector<double>> alpha;
+#else
+    __declspec(align(64)) double Nor[3][MAX_N_FAC + 8];
+    __declspec(align(64)) double Area[MAX_N_FAC + 8];
+    __declspec(align(64)) double Darea[MAX_N_FAC + 8];
+    __declspec(align(64)) double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8];
+    __declspec(align(64)) double dyda[MAX_N_PAR + 16];
+    __declspec(align(64)) std::vector<std::vector<double>> covar;
+    __declspec(align(64)) std::vector<std::vector<double>> alpha;
+#endif
+#endif
+
     int Lcurves;
     int maxLcPoints;	// replaces macro MAX_LC_POINTS
     int maxDataPoints;	// replaces macro MAX_N_OBS
     int dytemp_sizeX;
     int dytemp_sizeY;
 
+    // points in every lightcurve
+    std::vector<int> Lpoints;
+    std::vector<int> Inrel;
+
+    double ymod;
+    double wt;
+    double sig2i;
+    double dy;
+    double coef;
+    double wght;
+    double ave;
+    double xx1[4];
+    double xx2[4];
+    double dave[MAX_N_PAR + 1 + 4];
+    std::vector<double> ytemp;
+    std::vector<double> Weight;
+    std::vector<std::vector<double>> dytemp;
+    // std::vector<std::vector<double>> covar;
+    // std::vector<std::vector<double>> alpha;
+
+    //std::vector<AlignedVector> covar;
+    //std::vector<AlignedVector> alpha;
+
+    // Function to initialize the vectors
+//#if defined __GNUC__
+//    void initializeVectors(size_t rows, size_t cols)
+//    {
+//        covar.resize(rows, AlignedInnerVector(cols));
+//        alpha.resize(rows, AlignedInnerVector(cols));
+//    }
+//#endif
 } gl;
 
 #endif // GLOBALS_H
