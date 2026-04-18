@@ -30,7 +30,8 @@ public:
 
     T* allocate(std::size_t n) {
         if (n > SIZE_MAX / sizeof(T)) {
-            throw std::bad_alloc();
+            printf("size %d", n);
+            //throw std::bad_alloc();
         }
 
         void* ptr = nullptr;
@@ -38,9 +39,9 @@ public:
     //#if !defined(_WIN32)
         static_assert(Alignment % sizeof(void*) == 0,
                       "Alignment must be multiple of pointer size");
-        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-            throw std::bad_alloc();
-        }
+        //if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
+            //throw std::bad_alloc();
+        //}
     //#else
         //ptr = _aligned_malloc(n * sizeof(T), Alignment);
         //if (!ptr) {
@@ -53,7 +54,7 @@ public:
 
     void deallocate(T* p, std::size_t) noexcept {
     //#if !defined(_WIN32)
-        free(p);
+      //  free(p);
     //#else
       //  _aligned_free(p);
     //#endif
