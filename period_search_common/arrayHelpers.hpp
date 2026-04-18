@@ -213,8 +213,8 @@ extern struct globals
     std::vector<double> ytemp;
     std::vector<double> Weight;
     std::vector<std::vector<double>> dytemp;
-    std::vector<std::vector<double>> covar;
-    std::vector<std::vector<double>> alpha;
+    //std::vector<std::vector<double>> covar;
+    //std::vector<std::vector<double>> alpha;
 
     //std::vector<AlignedVector> covar;
     //std::vector<AlignedVector> alpha;
