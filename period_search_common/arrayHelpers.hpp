@@ -298,10 +298,10 @@ extern struct globals
     double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
     double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
     double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> covar __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
-    AlignedOuterVector covar __attribute__((aligned(64)));
-    AlignedOuterVector alpha __attribute__((aligned(64)));
+     std::vector<std::vector<double>> covar __attribute__((aligned(64)));
+     std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
+    //AlignedOuterVector covar __attribute__((aligned(64)));
+    //AlignedOuterVector alpha __attribute__((aligned(64)));
 #else
 #if _MSC_VER >= 1900 // Visual Studio 2015 or later
     // NOTE: About MSVC - https://learn.microsoft.com/en-us/cpp/cpp/alignment-cpp-declarations?view=msvc-170
@@ -353,13 +353,6 @@ extern struct globals
     //std::vector<AlignedVector> alpha;
 
     // Function to initialize the vectors
-#if defined __GNUC__
-    void initializeVectors(size_t rows, size_t cols)
-    {
-        covar.resize(rows, AlignedInnerVector(cols));
-        alpha.resize(rows, AlignedInnerVector(cols));
-    }
-#endif
 } gl;
 
 #endif // GLOBALS_H
