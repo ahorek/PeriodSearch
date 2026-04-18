@@ -52,11 +52,11 @@ void CalcStrategyAsimd::mrqcof(std::vector<std::vector<double>>& x1, std::vector
 	int i, j, k, l, m, np, np1, np2, jp, ic;
 	//auto& alpha = isCovar ? gl.covar : gl.alpha;
 
-	#if defined __GNUC__
- 	   AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
-	#else
+	//#if defined __GNUC__
+ 	//   AlignedOuterVector& alpha = isCovar ? gl.covar : gl.alpha;
+	//#else
     	auto& alpha = isCovar ? gl.covar : gl.alpha;
-	#endif
+	//#endif
 
 	/* N.B. curv and blmatrix called outside bright because output same for all points */
 	CalcStrategyAsimd::curv(a, gl);
