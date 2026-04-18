@@ -8,6 +8,7 @@
 #include "constants.h"
 #include <cstdlib>
 #include <iostream>
+#include <new>
 
 #if defined __GNUC__
 #include <vector>
@@ -20,35 +21,25 @@ class AlignedAllocatorNew {
 public:
     using value_type = T;
 
-    AlignedAllocatorNew() noexcept {}
+    AlignedAllocatorNew() noexcept = default;
 
     template <typename U>
     AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
 
     T* allocate(std::size_t n) {
-        void* ptr = nullptr;
-        //#if !defined _WIN32
-//          if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-  //          throw std::bad_alloc();
-    //      }
-      //  #else
-        //  ptr = _aligned_malloc(n * sizeof(T), Alignment);
-          //if (!ptr) {
-//            throw std::bad_alloc();
-  //        }
-    //    #endif
-        return static_cast<T*>(ptr);
+        return static_cast<T*>(
+            ::operator new(n * sizeof(T), std::align_val_t(Alignment))
+        );
     }
 
-    void deallocate(T* p, std::size_t) noexcept {
-        #if !defined _WIN32
-          free(p);
-        #else
-          _aligned_free(p);
-        #endif
+    void deallocate(T* p, std::size_t n) noexcept {
+        ::operator delete(p, n * sizeof(T), std::align_val_t(Alignment));
     }
 
-    template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
+    template <typename U>
+    struct rebind {
+        using other = AlignedAllocatorNew<U, Alignment>;
+    };
 };
 
 template <typename T, std::size_t Alignment>
