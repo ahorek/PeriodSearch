@@ -9,113 +9,6 @@
 #include <cstdlib>
 #include <iostream>
 
-#if defined __GNUC__
-#include <vector>
-#include <cstdlib>
-#include <stdexcept>
-
-// Custom Aligned Allocator
-template <typename T, std::size_t Alignment>
-class AlignedAllocatorNew {
-public:
-    using value_type = T;
-
-    static_assert(Alignment >= alignof(T), "Alignment must satisfy T alignment");
-    static_assert((Alignment & (Alignment - 1)) == 0, "Alignment must be power of two");
-
-    AlignedAllocatorNew() noexcept = default;
-
-    template <typename U>
-    AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
-
-    T* allocate(std::size_t n) {
-        if (n > SIZE_MAX / sizeof(T)) {
-            throw std::bad_alloc();
-        }
-
-        void* ptr = nullptr;
-
-    #if !defined(_WIN32)
-        static_assert(Alignment % sizeof(void*) == 0,
-                      "Alignment must be multiple of pointer size");
-        if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-            throw std::bad_alloc();
-        }
-    #else
-        ptr = _aligned_malloc(n * sizeof(T), Alignment);
-        if (!ptr) {
-            throw std::bad_alloc();
-        }
-    #endif
-
-        return static_cast<T*>(ptr);
-    }
-
-    void deallocate(T* p, std::size_t) noexcept {
-    #if !defined(_WIN32)
-        free(p);
-    #else
-        _aligned_free(p);
-    #endif
-    }
-
-    template <typename U>
-    struct rebind {
-        using other = AlignedAllocatorNew<U, Alignment>;
-    };
-};
-
-template <typename T, std::size_t Alignment>
-bool operator==(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return true; }
-
-template <typename T, std::size_t Alignment>
-bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return false; }
-
-// Type alias for aligned vector
-// using AlignedDoubleVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
-
-using AlignedInnerVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
-using AlignedOuterVector = std::vector<AlignedInnerVector, AlignedAllocatorNew<AlignedInnerVector, 64>>;
-
-
-
-// ------ OLDER VERSION ---------
-// // Custom aligned allocator
-// template <typename T, std::size_t Alignment>
-// class AlignedAllocatorNew {
-// public:
-//     using value_type = T;
-
-//     AlignedAllocatorNew() noexcept {}
-
-//     template <typename U>
-//     AlignedAllocatorNew(const AlignedAllocatorNew<U, Alignment>&) noexcept {}
-
-//     T* allocate(std::size_t n) {
-//         void* ptr = nullptr;
-//         if (posix_memalign(&ptr, Alignment, n * sizeof(T)) != 0) {
-//             throw std::bad_alloc();
-//         }
-//         return static_cast<T*>(ptr);
-//     }
-
-//     void deallocate(T* p, std::size_t) noexcept {
-//         free(p);
-//     }
-
-//     template <typename U> struct rebind { using other = AlignedAllocatorNew<U, Alignment>; };
-// };
-
-// template <typename T, std::size_t Alignment>
-// bool operator==(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return true; }
-
-// template <typename T, std::size_t Alignment>
-// bool operator!=(const AlignedAllocatorNew<T, Alignment>&, const AlignedAllocatorNew<T, Alignment>&) { return false; }
-
-// // Define the custom allocator for double with 64-byte alignment
-// using AlignedVector = std::vector<double, AlignedAllocatorNew<double, 64>>;
-#endif
-
 /**
  * @brief Initializes a vector with a specified size and initial value.
  *
@@ -205,32 +98,7 @@ void init_matrix(std::vector<std::vector<T>>& matrix, const int rows, const int 
  * @return A boolean value indicating whether the matrix and flattened vector are equal.
  *         Returns true if they are equal, otherwise false.
  */
-template <typename T>
-bool compareVectors(const std::vector<std::vector<T>>& matrix, const std::vector<T>& flattened)
-{
-    int rows = matrix.size();
-    int cols = (rows > 0)
-        ? matrix[0].size()
-        : 0;
 
-    // Check if the total number of elements match
-    if (flattened.size() != rows * cols)
-    {
-        return false;
-    }
-
-    for (int i = 0; i < rows; ++i)
-    {
-        for (int j = 0; j < cols; ++j)
-        {
-            if (matrix[i][j] != flattened[i * cols + j])
-            {
-                return false;
-            }
-        }
-    }
-    return true;
-}
 
 /**
  * @brief Flattens a 2D vector (matrix) into a 1D vector.
@@ -297,10 +165,10 @@ extern struct globals
     double Darea[MAX_N_FAC + 8] __attribute__((aligned(64)));
     double Dg[MAX_N_FAC + 16][MAX_N_PAR + 8] __attribute__((aligned(64)));
     double dyda[MAX_N_PAR + 16] __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> covar __attribute__((aligned(64)));
-    // std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
-    AlignedOuterVector covar __attribute__((aligned(64)));
-    AlignedOuterVector alpha __attribute__((aligned(64)));
+     std::vector<std::vector<double>> covar __attribute__((aligned(64)));
+     std::vector<std::vector<double>> alpha __attribute__((aligned(64)));
+    //AlignedOuterVector covar __attribute__((aligned(64)));
+    //AlignedOuterVector alpha __attribute__((aligned(64)));
 #else
 #if _MSC_VER >= 1900 // Visual Studio 2015 or later
     // NOTE: About MSVC - https://learn.microsoft.com/en-us/cpp/cpp/alignment-cpp-declarations?view=msvc-170
@@ -345,20 +213,14 @@ extern struct globals
     std::vector<double> ytemp;
     std::vector<double> Weight;
     std::vector<std::vector<double>> dytemp;
-    // std::vector<std::vector<double>> covar;
-    // std::vector<std::vector<double>> alpha;
+    std::vector<std::vector<double>> covar;
+    std::vector<std::vector<double>> alpha;
 
     //std::vector<AlignedVector> covar;
     //std::vector<AlignedVector> alpha;
 
     // Function to initialize the vectors
-#if defined __GNUC__
-    void initializeVectors(size_t rows, size_t cols)
-    {
-        covar.resize(rows, AlignedInnerVector(cols));
-        alpha.resize(rows, AlignedInnerVector(cols));
-    }
-#endif
+
 } gl;
 
 #endif // GLOBALS_H
