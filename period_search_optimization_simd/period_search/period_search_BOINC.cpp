@@ -322,7 +322,7 @@ int main(int argc, char** argv)
     boinc_resolve_filename(input_filename, input_path, sizeof(input_path));
 
     //auto gl = globals();
-    test();
+    testx();
     /*
     auto res = PrepareLcData(gl, input_path);
     if (res <= 0)
