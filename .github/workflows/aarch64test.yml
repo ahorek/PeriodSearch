@@ -16,5 +16,5 @@ jobs:
       - name: Run test
         run: |
           cd test
-          .\xperiod_search_BOINC_windows_10222_aarch64_universal_Release.exe -i p2030.1776842406.G53.17+02.80.N.b0s0g0.00000_2835.bin4 -t stochastic_full.bank -l p2030.1776842406.G53.17+02.80.N.b0s0g0.00000.zap -o results.cand0 -c p2030.1776842406.G53.17+02.80.N.b0s0g0.00000_2818.cpt -A 0.08 -P 3.0 -f 400.0 -W -z
+          .\einsteinbinary_windows_aarch64.exe -i p2030.1776842406.G53.17+02.80.N.b0s0g0.00000_2835.bin4 -t stochastic_full.bank -l p2030.1776842406.G53.17+02.80.N.b0s0g0.00000.zap -o results.cand0 -c p2030.1776842406.G53.17+02.80.N.b0s0g0.00000_2818.cpt -A 0.08 -P 3.0 -f 400.0 -W -z
           type stderr.txt
