@@ -1,7 +1,7 @@
 
 name: x64 Linux
 
-on: [push pull_request]
+on: [push pull]
 
 env:
   BOINC_DIR: ./boinc
