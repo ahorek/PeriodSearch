@@ -1338,7 +1338,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 #endif
         for (m = 0; m < CUDA_grid_dim_precalc; m++)
         {
-            ((freq_result*)pfr)[m].isInvalid = 1;
+            ((freq_result*)pfr)[m].flags = isInvalid;
             ((freq_result*)pfr)[m].isReported = 0;
             ((freq_result*)pfr)[m].be_best = 0.0;
             ((freq_result*)pfr)[m].dark_best = 0.0;
@@ -2094,7 +2094,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 #endif
         for (int j = 0; j < CUDA_grid_dim; j++)
         {
-            ((freq_result*)pfr)[j].isInvalid = 1;
+            ((freq_result*)pfr)[j].flags = isInvalid;
             ((freq_result*)pfr)[j].isReported = 0;
             ((freq_result*)pfr)[j].be_best = 0.0;
             ((freq_result*)pfr)[j].dark_best = 0.0;

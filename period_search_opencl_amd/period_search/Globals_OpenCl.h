@@ -77,7 +77,7 @@ struct alignas(8) mfreq_context
 
 	cl_int Niter;
 	cl_int np, np1, np2;
-	cl_int isInvalid, isAlamda, isNiter;
+	cl_uint flags;
 	cl_int icol;
 	//double conw_r;
 
@@ -145,7 +145,8 @@ struct alignas(8) freq_context
 struct alignas(8) freq_result
 {
 	double dark_best, per_best, dev_best, dev_best_x2, la_best, be_best, freq;
-	cl_int isReported, isInvalid, isNiter;
+	cl_int isReported;
+	cl_uint flags;
 };
 
 #if defined(CL_HPP_ENABLE_EXCEPTIONS)

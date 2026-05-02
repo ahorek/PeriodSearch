@@ -1,3 +1,7 @@
+#ifndef M_PI
+  #define M_PI 3.14159265358979323846
+#endif
+
 #define POINTS_MAX         2000             /* max number of data points in one lc. */
 #define MAX_N_OBS         20000             /* max number of data points */
 #define MAX_LC              200             /* max number of lightcurves */
@@ -22,6 +26,10 @@
 #else
 #define BLOCK_DIM 128
 #endif
+
+#define isInvalid 1
+#define isNiter   2
+#define isAlamda  4
 #pragma OPENCL FP_CONTRACT ON
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
@@ -89,7 +97,7 @@ typedef struct mfreq_context
 
 	int Niter;
 	int np, np1, np2;
-	int isInvalid, isAlamda, isNiter;
+	unsigned int flags;
 	int icol;
 	//double conw_r;
 
@@ -163,8 +171,10 @@ struct freq_context
 struct freq_result
 {
 	double dark_best, per_best, dev_best, dev_best_x2, la_best, be_best, freq;
-	int isReported, isInvalid, isNiter;
+	int isReported;
+	unsigned int flags;
 };
+
 /*
     FROM stackoverflow: https://stackoverflow.com/questions/42856717/intrinsics-equivalent-to-the-cuda-type-casting-intrinsics-double2loint-doub
     You can express these operations via a union. This will not create extra overhead with modern compilers as long as optimization is on (nvcc -O3 ...).
@@ -269,12 +279,14 @@ int double2loint(double val)
 //    return result;
 //}
 
+
 void SwapDouble(double a, double b) 
 { 
 	double temp = a; 
 	a = b; 
 	b = temp; 
-} //beta, lambda rotation matrix and its derivatives
+}
+ //beta, lambda rotation matrix and its derivatives
 
  //  8.11.2006
 
@@ -330,6 +342,7 @@ void blmatrix(__global struct mfreq_context* CUDA_LCC, double bet, double lam)
 	(*CUDA_LCC).Dblm[2][3][2] = sb * cl;
 	(*CUDA_LCC).Dblm[2][3][3] = 0;
 }
+
  //Curvature function (and hence facet area) from Laplace series
 
  //  8.11.2006
@@ -405,6 +418,7 @@ void curv(
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
 }
+
 
 void mrqcof_curve2(
 	__global struct mfreq_context* CUDA_LCC,
@@ -731,6 +745,7 @@ void mrqcof_curve2(
 		(*CUDA_LCC).trial_chisq = ltrial_chisq;
 	}
 }
+
 
 //computes integrated brightness of all visible and iluminated areas
 //  and its derivatives
@@ -1086,20 +1101,10 @@ void bright(
 	ncoef0 -= 3;
 	int m, m1, mr, iStart;
 	int d, d1, dr;
-	if (Inrel)
-	{
-		iStart = 2;
-		//m = blockIdx.x * CUDA_Dg_block + 2 * (CUDA_Numfac1);
-		m = 2 * (*CUDA_CC).Numfac1;
-		d = jp + 2 * (Lpoints1);
-	}
-	else
-	{
-		iStart = 1;
-		//m = blockIdx.x * CUDA_Dg_block + (CUDA_Numfac1);
-		m = (*CUDA_CC).Numfac1;
-		d = jp + (Lpoints1);
-	}
+
+	iStart = Inrel + 1;
+	m = iStart * (*CUDA_CC).Numfac1;
+	d = jp + (Lpoints1 << Inrel);
 
 	m1 = m + (*CUDA_CC).Numfac1;
 	mr = 2 * (*CUDA_CC).Numfac1;
@@ -1146,6 +1151,7 @@ void bright(
 
 	//return(0);
 }
+
 //Convexity regularization function
 
 //  8.11.2006
@@ -1230,6 +1236,7 @@ double conv(
 
 	return (tmp);
 }
+
  //slighly changed code from Numerical Recipes
  //  converted from Mikko's fortran code
 
@@ -1549,6 +1556,7 @@ double mrqcof_end(
 	return (*CUDA_LCC).trial_chisq;
 }
 
+
 //int gauss_errc(freq_context* CUDA_LCC, const int ma)
 //mrqmin_1_end(CUDA_LCC, CUDA_ma, CUDA_mfit, CUDA_mfit1, block);
 //int gauss_errc(struct mfreq_context* CUDA_LCC, struct freq_context* CUDA_CC, int* sh_icol, int* sh_irow, double* sh_big, int icol, double pivinv)
@@ -1811,6 +1819,7 @@ int gauss_errc(
 // #undef SWAP
  //from Numerical Recipes
 
+
 //N.B. The foll. L-M routines are modified versions of Press et al.
 //  converted from Mikko's fortran code
 
@@ -1846,7 +1855,7 @@ int mrqmin_1_end(
 	brtmpl++;
 
 	// <<< Iter1Mrqmin1EndPre1
-	if ((*CUDA_LCC).isAlamda)
+	if ((*CUDA_LCC).flags & isAlamda)
 	{
 		for (j = tmpl; j <= tmph; j++)
 		{
@@ -1939,7 +1948,7 @@ void mrqmin_2_end(
 
 
 }
-kernel void k(){}
+
 kernel void ClCheckEnd(
     __global int* CUDA_End,
     int theEnd)
@@ -1978,15 +1987,16 @@ __kernel void ClCalculatePrepare(
     if (n > n_max)
     {
         //CUDA_mCC[x].isInvalid = 1;
-        (*CUDA_LCC).isInvalid = 1;
-        (*CUDA_FR).isInvalid = 1;
+        (*CUDA_LCC).flags = (*CUDA_LCC).flags | isInvalid;
+        (*CUDA_FR).flags = (*CUDA_FR).flags | isInvalid;
         return;
     }
     else
     {
         //CUDA_mCC[x].isInvalid = 0;
-        (*CUDA_LCC).isInvalid = 0;
-        (*CUDA_FR).isInvalid = 0;
+        (*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isInvalid;
+        (*CUDA_FR).flags = (*CUDA_FR).flags & ~isInvalid;
+
     }
 
     //printf("[%d] n_start: %d | n_max: %d | n: %d \n", blockIdx.x, n_start, n_max, n);
@@ -2037,7 +2047,8 @@ __kernel void ClCalculatePreparePole(
     //printf("[%d] PreparePole t: %d, CUDA_End: %d\n", x, t, *CUDA_End);
 
 
-    if ((*CUDA_LCC).isInvalid)
+    unsigned int flags = (*CUDA_LCC).flags;
+    if(flags & isInvalid)
     {
         //atomic_add(CUDA_End, 1);
         atomic_inc(CUDA_End);
@@ -2163,31 +2174,28 @@ __kernel void ClCalculateIter1Begin(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     __global struct freq_result* CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid)
+    if ((*CUDA_LCC).flags & isInvalid)
     {
         return;
     }
 
-    //                                   ?    < 50                                 ?       > 0                                   ?      < 0
-    (*CUDA_LCC).isNiter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
-    (*CUDA_FR).isNiter = (*CUDA_LCC).isNiter;
-
-    //printf("[%d] isNiter: %d, Alamda: %10.7f\n", blockIdx.x, (*CUDA_LCC).isNiter, (*CUDA_LCC).Alamda);
-
-    if ((*CUDA_LCC).isNiter)
-    {
+    int b_isniter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
+    if (b_isniter) {
+        (*CUDA_LCC).flags = (*CUDA_LCC).flags | isNiter;
+        (*CUDA_FR).flags = (*CUDA_LCC).flags | isNiter;
         if ((*CUDA_LCC).Alamda < 0)
         {
-            (*CUDA_LCC).isAlamda = 1;
+            (*CUDA_LCC).flags = (*CUDA_LCC).flags | isAlamda;
             (*CUDA_LCC).Alamda = CUDA_Alamda_start; /* initial alambda */
         }
         else
         {
-            (*CUDA_LCC).isAlamda = 0;
+            (*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isAlamda;
         }
-    }
-    else
-    {
+    } else {
+        (*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isNiter;
+        (*CUDA_FR).flags = (*CUDA_LCC).flags & ~isNiter;
+
         if (!(*CUDA_LFR).isReported)
         {
             //int oldEnd = *CUDA_End;
@@ -2227,15 +2235,12 @@ __kernel void ClCalculateIter1Mrqcof1Start(
     //	printf("[%d][%3d] [Mrqcof1Start]\n", blockIdx.x, threadIdx.x);
         //printf("isInvalid: %3d, isNiter: %3d, isAlamda: %3d\n", (*CUDA_LCC).isInvalid, (*CUDA_LCC).isNiter, (*CUDA_LCC).isAlamda);
 
-    if ((*CUDA_LCC).isInvalid) return;
-
-    if (!(*CUDA_LCC).isNiter) return;
-
-    if (!(*CUDA_LCC).isAlamda) return; //>> 0
-
-    // => mrqcof_start(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
-    mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
+        // => mrqcof_start(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+        mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof1Matrix(
@@ -2250,23 +2255,22 @@ __kernel void ClCalculateIter1Mrqcof1Matrix(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
-
-    if (!(*CUDA_LCC).isAlamda) return;
 
     __local int num; // __shared__
 
-    int3 localIdx;
-    localIdx.x = get_local_id(0);
-    if (localIdx.x == 0)
-    {
-        num = 0;
-    }
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
+        int3 localIdx;
+        localIdx.x = get_local_id(0);
+        if (localIdx.x == 0)
+        {
+            num = 0;
+        }
 
-    mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, lpoints, num);
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+        mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, lpoints, num);
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof1Curve1(
@@ -2284,28 +2288,27 @@ __kernel void ClCalculateIter1Mrqcof1Curve1(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     //double* dytemp = &CUDA_Dytemp[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
-
-    if (!(*CUDA_LCC).isAlamda) return;
 
     __local int num;  // __shared__
     __local double tmave[BLOCK_DIM];
 
-    if (threadIdx.x == 0)
-    {
-        num = 0;
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
+        if (threadIdx.x == 0)
+        {
+            num = 0;
+        }
+
+        mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, tmave, inrel, lpoints, num);
+
+        //if (blockIdx.x == 0 && threadIdx.x == 0)
+        //	printf("[Mrqcof1Curve1] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
+
+        //if (blockIdx.x == 0)
+        //	printf("dytemp[8636]: %10.7f\n", dytemp[8636]);
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
     }
-
-    mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, tmave, inrel, lpoints, num);
-
-    //if (blockIdx.x == 0 && threadIdx.x == 0)
-    //	printf("[Mrqcof1Curve1] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
-
-    //if (blockIdx.x == 0)
-    //	printf("dytemp[8636]: %10.7f\n", dytemp[8636]);
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
 __kernel void ClCalculateIter1Mrqcof1Curve1Last(
@@ -2322,26 +2325,25 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     //double* dytemp = &CUDA_Dytemp[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
-
-    if (!(*CUDA_LCC).isAlamda) return;
 
     __local double res[BLOCK_DIM];
 
-    //if (blockIdx.x == 0 && threadIdx.x == 0)
-    //	printf("Mrqcof1Curve1Last\n");
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
+        //if (blockIdx.x == 0 && threadIdx.x == 0)
+        //	printf("Mrqcof1Curve1Last\n");
 
-    mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
-    //if (threadIdx.x == 0)
-    //{
-    //	int i = 56;
-    //	//for (int i = 1; i <= 60; i++) {
-    //		printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
-    //	//}
-    //}
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+        mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
+        //if (threadIdx.x == 0)
+        //{
+        //	int i = 56;
+        //	//for (int i = 1; i <= 60; i++) {
+        //		printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
+        //	//}
+        //}
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof1Curve2(
@@ -2360,25 +2362,24 @@ __kernel void ClCalculateIter1Mrqcof1Curve2(
     //if (blockIdx.x == 0)
     //printf("[%3d] isInvalid: %3d, isNiter: %3d, isAlamda: %3d\n", threadIdx.x, (*CUDA_LCC).isInvalid, (*CUDA_LCC).isNiter, (*CUDA_LCC).isAlamda);
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
 
-    if (!(*CUDA_LCC).isAlamda) return;
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
+        mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 
-    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
+        //if (blockIdx.x == 0 && threadIdx.x == 0)
+        //	printf("[Mrqcof1Curve2] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
 
-    //if (blockIdx.x == 0 && threadIdx.x == 0)
-    //	printf("[Mrqcof1Curve2] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
-
-    //if (threadIdx.x == 0)
-    //{
-    //	int i = 56;
-    //	//for (int i = 1; i <= 60; i++) {
-    //	printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
-    //	//}
-    //}
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+        //if (threadIdx.x == 0)
+        //{
+        //	int i = 56;
+        //	//for (int i = 1; i <= 60; i++) {
+        //	printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
+        //	//}
+        //}
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof1End(
@@ -2392,27 +2393,26 @@ __kernel void ClCalculateIter1Mrqcof1End(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter) && (flags & isAlamda)) {
 
-    if (!(*CUDA_LCC).isAlamda) return;
-
-    //if (blockIdx.x == 0 && threadIdx.x == 0)
-    //	printf("Mrqcof1End\n");
+        //if (blockIdx.x == 0 && threadIdx.x == 0)
+        //	printf("Mrqcof1End\n");
 
 
-    (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha);
+        (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha);
 
 
-    ////if (threadIdx.x == 0)
-    ////{
-    //	int i = 56;
-    //	//for (int i = 1; i <= 60; i++) {
-    //	printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
-    //	//}
-    ////}
-    barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+        ////if (threadIdx.x == 0)
+        ////{
+        //	int i = 56;
+        //	//for (int i = 1; i <= 60; i++) {
+        //	printf("[%d] alpha[%2d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).alpha[i]);
+        //	//}
+        ////}
+        barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqmin1End(
@@ -2426,9 +2426,10 @@ __kernel void ClCalculateIter1Mrqmin1End(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     //if (threadIdx.x == 0)
     //{
@@ -2452,6 +2453,7 @@ __kernel void ClCalculateIter1Mrqmin1End(
     //	printf("[%3d] sh_icol[%3d]: %3d\n", threadIdx.x, threadIdx.x, sh_icol[threadIdx.x]);
     //}
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2Start(
@@ -2465,9 +2467,10 @@ __kernel void ClCalculateIter1Mrqcof2Start(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof2Start\n");
@@ -2479,6 +2482,7 @@ __kernel void ClCalculateIter1Mrqcof2Start(
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("alpha[56]: %10.7f\n", (*CUDA_LCC).alpha[56]);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2Matrix(
@@ -2492,12 +2496,12 @@ __kernel void ClCalculateIter1Mrqcof2Matrix(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
 
     __local int num; // __shared__
 
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
     int3 localIdx;
     localIdx.x = get_local_id(0);
     if (localIdx.x == 0)
@@ -2511,6 +2515,7 @@ __kernel void ClCalculateIter1Mrqcof2Matrix(
     //mrqcof_matrix(CUDA_LCC, (*CUDA_LCC).atry, lpoints);
     mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, lpoints, num);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2Curve1(
@@ -2527,12 +2532,12 @@ __kernel void ClCalculateIter1Mrqcof2Curve1(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     //double* dytemp = &CUDA_Dytemp[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
-
-    if (!(*CUDA_LCC).isNiter) return;
 
     __local int num;  // __shared__
     __local double tmave[BLOCK_DIM];
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     if (threadIdx.x == 0)
     {
@@ -2545,6 +2550,7 @@ __kernel void ClCalculateIter1Mrqcof2Curve1(
     //mrqcof_curve1(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
     mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, tmave, inrel, lpoints, num);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2Curve2(
@@ -2561,15 +2567,16 @@ __kernel void ClCalculateIter1Mrqcof2Curve2(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof2Curve2\n");
 
     mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2Curve1Last(
@@ -2586,15 +2593,17 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     //double* dytemp = &CUDA_Dytemp[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
 
     __local double res[BLOCK_DIM];
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     //mrqcof_curve1_last(CUDA_LCC, CUDA_CC, dytemp, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
     mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, res, inrel, lpoints);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqcof2End(
@@ -2608,15 +2617,16 @@ __kernel void ClCalculateIter1Mrqcof2End(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
 
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
     (*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar);
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Chisq: %10.7f\n", threadIdx.x, (*CUDA_LCC).Chisq);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter1Mrqmin2End(
@@ -2630,9 +2640,10 @@ __kernel void ClCalculateIter1Mrqmin2End(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
 
-    if (!(*CUDA_LCC).isNiter) return;
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if((!(flags & isInvalid)) && (flags & isNiter)) {
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqmin2End\n");
@@ -2646,6 +2657,7 @@ __kernel void ClCalculateIter1Mrqmin2End(
     //	printf("[%3d] Niter: %d\n", threadIdx.x, (*CUDA_LCC).Niter);
     //printf("|");
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 __kernel void ClCalculateIter2(
@@ -2660,15 +2672,16 @@ __kernel void ClCalculateIter2(
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid)
-    {
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if(flags & isInvalid) {
         return;
     }
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] isNiter: %d\n", threadIdx.x, (*CUDA_LCC).isNiter);
 
-    if ((*CUDA_LCC).isNiter)
+    if(flags & isNiter)
     {
         if ((*CUDA_LCC).Niter == 1 || (*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
         {
@@ -2762,7 +2775,11 @@ __kernel void ClCalculateFinishPole(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     __global struct freq_result* CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-    if ((*CUDA_LCC).isInvalid) return;
+
+    unsigned int flags = (*CUDA_LCC).flags;
+    if(flags & isInvalid) {
+        return;
+    }
 
     double totarea = 0;
     for (i = 1; i <= (*CUDA_CC).Numfac; i++)
@@ -2834,3 +2851,4 @@ __kernel void ClCalculateFinishPole(
     (*CUDA_LFR).chck[3]=(*CUDA_LCC).chck[3];*/
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
+

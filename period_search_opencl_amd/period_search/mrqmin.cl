@@ -33,7 +33,7 @@ int mrqmin_1_end(
 	brtmpl++;
 
 	// <<< Iter1Mrqmin1EndPre1
-	if ((*CUDA_LCC).isAlamda)
+	if ((*CUDA_LCC).flags & isAlamda)
 	{
 		for (j = tmpl; j <= tmph; j++)
 		{

@@ -26,3 +26,7 @@
 #else
 #define BLOCK_DIM 128
 #endif
+
+#define isInvalid 1
+#define isNiter   2
+#define isAlamda  4

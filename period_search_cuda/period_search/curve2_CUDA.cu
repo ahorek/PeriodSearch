@@ -275,11 +275,11 @@ __global__ void CudaCalculateIter1Mrqcof1Curve2(const int inrel, const int lpoin
 {
   const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-  if ((*CUDA_LCC).isInvalid) return;
+  if ((*CUDA_LCC).flags & isInvalid) return;
 
-  if (!(*CUDA_LCC).isNiter) return;
+  if (!(*CUDA_LCC).flags & isNiter) return;
 
-  if (!(*CUDA_LCC).isAlamda) return;
+  if (!(*CUDA_LCC).flags & isAlamda) return;
 
   MrqcofCurve2(CUDA_LCC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 }
@@ -288,9 +288,9 @@ __global__ void CudaCalculateIter1Mrqcof2Curve2(const int inrel, const int lpoin
 {
   const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-  if ((*CUDA_LCC).isInvalid) return;
+  if ((*CUDA_LCC).flags & isInvalid) return;
 
-  if (!(*CUDA_LCC).isNiter) return;
+  if (!(*CUDA_LCC).flags & isNiter) return;
 
   MrqcofCurve2(CUDA_LCC, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
 }

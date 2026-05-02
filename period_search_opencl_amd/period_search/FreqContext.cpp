@@ -32,13 +32,12 @@ struct FreqContext
 	int indxc[MAX_N_PAR + 1], indxr[MAX_N_PAR + 1], ipiv[MAX_N_PAR + 1];
 	//global
 	double freq;
-	int isNiter;
+
 	double iter_diff, rchisq, dev_old, dev_new;
 	int Niter;
 	double chck[4];
-	int isAlamda; //Alamda<0 for init
-	//
-	int isInvalid;
+
+	unsigned int flags;
 	//test
 };
 
