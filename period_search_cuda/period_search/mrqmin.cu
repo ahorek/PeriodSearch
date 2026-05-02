@@ -30,7 +30,7 @@ __device__ int mrqmin_1_end(freq_context* CUDA_LCC, const int ma, const int mfit
 	if (brtmph > mfit) brtmph = mfit;
 	brtmpl++;
 
-	if ((*CUDA_LCC).isAlamda)
+	if ((*CUDA_LCC).flags & isAlamda)
 	{
 		for (j = tmpl; j <= tmph; j++)
 		{
