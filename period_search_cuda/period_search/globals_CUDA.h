@@ -124,10 +124,13 @@ struct freq_context
 
 	//global
 	double freq;
+	int isNiter;
 	double iter_diff, rchisq, dev_old, dev_new;
 	int Niter;
 	double chck[4];
-	unsigned int flags;
+	int isAlamda; //Alamda < 0 for init
+	//
+	int isInvalid;
 	//test
 };
 
@@ -142,7 +145,3 @@ struct freq_result
 };
 
 __device__ extern freq_result *CUDA_FR;
-
-#define isInvalid 1
-#define isNiter   2
-#define isAlamda  4

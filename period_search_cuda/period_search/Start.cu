@@ -19,12 +19,12 @@ __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, 
 	//	CUDA_CC is zeroed itself as global memory but need to reset between freq TODO
 	if (n > n_max)
 	{
-		(*CUDA_LCC).flags = (*CUDA_LCC).flags | isInvalid;
+		(*CUDA_LCC).isInvalid = 1;
 		return;
 	}
 	else
 	{
-		(*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isInvalid;
+		(*CUDA_LCC).isInvalid = 0;
 	}
 
 	(*CUDA_LCC).freq = freq_start - (n - 1) * freq_step;
@@ -42,7 +42,7 @@ __global__ void CudaCalculatePreparePole(int m)
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid)
+	if ((*CUDA_LCC).isInvalid)
 	{
 		atomicAdd(&CUDA_End, 1);
 		(*CUDA_LFR).isReported = 0; //signal not to read result
@@ -100,26 +100,25 @@ __global__ void CudaCalculateIter1Begin(void)
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid)
+	if ((*CUDA_LCC).isInvalid)
 	{
 		return;
 	}
 
-	int b_isniter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
-    if (b_isniter) {
-        (*CUDA_LCC).flags = (*CUDA_LCC).flags | isNiter;
+	(*CUDA_LCC).isNiter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
+
+	if ((*CUDA_LCC).isNiter)
+	{
 		if ((*CUDA_LCC).Alamda < 0)
 		{
-			(*CUDA_LCC).flags = (*CUDA_LCC).flags | isAlamda;
+			(*CUDA_LCC).isAlamda = 1;
 			(*CUDA_LCC).Alamda = CUDA_Alamda_start; /* initial alambda */
 		}
 		else
-		{
-			(*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isAlamda;
-		}
-    } else {
-        (*CUDA_LCC).flags = (*CUDA_LCC).flags & ~isNiter;
-
+			(*CUDA_LCC).isAlamda = 0;
+	}
+	else
+	{
 		if (!(*CUDA_LFR).isReported)
 		{
 			atomicAdd(&CUDA_End, 1);
@@ -132,16 +131,17 @@ __global__ void CudaCalculateIter1Begin(void)
 #endif
 			(*CUDA_LFR).isReported = 1;
 		}
-    }
+	}
+
 }
 
 __global__ void CudaCalculateIter1Mrqmin1End(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid)
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	int block = CUDA_BLOCK_DIM;
 	/*gauss_err=*/mrqmin_1_end(CUDA_LCC, CUDA_ma, CUDA_mfit, CUDA_mfit1, block);
@@ -151,9 +151,9 @@ __global__ void CudaCalculateIter1Mrqmin2End(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
 	(*CUDA_LCC).Niter++;
@@ -163,11 +163,11 @@ __global__ void CudaCalculateIter1Mrqcof1Start(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
-	if (!(*CUDA_LCC).flags & isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda) return;
 
 	mrqcof_start(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
 }
@@ -176,11 +176,11 @@ __global__ void CudaCalculateIter1Mrqcof1Matrix(const int lpoints)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
-	if (!(*CUDA_LCC).flags & isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda) return;
 
 	mrqcof_matrix(CUDA_LCC, (*CUDA_LCC).cg, lpoints);
 }
@@ -189,11 +189,11 @@ __global__ void CudaCalculateIter1Mrqcof1Curve1(const int inrel, const int lpoin
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
-	if (!(*CUDA_LCC).flags & isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda) return;
 
 	mrqcof_curve1(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 }
@@ -202,11 +202,11 @@ __global__ void CudaCalculateIter1Mrqcof1Curve1Last(const int inrel, const int l
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
-	if (!(*CUDA_LCC).flags & isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda) return;
 
 	mrqcof_curve1_last(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
 }
@@ -215,11 +215,11 @@ __global__ void CudaCalculateIter1Mrqcof1End(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
-	if (!(*CUDA_LCC).flags & isAlamda) return;
+	if (!(*CUDA_LCC).isAlamda) return;
 
 	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).alpha);
 }
@@ -228,9 +228,9 @@ __global__ void CudaCalculateIter1Mrqcof2Start(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	mrqcof_start(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da);
 }
@@ -239,9 +239,9 @@ __global__ void CudaCalculateIter1Mrqcof2Matrix(const int lpoints)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	mrqcof_matrix(CUDA_LCC, (*CUDA_LCC).atry, lpoints);
 }
@@ -250,9 +250,9 @@ __global__ void CudaCalculateIter1Mrqcof2Curve1(const int inrel, const int lpoin
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	mrqcof_curve1(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
 }
@@ -261,9 +261,9 @@ __global__ void CudaCalculateIter1Mrqcof2Curve1Last(const int inrel, const int l
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	mrqcof_curve1_last(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
 }
@@ -272,9 +272,9 @@ __global__ void CudaCalculateIter1Mrqcof2End(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
-	if (!(*CUDA_LCC).flags & isNiter) return;
+	if (!(*CUDA_LCC).isNiter) return;
 
 	(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).covar);
 }
@@ -283,12 +283,12 @@ __global__ void CudaCalculateIter2(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid)
+	if ((*CUDA_LCC).isInvalid)
 	{
 		return;
 	}
 
-	if ((*CUDA_LCC).flags & isNiter)
+	if ((*CUDA_LCC).isNiter)
 	{
 		if ((*CUDA_LCC).Niter == 1 || (*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
 		{
@@ -342,7 +342,7 @@ __global__ void CudaCalculateFinishPole(void)
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
 	double totarea = 0;
 	for (auto i = 1; i <= CUDA_Numfac; i++)
@@ -382,7 +382,7 @@ __global__ void CudaCalculateFinish(void)
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-	if ((*CUDA_LCC).flags & isInvalid) return;
+	if ((*CUDA_LCC).isInvalid) return;
 
 	if ((*CUDA_LFR).la_best < 0)
 		(*CUDA_LFR).la_best += 360;
