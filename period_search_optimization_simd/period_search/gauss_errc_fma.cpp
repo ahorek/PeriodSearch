@@ -78,22 +78,19 @@ void CalcStrategyFma::gauss_errc(struct globals& gl, const int n, std::vector<do
 					__m256d avx_val = _mm256_load_pd(&a[j][k]);
 					__m256d avx_abs = _mm256_andnot_pd(sign_mask, avx_val); // abs
 					__m256d cmp_mask = _mm256_cmp_pd(avx_ipiv, avx_zeros, _CMP_EQ_OS); // keep ipiv[k] == 0 values
-					__m256d avx_active = _mm256_blendv_pd(_mm256_set1_pd(-INFINITY), avx_abs, cmp_mask); // set 0 for skipped values ipiv[k] == 1
 
-					__m256d tmp = _mm256_permute2f128_pd(avx_active, avx_active, 1); // maximum
-					__m256d avx_max = _mm256_max_pd(avx_active, tmp);
-					tmp = _mm256_permute_pd(avx_max, 0b0101);
-					avx_max = _mm256_max_pd(avx_max, tmp);
+                    int mask = _mm256_movemask_pd(cmp_mask);
+                    while (mask) {
+                        int lane = ctz(mask);  // index of set bit
 
-					double max_val = _mm256_cvtsd_f64(avx_max);
-					if(max_val >= big) { // update new maximum and indexes
-						__m256d index_mask = _mm256_cmp_pd(avx_active, avx_max, _CMP_EQ_OS); // icol mask, last max value
-						int mask = _mm256_movemask_pd(index_mask);
-						int idx = ctz(mask); // get icol index [0-3]
-						icol = k + idx;
-						irow = j;
-						big = max_val;
-					}
+                        double val = ((double*)&avx_abs)[lane];
+                        if (val >= big) {
+                            big = val;
+                            irow = j;
+                            icol = k + lane;
+                        }
+                        mask &= mask - 1; // clear lowest set bit
+                    }
 				}
 
 				for (; k < n; k++) {

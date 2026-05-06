@@ -73,22 +73,21 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 						return;
 					}
 
-					__m512d avx_val = _mm512_loadu_pd(&a[j][k]);
-					__m512d avx_abs = _mm512_andnot_pd(sign_mask, avx_val);
+					__m512d avx_val = _mm512_load_pd(&a[j][k]);
+					__m512d avx_abs = _mm512_andnot_pd(sign_mask, avx_val); // abs
+					__mmask8 cmp_mask = _mm512_cmp_pd_mask(avx_ipiv, avx_zeros, _CMP_EQ_OS); // keep ipiv[k] == 0 values
 
-					__mmask8 active_mask = _mm512_cmp_pd_mask(avx_ipiv, avx_zeros, _CMP_EQ_OQ);
+					int mask = (int)cmp_mask;
+					while (cmp_mask) {
+						int lane = ctz(mask);  // index of set bit
 
-					__m512d avx_active = _mm512_mask_mov_pd(_mm512_set1_pd(-INFINITY), active_mask, avx_abs);
-
-					double max_val = _mm512_reduce_max_pd(avx_active);
-
-					if (max_val >= big) {
-						__mmask8 max_mask = _mm512_cmp_pd_mask(avx_active, _mm512_set1_pd(max_val), _CMP_EQ_OQ);
-
-						int idx = ctz(max_mask);
-						icol = k + idx;
-						irow = j;
-						big = max_val;
+						double val = ((double*)&avx_abs)[lane];
+						if (val >= big) {
+							big = val;
+							irow = j;
+							icol = k + lane;
+						}
+						mask &= mask - 1; // clear lowest set bit
 					}
 				}
 
