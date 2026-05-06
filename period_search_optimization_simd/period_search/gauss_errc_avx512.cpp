@@ -77,17 +77,16 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 					__m512d avx_abs = _mm512_andnot_pd(sign_mask, avx_val); // abs
 					__mmask8 cmp_mask = _mm512_cmp_pd_mask(avx_ipiv, avx_zeros, _CMP_EQ_OS); // keep ipiv[k] == 0 values
 
-					int mask = (int)cmp_mask;
-					while (cmp_mask) {
-						int lane = ctz(mask);  // index of set bit
+                    while (cmp_mask) {
+                        int lane = ctz(cmp_mask);  // index of set bit
 
-						double val = ((double*)&avx_abs)[lane];
-						if (val >= big) {
-							big = val;
-							irow = j;
-							icol = k + lane;
-						}
-						mask &= mask - 1; // clear lowest set bit
+                        double val = ((double*)&avx_abs)[lane];
+                        if (val >= big) {
+                            big = val;
+                            irow = j;
+                            icol = k + lane;
+                        }
+						cmp_mask = _mm512_kandn(1 << lane, cmp_mask); // clear lowest set bit
 					}
 				}
 

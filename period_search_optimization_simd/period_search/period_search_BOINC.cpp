@@ -807,10 +807,10 @@ int main(int argc, char** argv)
             for (m = 1; m <= N_POLES; m++)
             {
                 prd = 1 / freq;
-#ifdef _DEBUG
+//#ifdef _DEBUG
                 printf(".");
                 fflush(stderr);
-#endif
+//#endif
                 /* starts from the initial ellipsoid */
                 for (i = 1; i <= Ncoef; i++)
                     cg[i] = cg_first[i];
@@ -936,9 +936,9 @@ int main(int argc, char** argv)
                 }
             } /* pole loop */
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
             printf("\n");
-#endif
+//#endif
             if (la_best < 0)
                 la_best += 360;
 
@@ -1091,7 +1091,7 @@ int main(int argc, char** argv)
         fraction_done = n / (((freq_start - freq_end) / freq_step) + 1);
         boinc_fraction_done(fraction_done);
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
         auto fraction = fraction_done * 100;
         auto time = std::time(nullptr);   // get time now
         std::tm now{};
@@ -1099,7 +1099,7 @@ int main(int argc, char** argv)
         localtime_r(&time, &now);
 #else
         _localtime64_s(&now, &time);
-#endif
+//#endif
         printf("%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
         fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.3f%%\n", now.tm_hour, now.tm_min, now.tm_sec, fraction);
 #endif
