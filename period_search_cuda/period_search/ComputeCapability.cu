@@ -181,6 +181,9 @@ int Cc::GetSmxBlockCc12() const
 	case 0:
 		smxBlock = 32;	// Blackwell
 		break;
+	case 1:
+		smxBlock = 32;	// Blackwell (GB10)
+		break;
 	default:
 		Exit();
 		break;
