@@ -9,6 +9,7 @@ class Cc
 	int GetSmxBlockCuda11() const;
 	int GetSmxBlockCuda10() const;
 	int GetSmxBlockCuda6() const;
+	int GetSmxBlockCc12() const;
 	int GetSmxBlockCc9() const;
 	int GetSmxBlockCc8() const;
 	int GetSmxBlockCc7() const;
