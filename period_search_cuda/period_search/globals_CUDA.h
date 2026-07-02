@@ -50,7 +50,10 @@ __device__ __device_builtin__ double __hiloint2double(int hi, int lo);
 #include "constants.h"
 //NOTE: https://devtalk.nvidia.com/default/topic/517801/-34-texture-is-not-a-template-34-error-mvs-2010/
 
-#define N_BLOCKS 2048
+// One block ("bid") = one (frequency, pole) pair since the pole merge;
+// must hold one full batch: (freqs per batch) * N_POLES, rounded up to 128.
+#define N_BLOCKS 4096
+
 
 //global to all freq
 __constant__ extern int CUDA_Ncoef, CUDA_Numfac, CUDA_Numfac1, CUDA_Dg_block;
@@ -87,15 +90,19 @@ __device__ extern double CUDA_ee[3][MAX_N_OBS+1];
 __device__ extern double CUDA_ee0[3][MAX_N_OBS+1]; 
 
 
+// dytemp is transposed since the 2026 rewrite: row = data point, column = parameter,
+// row stride DYT_STRIDE doubles (ma <= 63 is asserted on the host).
+#define DYT_STRIDE 64
+
 //global to one thread
 struct freq_context
 {
-  double *Dg;
+  double *Dg;   // unused since the DsphT rewrite (kept for struct/copy layout)
   //double *alpha;
   double *covar;
   double *dytemp;
   double *ytemp;
-  
+
   //double cg[MAX_N_PAR + 1];
   //double beta[MAX_N_PAR + 1];
   double da[MAX_N_PAR + 1];
