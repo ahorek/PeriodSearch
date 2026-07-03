@@ -29,7 +29,11 @@ __kernel void ClCalculatePrepare(
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
     __global struct freq_result* CUDA_LFR = &CUDA_FR[blockIdx.x];
 
-    int n = n_start + blockIdx.x;
+    /* one work-group per (frequency, pole) pair: N_POLES consecutive groups
+       share the same trial frequency and each of them will run one of the
+       initial poles, all concurrently (the poles used to be a serial host-side
+       loop) */
+    int n = n_start + blockIdx.x / N_POLES;
 
 
     //zero context
@@ -75,9 +79,7 @@ __kernel void ClCalculatePreparePole(
     __global struct freq_result* CUDA_FR,
     __global double* CUDA_cg_first,
     __global int* CUDA_End,
-    __global struct freq_context* CUDA_CC2,
-    //double CUDA_cl,
-    int m)
+    __global struct freq_context* CUDA_CC2)
 {
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -123,6 +125,9 @@ __kernel void ClCalculatePreparePole(
     //printf("Idx: %d | m: %d | Ncoef: %d\n", x, m, (*CUDA_CC).Ncoef);
     //printf("cg[%d]: %.7f\n", x, CUDA_CC[x].cg[CUDA_CC[x].Ncoef + 1]);
     //printf("Idx: %d | beta_pole[%d]: %.7f\n", x, m, CUDA_CC[x].beta_pole[m]);
+
+    /* which of the initial poles this group runs (see ClCalculatePrepare) */
+    const int m = blockIdx.x % N_POLES + 1;
 
     (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1] = (*CUDA_CC).beta_pole[m];
     (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2] = (*CUDA_CC).lambda_pole[m];
