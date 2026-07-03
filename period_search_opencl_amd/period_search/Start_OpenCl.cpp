@@ -1554,7 +1554,10 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 #else
         //auto res = (freq_result*)pfr;
         auto res = new freq_result[CUDA_grid_dim_precalc];
-        memcpy(res, pfr, frSize);
+        // frSize is padded up to a 128-byte multiple for the device buffer;
+        // res holds exactly CUDA_grid_dim_precalc records, so copy only that
+        // many bytes (copying the padded frSize overflows res).
+        memcpy(res, pfr, sizeof(freq_result) * CUDA_grid_dim_precalc);
 #endif
 
         for (m = 1; m <= CUDA_grid_dim_precalc; m++)
