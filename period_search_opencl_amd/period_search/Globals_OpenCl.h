@@ -36,7 +36,6 @@ struct alignas(8) mfreq_context
 	//double* ytemp;
 
 	 double Area[MAX_N_FAC + 1];
-	 double Dg[(MAX_N_FAC + 1) * (MAX_N_PAR + 1)];
 	 double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
 	 double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
 	 double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
