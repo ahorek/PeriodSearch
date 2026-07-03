@@ -35,7 +35,15 @@ __device__ void matrix_neo(freq_context* CUDA_LCC, double cg[], int lnp1, int Lp
         ee0_3 = CUDA_ee0[lnp * 3 + 2];
         t = CUDA_tim[lnp];
 
-        alpha = acos(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3);
+        /* ee and ee0 are unit vectors, so the dot product is mathematically in
+           [-1, 1] - but for observations near opposition (solar phase ~ 0) it
+           lands within ~1e-7 of 1.0, and a different (equally legal) FMA
+           contraction produced by another compiler/architecture can round it
+           just past 1.0. acos would then return NaN, and a single NaN data
+           point poisons the chi-square of every trial frequency. fmin/fmax
+           pass in-range values through unchanged, so results on healthy
+           inputs are bit-identical. */
+        alpha = acos(fmin(1.0, fmax(-1.0, ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3)));
 
         /* Exp-lin model (const.term=1.) */
         f = exp(-alpha / cg[CUDA_ncoef0 + 2]);//f is temp here

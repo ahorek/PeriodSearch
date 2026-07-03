@@ -1,0 +1,129 @@
+# Linux Makefile for CUDA 12.9.
+#
+# Differences from Makefile (CUDA 11.8):
+#  * compute_35/37/53/62/72 removed (dropped from CUDA 12.x).
+#  * sm_100 (Blackwell data-center) added natively.
+#  * sm_120 (GeForce RTX 50xx) is generated from compute_89 PTX ON PURPOSE:
+#    the native compute_120 pipeline of ptxas 12.9 miscompiles this
+#    application - intermittent NaN chi-squares appear from about the third
+#    Levenberg-Marquardt iteration onward, and every result line ends up as
+#    "-nan" (verified on a 5060 Ti with an instrumented build; SASS produced
+#    from compute_89 PTX is correct on the same GPU and workunit). The same
+#    breakage is reproduced by the driver JIT when it lowers compute_90 PTX
+#    for sm_120, which is why *older* releases of this app also produce
+#    invalid results on RTX 50xx cards.
+#  * compute_90 PTX is embedded as a JIT fallback for architectures newer
+#    than the ones listed here.
+
+BOINC_DIR = ../../../boinc_src
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
+CUDA_PATH = /usr/local/cuda-12.9
+BUILD_DIR = ./build
+
+CXXFLAGS = -O3 -s \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-I$(CUDA_PATH)/include \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L /usr/X11R6/lib \
+	-L.
+
+NVCCFLAGS = -O3 --extra-device-vectorization --ptxas-options=-v \
+	--generate-code arch=compute_50,code=sm_50 \
+	--generate-code arch=compute_52,code=sm_52 \
+	--generate-code arch=compute_60,code=sm_60 \
+	--generate-code arch=compute_61,code=sm_61 \
+	--generate-code arch=compute_70,code=sm_70 \
+	--generate-code arch=compute_75,code=sm_75 \
+	--generate-code arch=compute_80,code=sm_80 \
+	--generate-code arch=compute_86,code=sm_86 \
+	--generate-code arch=compute_87,code=sm_87 \
+	--generate-code arch=compute_89,code=sm_89 \
+	--generate-code arch=compute_90,code=sm_90 \
+	--generate-code arch=compute_100,code=sm_100 \
+	--generate-code arch=compute_89,code=sm_120 \
+	--generate-code arch=compute_90,code=compute_90 \
+	--maxrregcount=255 -rdc=true -Wno-deprecated-gpu-targets
+CC=g++
+CXX=g++
+OPTFLAGS=-O3 -s
+CFLAGS=$(OPTFLAGS) -Wall
+LDFLAGS=-lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
+
+MY_LIBS=$(addprefix $(BUILD_DIR)/, trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o curv.o blmatrix.o conv.o matrix.o \
+	bright.o gauss_errc.o pscuda.device-link.o start_CUDA.o curve2_CUDA.o Start.o ComputeCapability.o)
+
+PROGS = $(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release
+
+all: $(BUILD_DIR) $(PROGS)
+
+libstdc++.a:
+	ln -s `g++ -print-file-name=libstdc++.a`
+
+# libcudart.so:
+# 	ln -s $(CUDA_PATH)/lib64/libcudart.so libcudart.so
+
+libcuda.so:
+	ln -s $(CUDA_PATH)/lib64/stubs/libcuda.so libcuda.so
+
+libnvidia-ml.so:
+	ln -f -s $(CUDA_PATH)/lib64/stubs/libnvidia-ml.so libnvidia-ml.so
+
+# clean:
+# 	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcudart.so libcuda.so
+clean:
+	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcuda.so
+
+# distclean:
+# 	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcudart.so libcuda.so
+distclean:
+	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcuda.so
+
+install: $(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release
+
+# specify library paths explicitly (rather than -l)
+# because otherwise you might get a version in /usr/lib etc.
+
+# Create the build directory if it doesn't exist
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
+	libcuda.so libnvidia-ml.so $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/lib64/libcudart_static.a
+	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_common.a \
+	$(CUDA_PATH)/lib64/libcudart_static.a \
+	$(BOINC_API_DIR)/libboinc_api.a  libcuda.so libnvidia-ml.so \
+	$(BOINC_LIB_DIR)/libboinc.a $(LDFLAGS)
+
+# libcudart.so
+
+# Compilation rules for CUDA and C++ files
+$(BUILD_DIR)/%.o: %.cu
+	$(CUDA_PATH)/bin/nvcc --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+		$(NVCCFLAGS) \
+		--compiler-options="$(CXXFLAGS)" \
+		--compile $< -o $@
+
+$(BUILD_DIR)/%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Special rule for pscuda.device-link.o
+$(BUILD_DIR)/pscuda.device-link.o: $(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
+	$(CUDA_PATH)/bin/nvcc -dlink -o $@ --compiler-bindir=/usr/bin/gcc $(OPTIMIZATION) \
+		$(NVCCFLAGS) \
+		--compiler-options="$(CXXFLAGS)" \
+		$(BUILD_DIR)/start_CUDA.o $(BUILD_DIR)/Start.o $(BUILD_DIR)/blmatrix.o $(BUILD_DIR)/bright.o $(BUILD_DIR)/conv.o $(BUILD_DIR)/curv.o $(BUILD_DIR)/gauss_errc.o $(BUILD_DIR)/mrqcof.o $(BUILD_DIR)/mrqmin.o $(BUILD_DIR)/matrix.o $(BUILD_DIR)/curve2_CUDA.o $(BUILD_DIR)/ComputeCapability.o
+
+# Compilation rule for C files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $(BUILD_DIR)/$@
+
+# Print "All done." after all targets are built 
+done: 
+	@echo "All done."
