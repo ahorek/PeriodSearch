@@ -300,7 +300,11 @@ void bright(
 			br += ar * s;
 
 			incl[incl_count] = i;
-			dbr[incl_count] = (*CUDA_CC).Darea[i] * s;
+			/* Darea[i] * s * Dg[i][k] == Darea[i] * s * g * Dsph[i][k]
+			   == (Area[i] * s) * Dsph[i][k]: fold g into the weight and
+			   gather from the one read-only, facet-major Dsph shared by
+			   all work-groups instead of the per-context Dg matrix */
+			dbr[incl_count] = ar * s;
 			incl_count++;
 
 			double lmu0_dnom = lmu0 / dnom;
@@ -350,40 +354,37 @@ void bright(
 	(*CUDA_LCC).ytemp[jp] = br * Scale;
 
 	ncoef0 -= 3;
-	int m, m1, mr, iStart;
+	int iStart;
 	int d, d1, dr;
 
 	iStart = Inrel + 1;
-	m = iStart * (*CUDA_CC).Numfac1;
 	d = jp + (Lpoints1 << Inrel);
 
-	m1 = m + (*CUDA_CC).Numfac1;
-	mr = 2 * (*CUDA_CC).Numfac1;
 	d1 = d + Lpoints1;
 	dr = 2 * Lpoints1;
 
 	/* Derivatives of brightness w.r.t. g-coeffs */
 	if (incl_count)
 	{
-		for (i = iStart; i <= ncoef0; i += 2, m += mr, m1 += mr, d += dr, d1 += dr)
+		for (i = iStart; i <= ncoef0; i += 2, d += dr, d1 += dr)
 		{
 			double tmp = 0, tmp1 = 0;
 			double l_dbr = dbr[0];
 			int l_incl = incl[0];
-			tmp = l_dbr * (*CUDA_LCC).Dg[m + l_incl];
+			tmp = l_dbr * (*CUDA_CC).Dsph[l_incl][i];
 			if ((i + 1) <= ncoef0)
 			{
-				tmp1 = l_dbr * (*CUDA_LCC).Dg[m1 + l_incl];
+				tmp1 = l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
 			}
 
 			for (j = 1; j < incl_count; j++)
 			{
 				double l_dbr = dbr[j];
 				int l_incl = incl[j];
-				tmp += l_dbr * (*CUDA_LCC).Dg[m + l_incl];
+				tmp += l_dbr * (*CUDA_CC).Dsph[l_incl][i];
 				if ((i + 1) <= ncoef0)
 				{
-					tmp1 += l_dbr * (*CUDA_LCC).Dg[m1 + l_incl];
+					tmp1 += l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
 				}
 			}
 
