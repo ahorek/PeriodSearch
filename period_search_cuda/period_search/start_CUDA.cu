@@ -548,6 +548,9 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 
 	//CUDA_grid_dim = 2 * deviceProp.multiProcessorCount * smxBlock;
 	CUDA_grid_dim = deviceProp.multiProcessorCount * smxBlock;
+	/* one block per (frequency, pole) pair: keep the grid a multiple of N_POLES */
+	CUDA_grid_dim = (CUDA_grid_dim / N_POLES) * N_POLES;
+	if (CUDA_grid_dim < N_POLES) CUDA_grid_dim = N_POLES;
 
 	if (!checkex)
 	{
@@ -831,14 +834,16 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 	//cudaMemcpyToSymbol(CUDA_ncoef0, &m, sizeof(m));
 	CopyValueToSymbol(CUDA_ncoef0, &m);                            // NOTE: So far OK ********************************************
 
-	int CUDA_Grid_dim_precalc = CUDA_grid_dim;
-	if (max_test_periods < CUDA_Grid_dim_precalc)
+	/* all (test period, pole) pairs run concurrently */
+	int precalcFreqs = CUDA_grid_dim / N_POLES;
+	if (max_test_periods < precalcFreqs)
 	{
-		CUDA_Grid_dim_precalc = max_test_periods;
+		precalcFreqs = max_test_periods;
 		//#ifdef _DEBUG
 		//		fprintf(stderr, "CUDA_Grid_dim_precalc = %d\n", CUDA_Grid_dim_precalc);
 		//#endif
 	}
+	const int CUDA_Grid_dim_precalc = precalcFreqs * N_POLES;
 
 	// safeCudaMalloc(d_CUDA_tim, tim.size());
 	//err = cudaMalloc(&pcc, CUDA_Grid_dim_precalc * sizeof(freq_context));
@@ -937,13 +942,13 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 
 	res = static_cast<freq_result*>(malloc(CUDA_Grid_dim_precalc * sizeof(freq_result)));
 
-	for (n = 1; n <= max_test_periods; n += CUDA_Grid_dim_precalc)
+	for (n = 1; n <= max_test_periods; n += precalcFreqs)
 	{
 		CudaCalculatePrepare<<<CUDA_Grid_dim_precalc, 1>>>(n, max_test_periods, freq_start, freq_step);
 		//err = cudaThreadSynchronize();
 		cudaDeviceSynchronize();
 
-		for (m = 1; m <= N_POLES; m++)
+		/* all N_POLES pole trials of this batch run concurrently as separate blocks */
 		{
 			//zero global End signal
 			theEnd = 0;
@@ -951,7 +956,7 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 			CopyValueToSymbol(CUDA_End, &theEnd);
 			//cudaGetSymbolAddress((void**)&endPtr, CUDA_End);
 			//
-			CudaCalculatePreparePole<<<CUDA_Grid_dim_precalc, 1>>>(m);
+			CudaCalculatePreparePole<<<CUDA_Grid_dim_precalc, 1>>>();
 			//
 #ifdef _DEBUG
 			printf(". ");
@@ -1028,10 +1033,23 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 		//read results here
 		handleCudaError(cudaMemcpy(res, pfr, sizeof(freq_result) * CUDA_Grid_dim_precalc, cudaMemcpyDeviceToHost), "cudaMemcpy", "pfr");
 
-		for (m = 1; m <= CUDA_Grid_dim_precalc; m++)
+		for (m = 0; m < precalcFreqs; m++)
 		{
-			if (res[m - 1].isReported == 1)
-				sum_dark_facet = sum_dark_facet + res[m - 1].dark_best;
+			/* best pole for this test period: smallest dev among the reported
+			   ones, mirroring the old serial per-pole update rule (NaN never
+			   wins a comparison, hence never gets selected) */
+			int best = -1, firstReported = -1;
+			for (auto p = 0; p < N_POLES; p++)
+			{
+				const auto b = m * N_POLES + p;
+				if (res[b].isReported != 1) continue;
+				if (firstReported < 0) firstReported = b;
+				if (!isnan(res[b].dev_best) && (best < 0 || res[b].dev_best < res[best].dev_best))
+					best = b;
+			}
+			if (best < 0) best = firstReported;
+			if (best >= 0)
+				sum_dark_facet = sum_dark_facet + res[best].dark_best;
 		}
 	} /* period loop */
 
@@ -1312,7 +1330,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 	//int firstreport = 0;//beta debug
 	auto oldFractionDone = 0.0001;
 
-	for (n = n_start_from; n <= n_max; n += CUDA_grid_dim)
+	for (n = n_start_from; n <= n_max; n += CUDA_grid_dim / N_POLES)
 	{
 		auto fractionDone = (double)n / (double)n_max;
 		//boinc_fraction_done(fractionDone);
@@ -1330,13 +1348,10 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 		//err = cudaThreadSynchronize();
 		//err = cudaDeviceSynchronize();
 
-		for (m = 1; m <= N_POLES; m++)
+		/* all N_POLES pole trials of this batch run concurrently as separate blocks */
 		{
 			auto mid = fractionDone - oldFractionDone;
-			auto inner = mid / static_cast<double>(N_POLES) * m;
-			//printf("mid: %.4f, inner: %.4f\n", mid, inner);
-			auto fractionDone2 = oldFractionDone + inner;
-			boinc_fraction_done(fractionDone2);
+			boinc_fraction_done(oldFractionDone);
 
 #ifdef _DEBUG
 			auto fraction2 = fractionDone2 * 100;
@@ -1352,7 +1367,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 			//cudaMemcpyToSymbol(CUDA_End, &theEnd, sizeof(theEnd));
 			CopyValueToSymbol(CUDA_End, &theEnd);
 			
-			CudaCalculatePreparePole<<<CUDA_grid_dim, 1>>>(m);
+			CudaCalculatePreparePole<<<CUDA_grid_dim, 1>>>();
 			//
 			while (!theEnd)
 			{
@@ -1395,6 +1410,7 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 				//handleCudaError(cudaMemcpyFromSymbolAsync(&theEnd, CUDA_End, sizeof theEnd, 0, cudaMemcpyDeviceToHost), "cudaMemcpyFromSymbolAsync", "theEnd");
 				CopyValueFromSymbol(&theEnd, CUDA_End);
 				cudaDeviceSynchronize();
+				boinc_fraction_done(oldFractionDone + mid * ((double)theEnd / CUDA_grid_dim));
 				theEnd = theEnd == CUDA_grid_dim;
 
 				//break;//debug
@@ -1416,17 +1432,33 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 
 		oldFractionDone = fractionDone;
 		LinesWritten = 0;
-		for (m = 1; m <= CUDA_grid_dim; m++)
+		for (m = 0; m < CUDA_grid_dim / N_POLES; m++)
 		{
-			if (res[m - 1].isReported == 1)
+			/* one output line per frequency: pick the best pole, i.e. the
+			   smallest dev among the reported ones. This mirrors the update
+			   rule of the old serial pole loop (dev_new < dev_best, so NaN
+			   never wins); if no pole produced a usable dev, fall back to the
+			   first reported one so the line count stays the same. */
+			int best = -1, firstReported = -1;
+			for (auto p = 0; p < N_POLES; p++)
+			{
+				const auto b = m * N_POLES + p;
+				if (res[b].isReported != 1) continue;
+				if (firstReported < 0) firstReported = b;
+				if (!isnan(res[b].dev_best) && (best < 0 || res[b].dev_best < res[best].dev_best))
+					best = b;
+			}
+			if (best < 0) best = firstReported;
+
+			if (best >= 0)
 			{
 				LinesWritten++;
-				double dark_best = n == 1 && m == 1
+				double dark_best = n == 1 && m == 0
 					? conw_r * escl * escl
-					: res[m - 1].dark_best;
+					: res[best].dark_best;
 
 				/* output file */
-				mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[m - 1].per_best, res[m - 1].dev_best, res[m - 1].dev_best * res[m - 1].dev_best * (ndata - 3), dark_best, round(res[m - 1].la_best), round(res[m - 1].be_best));
+				mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[best].per_best, res[best].dev_best, res[best].dev_best * res[best].dev_best * (ndata - 3), dark_best, round(res[best].la_best), round(res[best].be_best));
 			}
 		}
 
