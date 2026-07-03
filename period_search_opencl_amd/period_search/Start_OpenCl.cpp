@@ -792,9 +792,25 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     cerr << "Prefered kernel work group size multiple: " << preferedWGS << endl;
 
 
-    if (CUDA_grid_dim > devMaxWorkGroupSize) {
-        CUDA_grid_dim = devMaxWorkGroupSize;
-        cerr << "Setting Grid Dim to " << CUDA_grid_dim << endl;
+    /* The grid dimension is a work-GROUP count (concurrent frequency
+       contexts); CL_DEVICE_MAX_WORK_GROUP_SIZE limits work-ITEMS within one
+       group, so capping the grid with it (as done before) cut the grid to 256
+       groups and had most of the LM iterations run nearly empty. The real
+       bound is device memory: every context costs sizeof(mfreq_context) bytes
+       inside one buffer, so bound the grid by the largest single allocation
+       the device allows and by 3/4 of its total memory (the app never runs
+       alone on a desktop GPU). */
+    {
+        cl_ulong maxAlloc = 0, globalMemBytes = 0;
+        clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(maxAlloc), &maxAlloc, NULL);
+        clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(globalMemBytes), &globalMemBytes, NULL);
+        cl_ulong memBudget = maxAlloc < globalMemBytes / 4 * 3 ? maxAlloc : globalMemBytes / 4 * 3;
+        size_t memCap = (size_t)(memBudget / sizeof(mfreq_context));
+        if (CUDA_grid_dim > memCap) {
+            CUDA_grid_dim = memCap;
+        }
+        cerr << "Grid dim bounded by device memory (" << sizeof(mfreq_context) / 1048576.0
+             << " MB per context): " << CUDA_grid_dim << endl;
     }
 
     /* one work-group per (frequency, pole) pair: keep the grid a multiple of
@@ -942,7 +958,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     ////__declspec(align(8)) void* pcc = reinterpret_cast<mfreq_context*>(malloc(pccSize));
     //
-    //int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    //size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     //auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     //auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 
@@ -973,7 +989,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // auto pcc = (mfreq_context *)aligned_alloc(8, optimizedSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, optimizedSize, pcc, err);
 
-    // cl_uint pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    // cl_usize_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     // void* pcc = reinterpret_cast<mfreq_context*>(malloc(pccSize));
 
     // auto pcc __attribute__((aligned(8))) = new mfreq_context[CUDA_grid_dim_precalc];
@@ -984,7 +1000,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // auto memPcc = (mfreq_context *)aligned_alloc(128, pccSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, pccSize, pcc, err);
     
-    // cl_uint pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    // cl_usize_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     // auto pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto pccSize = ((sizeof(mfreq_context) * CUDA_grid_dim_precalc) / 128 + 1) * 128;
     auto pcc = (mfreq_context*)aligned_alloc(128, pccSize);
@@ -994,7 +1010,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // void* pcc = clEnqueueMapBuffer(queue, CUDA_MCC2, CL_BLOCKING, CL_MAP_WRITE, 0, pccSize, 0, NULL, NULL, &err);
 
 #elif NVIDIA
-    int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
@@ -1015,7 +1031,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     auto pccSize = ((sizeof(mfreq_context) * CUDA_grid_dim_precalc) / 128 + 1) * 128;
     auto pcc = (mfreq_context*)_aligned_malloc(pccSize, 128);
 #elif NVIDIA
-    int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
@@ -1764,10 +1780,10 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
     // auto pcc = (mfreq_context *)aligned_alloc(8, optimizedSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, optimizedSize, pcc, err);
 
-    cl_uint pccSize = CUDA_grid_dim * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim * sizeof(mfreq_context);
     auto pcc = new mfreq_context[CUDA_grid_dim];
 #elif NVIDIA
-    cl_uint pccSize = CUDA_grid_dim * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
