@@ -14,7 +14,8 @@ int mrqmin_1_end(
 	__local int* shIrow,
 	__local int* shIcol,
 	__local double* pivBC,
-	__local int* icolBC)
+	__local int* icolBC,
+	__global double* alphaG)
 {
 	int j;
 	int3 threadIdx, blockIdx;
@@ -57,7 +58,7 @@ int mrqmin_1_end(
 	// ClCalculateIter1Mrqcof2Start before mrqcof2 accumulates into it).
 
 	// <<< gauss_errc    ---- GAUS ERROR CODE ----
-	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
+	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC, alphaG);
 	if (err_code)
 	{
 		return err_code;
@@ -86,8 +87,12 @@ int mrqmin_1_end(
 
 void mrqmin_2_end(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC) //, int* ia, int ma)
+	__global struct freq_context* CUDA_CC,
+	__global double* scr)
 {
+	__global double* alphaG = scr + (*CUDA_CC).offAlpha;
+	__global double* covarG = scr + (*CUDA_CC).offCovar;
+
 	int j, k, l;
 	int3 blockIdx, threadIdx;
 	blockIdx.x = get_group_id(0);
@@ -100,10 +105,10 @@ void mrqmin_2_end(
 		{
 			for (k = 1; k <= (*CUDA_CC).Mfit; k++)
 			{
-				(*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k] = (*CUDA_LCC).covar[j * (*CUDA_CC).Mfit1 + k];
+				alphaG[j * (*CUDA_CC).Mfit1 + k] = covarG[j * (*CUDA_CC).Mfit1 + k];
 
 				//if (blockIdx.x == 0)
-				//	printf("alpha[%3d]: %10.7f\n", (*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k]);
+				//	printf("alpha[%3d]: %10.7f\n", alphaG[j * (*CUDA_CC).Mfit1 + k]);
 			}
 
 			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
