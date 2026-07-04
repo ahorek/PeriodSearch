@@ -20,6 +20,10 @@
    i.e. every production workunit); enforced on the host. */
 #define DYT_STRIDE           64
 
+/* normal-equation accumulation tile: points per rank-K update in
+   mrqcof_curve2 */
+#define CURVE2_K             8
+
 #define PI                 M_PI             /* 3.14159265358979323846 */
 #define AU            149597870.691         /* Astronomical Unit [km] */
 #define C_SPEED       299792458             /* speed of light [m/s]*/
