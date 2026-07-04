@@ -158,17 +158,15 @@ void mrqcof_curve1(
 		if (tmpl == 1) tmpl++;
 
 		int ixx;
-		ixx = tmpl * Lpoints1;
-
 		for (int l = tmpl; l <= tmph; l++)
 		{
 			//jp==1
-			ixx++;
+			ixx = l;
 			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
 
 			//jp>=2
-			ixx++;
-			for (int jp = 2; jp <= Lpoints; jp++, ixx++)
+			ixx += DYT_STRIDE;
+			for (int jp = 2; jp <= Lpoints; jp++, ixx += DYT_STRIDE)
 			{
 				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
@@ -274,8 +272,7 @@ void mrqcof_curve1_last(
 		}
 		for (l = tmpl; l <= tmph; l++)
 		{
-			//(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
-			(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
+			(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
 
 			if (Inrel == 1)
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];

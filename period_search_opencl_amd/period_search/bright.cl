@@ -322,26 +322,26 @@ void bright(
 	}
 
 	Scale = (*CUDA_LCC).jp_Scale[jp];
-	i = jp + (ncoef0 - 3 + 1) * Lpoints1;
+	i = (jp - 1) * DYT_STRIDE + (ncoef0 - 3 + 1);
 	/* Ders. of brightness w.r.t. rotation parameters */
 	(*CUDA_LCC).dytemp[i] = Scale * tmp1;
 
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = Scale * tmp2;
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = Scale * tmp3;
 
-	i += Lpoints1;
+	i++;
 	/* Ders. of br. w.r.t. phase function params. */
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_1[jp];
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_2[jp];
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_3[jp];
 
 	/* Ders. of br. w.r.t. cl, cls */
-	(*CUDA_LCC).dytemp[jp + (ncoef - 1) * (Lpoints1)] = Scale * tmp4 * cl;
-	(*CUDA_LCC).dytemp[jp + (ncoef) * (Lpoints1)] = Scale * tmp5;
+	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = Scale * tmp4 * cl;
+	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef)] = Scale * tmp5;
 
 	/* Scaled brightness */
 	(*CUDA_LCC).ytemp[jp] = br * Scale;
@@ -351,10 +351,10 @@ void bright(
 	int d, d1, dr;
 
 	iStart = Inrel + 1;
-	d = jp + (Lpoints1 << Inrel);
+	d = (jp - 1) * DYT_STRIDE + iStart;
 
-	d1 = d + Lpoints1;
-	dr = 2 * Lpoints1;
+	d1 = d + 1;
+	dr = 2;
 
 	/* Derivatives of brightness w.r.t. g-coeffs */
 	if (incl_count)
@@ -391,7 +391,7 @@ void bright(
 	}
 	else
 	{
-		for (i = 1; i <= ncoef0; i++, d += Lpoints1)
+		for (i = 1; i <= ncoef0; i++, d++)
 			(*CUDA_LCC).dytemp[d] = 0;
 	}
 

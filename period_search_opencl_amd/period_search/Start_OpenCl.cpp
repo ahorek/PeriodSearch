@@ -909,6 +909,12 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     cl_int llastma = 0;
     cl_int llastone = 1;
     cl_int ma = n_coef + 5 + n_ph_par;
+
+    if (ma > DYT_STRIDE - 1)
+    {
+        fprintf(stderr, "Error: ma = %d exceeds the supported maximum of %d parameters (spherical-harmonics degree > 6)\n", (int)ma, DYT_STRIDE - 1);
+        exit(3);
+    }
     for (m = 1; m <= ma; m++)
     {
         if (ia[m])
@@ -1717,6 +1723,12 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     /* number of fitted parameters */
     int lmfit = 0, llastma = 0, llastone = 1, ma = n_coef + 5 + n_ph_par;
+
+    if (ma > DYT_STRIDE - 1)
+    {
+        fprintf(stderr, "Error: ma = %d exceeds the supported maximum of %d parameters (spherical-harmonics degree > 6)\n", (int)ma, DYT_STRIDE - 1);
+        exit(3);
+    }
     for (m = 1; m <= ma; m++)
     {
         if (ia[m])
