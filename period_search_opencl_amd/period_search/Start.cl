@@ -484,7 +484,10 @@ __kernel void ClCalculateIter1Mrqcof1End(
 
 __kernel void ClCalculateIter1Mrqmin1End(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    /* runtime-sized by the host to Mfit1*Mfit1 doubles (~24 KB for real
+       workunits) so the kernel also fits GCN's 32 KB local-memory limit */
+    __local double* covL)
 {
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -513,7 +516,18 @@ __kernel void ClCalculateIter1Mrqmin1End(
     //mrqmin_1_end(CUDA_LCC, CUDA_CC, sh_icol, sh_irow, sh_big, icol, pivinv);
 
 
-    mrqmin_1_end(CUDA_LCC, CUDA_CC);
+    /* OpenCL requires __local declarations at kernel scope; the solver runs
+       entirely in local memory (see gauss_errc.cl). covL comes in as a
+       runtime-sized kernel argument. */
+    __local double daL[DYT_STRIDE];
+    __local int ipivL[DYT_STRIDE];
+    __local double shBig[BLOCK_DIM];
+    __local int shIrow[BLOCK_DIM];
+    __local int shIcol[BLOCK_DIM];
+    __local double pivBC[1];
+    __local int icolBC[1];
+
+    mrqmin_1_end(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
 
     //if (blockIdx.x == 0) {
     //	printf("[%3d] sh_icol[%3d]: %3d\n", threadIdx.x, threadIdx.x, sh_icol[threadIdx.x]);

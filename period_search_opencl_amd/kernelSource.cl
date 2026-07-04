@@ -1518,24 +1518,44 @@ double mrqcof_end(
 	return (*CUDA_LCC).trial_chisq;
 }
 
-//int gauss_errc(freq_context* CUDA_LCC, const int ma)
-//mrqmin_1_end(CUDA_LCC, CUDA_ma, CUDA_mfit, CUDA_mfit1, block);
-//int gauss_errc(struct mfreq_context* CUDA_LCC, struct freq_context* CUDA_CC, int* sh_icol, int* sh_irow, double* sh_big, int icol, double pivinv)
+//from Numerical Recipes
+
+/* 2026: the damped normal matrix is staged into local memory and the whole
+   Gauss-Jordan elimination runs there; global memory is only touched to read
+   alpha/beta on entry and to write the step vector da at the end. The old
+   version swept covar in global memory on every pivot step. Two consequences
+   of the caller's structure are used:
+
+   * the inverted matrix itself is dead - ClCalculateIter1Mrqcof2Start rezeroes
+	 covar before mrqcof2 accumulates into it, and mrqmin_2_end copies that
+	 fresh accumulation - so neither the solved matrix nor the final
+	 column-unscramble pass (and its indxr/indxc bookkeeping) is needed;
+	 only da and the return code leave this function;
+
+   * the icol/pivinv broadcast scalars and the pivot-reduction arrays move
+	 from per-context global struct members to local memory.
+
+   The local buffers are declared at kernel scope (OpenCL requirement) in
+   ClCalculateIter1Mrqmin1End and passed through mrqmin_1_end. Pivot choice
+   and elimination order are unchanged, so the computed step is bit-identical
+   to the global-memory version. */
 int gauss_errc(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC)
+	__global struct freq_context* CUDA_CC,
+	__local double* covL,   /* [DYT_STRIDE * DYT_STRIDE], indexed with Mfit1 stride */
+	__local double* daL,    /* [DYT_STRIDE] */
+	__local int* ipivL,     /* [DYT_STRIDE] */
+	__local double* shBig,  /* [BLOCK_DIM] */
+	__local int* shIrow,    /* [BLOCK_DIM] */
+	__local int* shIcol,    /* [BLOCK_DIM] */
+	__local double* pivBC,  /* [1] pivinv broadcast */
+	__local int* icolBC)    /* [1] icol broadcast */
 {
-	//__shared__ int icol;
-	//__shared__ double pivinv;
-	//__shared__ int sh_icol[CUDA_BLOCK_DIM];
-	//__shared__ int sh_irow[CUDA_BLOCK_DIM];
-	//__shared__ double sh_big[CUDA_BLOCK_DIM];
-
-	double big, dum, temp;
+	double big, dum;
 	double tmpSwap;
 	int i, licol = 0, irow = 0, j, k, l, ll;
-	int n = (*CUDA_CC).Mfit; // 54
-	int m = (*CUDA_CC).ma;   // 57
+	int n = (*CUDA_CC).Mfit;
+	int mfit1 = (*CUDA_CC).Mfit1;
 
 	int3 threadIdx, blockIdx;
 	threadIdx.x = get_local_id(0);
@@ -1543,243 +1563,175 @@ int gauss_errc(
 
 	int brtmph, brtmpl;
 	brtmph = n / BLOCK_DIM;
-	if (n % BLOCK_DIM) brtmph++;		// 1 (thr 1)
-	brtmpl = threadIdx.x * brtmph;		// 0
-	brtmph = brtmpl + brtmph;			// 1
-	if (brtmph > n) brtmph = n;			// false | 1
-	brtmpl++;							// 1
+	if (n % BLOCK_DIM) brtmph++;
+	brtmpl = threadIdx.x * brtmph;
+	brtmph = brtmpl + brtmph;
+	if (brtmph > n) brtmph = n;
+	brtmpl++;
 
-	// <<< GausErrorCPre
-	if (threadIdx.x == 0)
+	/* stage the damped matrix and the right-hand side straight from
+	   alpha/beta (this replaces the covar staging that mrqmin_1_end used to
+	   do in global memory; covar itself is no longer written at all) */
+	for (j = brtmpl; j <= brtmph; j++)
 	{
-		for (j = 1; j <= n; j++) (*CUDA_LCC).ipiv[j] = 0;
+		int ixx = j * mfit1 + 1;
+		for (k = 1; k <= n; k++, ixx++)
+		{
+			covL[ixx] = (*CUDA_LCC).alpha[ixx];
+		}
+		int qq = j * mfit1 + j;
+		covL[qq] = (*CUDA_LCC).alpha[qq] * (1 + (*CUDA_LCC).Alamda);
+		daL[j] = (*CUDA_LCC).beta[j];
 	}
 
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-	// >>> GausErrorCPre End
+	if (threadIdx.x == 0)
+	{
+		for (j = 1; j <= n; j++) ipivL[j] = 0;
+	}
 
-	//if (blockIdx.x == 0 && threadIdx.x == 0)
-	//	printf("brtmpl: %3d, brtmph: %3d\n", brtmpl, brtmph);
+	barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
-	// <<< GausErrorC
 	for (i = 1; i <= n; i++)
 	{
 		big = 0;
 		irow = 0;
 		licol = 0;
-		for (j = brtmpl; j <= brtmph; j++)  // 1 to 1 on thread 0 first pass for all "i"
+		for (j = brtmpl; j <= brtmph; j++)
 		{
-			//if (threadIdx.x == 0 && i == 2)
-			//	printf("[%d][%3d] ipiv[%3d]: %5d, covar[%3d]: %10.7f\n",
-			//		blockIdx.x, threadIdx.x, j, (*CUDA_LCC).ipiv[j], j * (*CUDA_CC).Mfit1 + 1, (*CUDA_LCC).covar[j * (*CUDA_CC).Mfit1 + 1]);
-
-			if ((*CUDA_LCC).ipiv[j] != 1)
+			if (ipivL[j] != 1)
 			{
-				//if (blockIdx.x == 0)
-				//	printf("[%3d] i[%3d] ipiv[%3d]: %10.7f\n", threadIdx.x, i, j, (*CUDA_LCC).ipiv[j]);
-
-				int ixx = j * (*CUDA_CC).Mfit1 + 1;
+				int ixx = j * mfit1 + 1;
 				for (k = 1; k <= n; k++, ixx++)
 				{
-					if ((*CUDA_LCC).ipiv[k] == 0)
+					if (ipivL[k] == 0)
 					{
-						double tmpcov = fabs((*CUDA_LCC).covar[ixx]);
+						double tmpcov = fabs(covL[ixx]);
 						if (tmpcov >= big)
 						{
-							//if (blockIdx.x == 0)
-							//	printf("[%3d] i[%3d] ipiv[%3d]: %3d, ipiv[%3d]: %3d, big: %10.7f, tmpcov: %10.7f, covar[%3d]: %10.7f\n",
-							//		threadIdx.x, i, j, (*CUDA_LCC).ipiv[j], k, (*CUDA_LCC).ipiv[k], big, tmpcov, ixx, (*CUDA_LCC).covar[ixx]);
-
 							big = tmpcov;
 							irow = j;
 							licol = k;
 						}
 					}
-					else if ((*CUDA_LCC).ipiv[k] > 1)
+					else if (ipivL[k] > 1)
 					{
-						//printf("-");
-						barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-						/*					        deallocate_vector((void *) ipiv);
-												deallocate_vector((void *) indxc);
-												deallocate_vector((void *) indxr);*/
+						barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 						return(1);
 					}
 				}
 			}
 		}
-		(*CUDA_LCC).sh_big[threadIdx.x] = big;
-		(*CUDA_LCC).sh_irow[threadIdx.x] = irow;
-		(*CUDA_LCC).sh_icol[threadIdx.x] = licol;
+		shBig[threadIdx.x] = big;
+		shIrow[threadIdx.x] = irow;
+		shIcol[threadIdx.x] = licol;
 
-		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-
-		//int d = (*CUDA_LCC).sh_icol[0];
-		//if (blockIdx.x == 0 && threadIdx.x == 0)
-		//	printf("[%3d][%3d] i: %3d, licol: %3d\n", blockIdx.x, threadIdx.x, i, licol);
-		//	//printf("[%3d][%3d] i: %3d, sh_col[%3d]: %d, d: %3d\n", blockIdx.x, threadIdx.x, i, threadIdx.x, (*CUDA_LCC).sh_icol[threadIdx.x], d);
+		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 		if (threadIdx.x == 0)
 		{
-			big = (*CUDA_LCC).sh_big[0];				// = 0
-			(*CUDA_LCC).icol = (*CUDA_LCC).sh_icol[0];	// = 0
-			irow = (*CUDA_LCC).sh_irow[0];				// = 0
+			big = shBig[0];
+			icolBC[0] = shIcol[0];
+			irow = shIrow[0];
 
-			for (j = 1; j < BLOCK_DIM; j++)				// 1..127
+			for (j = 1; j < BLOCK_DIM; j++)
 			{
-				//if (blockIdx.x == 0 && i == 1)
-				//	printf("sh_big[%3d]: %10.7f\n", j, (*CUDA_LCC).sh_big[j]);
-
-				if ((*CUDA_LCC).sh_big[j] >= big)
+				if (shBig[j] >= big)
 				{
-					big = (*CUDA_LCC).sh_big[j];
-					irow = (*CUDA_LCC).sh_irow[j];
-					(*CUDA_LCC).icol = (*CUDA_LCC).sh_icol[j];
+					big = shBig[j];
+					irow = shIrow[j];
+					icolBC[0] = shIcol[j];
 				}
 			}
 
-			//(*CUDA_LCC).ipiv[(*CUDA_LCC).icol] = ++(*CUDA_LCC).ipiv[(*CUDA_LCC).icol];
-			++(*CUDA_LCC).ipiv[(*CUDA_LCC).icol];
+			++ipivL[icolBC[0]];
 
-			//if (blockIdx.x == 0)
-			//	printf("i: %2d, icol: %3d, irow: %3d, ipiv[%3d]: %3d\n", i, (*CUDA_LCC).icol, irow, (*CUDA_LCC).icol, (*CUDA_LCC).ipiv[(*CUDA_LCC).icol]);
-
-
-			if (irow != (*CUDA_LCC).icol) // what is going on here ???
+			if (irow != icolBC[0])
 			{
-				//if (blockIdx.x == 0)
-				//	printf("irow: %3d\n", irow);
 				for (l = 1; l <= n; l++)
 				{
-					//SwapDouble((*CUDA_LCC).covar[irow * (*CUDA_CC).Mfit1 + l], (*CUDA_LCC).covar[icol * (*CUDA_CC).Mfit1 + l]);
-					tmpSwap = (*CUDA_LCC).covar[irow * (*CUDA_CC).Mfit1 + l];
-					(*CUDA_LCC).covar[irow * (*CUDA_CC).Mfit1 + l] = (*CUDA_LCC).covar[(*CUDA_LCC).icol * (*CUDA_CC).Mfit1 + l];
-					(*CUDA_LCC).covar[(*CUDA_LCC).icol * (*CUDA_CC).Mfit1 + l] = tmpSwap;
-
+					tmpSwap = covL[irow * mfit1 + l];
+					covL[irow * mfit1 + l] = covL[icolBC[0] * mfit1 + l];
+					covL[icolBC[0] * mfit1 + l] = tmpSwap;
 				}
 
-				//SwapDouble((*CUDA_LCC).da[irow], (*CUDA_LCC).da[icol]);
-				tmpSwap = (*CUDA_LCC).da[irow];
-				(*CUDA_LCC).da[irow] = (*CUDA_LCC).da[(*CUDA_LCC).icol];
-				(*CUDA_LCC).da[(*CUDA_LCC).icol] = tmpSwap;
-
-				//SWAP(b[irow],b[icol])
+				tmpSwap = daL[irow];
+				daL[irow] = daL[icolBC[0]];
+				daL[icolBC[0]] = tmpSwap;
 			}
 
-			(*CUDA_LCC).indxr[i] = irow;
-			(*CUDA_LCC).indxc[i] = (*CUDA_LCC).icol;
+			int covarIdx = icolBC[0] * mfit1 + icolBC[0];
 
-			//if (blockIdx.x == 0)
-			//	printf("i: %3d, irow: %3d, icol: %3d\n", i, irow, (*CUDA_LCC).icol);
-
-			int covarIdx = (*CUDA_LCC).icol * (*CUDA_CC).Mfit1 + (*CUDA_LCC).icol;
-
-			if ((*CUDA_LCC).covar[covarIdx] == 0.0)
+			if (covL[covarIdx] == 0.0)
 			{
-				j = 0;
-				for (int l = 1; l <= (*CUDA_CC).ma; l++)
+				/* singular pivot: report the (partial) step like the old code
+				   did, then bail with error 2 */
+				for (j = 1; j <= n; j++)
 				{
-					if ((*CUDA_CC).ia[l])
+					(*CUDA_LCC).da[j] = daL[j];
+				}
+				j = 0;
+				for (int l2 = 1; l2 <= (*CUDA_CC).ma; l2++)
+				{
+					if ((*CUDA_CC).ia[l2])
 					{
 						j++;
-						(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+						(*CUDA_LCC).atry[l2] = (*CUDA_LCC).cg[l2] + (*CUDA_LCC).da[j];
 					}
 				}
 
 				return(2);
 			}
 
-			//<<<<<<<<<<  (*CUDA_LCC).
-			(*CUDA_LCC).pivinv = 1.0 / (*CUDA_LCC).covar[covarIdx];
-			(*CUDA_LCC).covar[covarIdx] = 1.0;
+			pivBC[0] = 1.0 / covL[covarIdx];
+			covL[covarIdx] = 1.0;
 
-
-			(*CUDA_LCC).da[(*CUDA_LCC).icol] = (*CUDA_LCC).da[(*CUDA_LCC).icol] * (*CUDA_LCC).pivinv;
-			//b[icol] *= pivinv;
-
-			//if(blockIdx.x == 0)
-			//	printf("[%d] i[%2d] da[%4d]: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).icol, (*CUDA_LCC).da[(*CUDA_LCC).icol]); // da - OK
-
-			//if (blockIdx.x == 0)
-			//	printf("[%d] i[%2d] pivinv: %10.7f\n", blockIdx.x, i, (*CUDA_LCC).pivinv); // pivinv - OK
-
+			daL[icolBC[0]] = daL[icolBC[0]] * pivBC[0];
 		}
 
-		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-
-
-		//if (blockIdx.x == 0 && threadIdx.x == 0)
-		//	printf("[%d] icol: %5d, mfit1: %3d, l: %3d\n", blockIdx.x, icol, (*CUDA_CC).Mfit1, l);
+		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 		for (l = brtmpl; l <= brtmph; l++)
 		{
-			int qq = (*CUDA_LCC).icol * (*CUDA_CC).Mfit1 + l;
-			double covar1 = (*CUDA_LCC).covar[qq] * (*CUDA_LCC).pivinv;
-			//if (blockIdx.x == 0 && threadIdx.x == 0)
-			//	printf("[%d][%3d] i[%3d] l[%3d] icol: %3d, pivinv: %10.7f, covar[%4d]: %10.7f, covar: %10.7f\n",
-			//		blockIdx.x, threadIdx.x, i, l, (*CUDA_LCC).icol, (*CUDA_LCC).pivinv, qq, (*CUDA_LCC).covar[qq], covar1);
-
-			//barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);// | CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
-
-			//covar[qq] = 1.0;
-			//(*CUDA_LCC).covar[qq] = (*CUDA_LCC).covar[qq] * pivinv;
-			(*CUDA_LCC).covar[qq] = covar1;
+			int qq = icolBC[0] * mfit1 + l;
+			double covar1 = covL[qq] * pivBC[0];
+			covL[qq] = covar1;
 		}
 
-		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 		for (ll = brtmpl; ll <= brtmph; ll++)
 		{
-			//if (blockIdx.x == 0 && threadIdx.x == 0)
-			//	printf("i[%d%3d] ll: %4d, brtmpl: %3d, brtmph; %3d\n", i, ll, brtmpl, brtmph);
-
-			if (ll != (*CUDA_LCC).icol)
+			if (ll != icolBC[0])
 			{
-				int ixx = ll * (*CUDA_CC).Mfit1;
-				int jxx = (*CUDA_LCC).icol * (*CUDA_CC).Mfit1;
-				dum = (*CUDA_LCC).covar[ixx + (*CUDA_LCC).icol];
-				(*CUDA_LCC).covar[ixx + (*CUDA_LCC).icol] = 0.0;
+				int ixx = ll * mfit1;
+				int jxx = icolBC[0] * mfit1;
+				dum = covL[ixx + icolBC[0]];
+				covL[ixx + icolBC[0]] = 0.0;
 				ixx++;
 				jxx++;
 				for (l = 1; l <= n; l++, ixx++, jxx++)
 				{
-					(*CUDA_LCC).covar[ixx] -= (*CUDA_LCC).covar[jxx] * dum;
+					covL[ixx] -= covL[jxx] * dum;
 				}
 
-				(*CUDA_LCC).da[ll] -= (*CUDA_LCC).da[(*CUDA_LCC).icol] * dum;
-				//b[ll] -= b[icol]*dum;
-
+				daL[ll] -= daL[icolBC[0]] * dum;
 			}
 		}
 
-		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
+		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 	}
 
-	// << GausErrorCPost
-	if (threadIdx.x == 0)
+	/* only the step vector leaves the solver (the column unscramble of the
+	   classic routine acted on the inverse, which nothing reads) */
+	for (j = brtmpl; j <= brtmph; j++)
 	{
-		for (l = n; l >= 1; l--)
-		{
-			if ((*CUDA_LCC).indxr[l] != (*CUDA_LCC).indxc[l])
-			{
-				for (k = 1; k <= n; k++)
-				{
-					//SwapDouble((*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxr[l]], (*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxc[l]]);
-					tmpSwap = (*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxr[l]];
-					(*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxr[l]] = (*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxc[l]];
-					(*CUDA_LCC).covar[k * (*CUDA_CC).Mfit1 + (*CUDA_LCC).indxc[l]] = tmpSwap;
-				}
-			}
-		}
+		(*CUDA_LCC).da[j] = daL[j];
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 	return(0);
-	// >>> GaussErrorCPost END
 }
-// #undef SWAP
- //from Numerical Recipes
-
 //N.B. The foll. L-M routines are modified versions of Press et al.
 //  converted from Mikko's fortran code
 
@@ -1788,7 +1740,15 @@ int gauss_errc(
 
 int mrqmin_1_end(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC)
+	__global struct freq_context* CUDA_CC,
+	__local double* covL,
+	__local double* daL,
+	__local int* ipivL,
+	__local double* shBig,
+	__local int* shIrow,
+	__local int* shIcol,
+	__local double* pivBC,
+	__local int* icolBC)
 {
 	int j;
 	int3 threadIdx, blockIdx;
@@ -1826,25 +1786,12 @@ int mrqmin_1_end(
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
-	// <<< Iter1Mrqmin1EndPre2
-	for (j = brtmpl; j <= brtmph; j++)
-	{
-		int ixx = j * (*CUDA_CC).Mfit1 + 1;
-		for (int k = 1; k <= (*CUDA_CC).Mfit; k++, ixx++)
-		{
-			(*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
-		}
-
-		int qq = j * (*CUDA_CC).Mfit1 + j;
-		(*CUDA_LCC).covar[qq] = (*CUDA_LCC).alpha[qq] * (1 + (*CUDA_LCC).Alamda);
-		(*CUDA_LCC).da[j] = (*CUDA_LCC).beta[j];
-	}
-
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-	// >>> Iter1Mrqmin1EndPre2 END
+	// The damped matrix is staged straight from alpha into local memory by
+	// gauss_errc; covar is not touched at all (it is rezeroed by
+	// ClCalculateIter1Mrqcof2Start before mrqcof2 accumulates into it).
 
 	// <<< gauss_errc    ---- GAUS ERROR CODE ----
-	int err_code = gauss_errc(CUDA_LCC, CUDA_CC);
+	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
 	if (err_code)
 	{
 		return err_code;
@@ -2395,7 +2342,10 @@ __kernel void ClCalculateIter1Mrqcof1End(
 
 __kernel void ClCalculateIter1Mrqmin1End(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    /* runtime-sized by the host to Mfit1*Mfit1 doubles (~24 KB for real
+       workunits) so the kernel also fits GCN's 32 KB local-memory limit */
+    __local double* covL)
 {
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -2424,7 +2374,18 @@ __kernel void ClCalculateIter1Mrqmin1End(
     //mrqmin_1_end(CUDA_LCC, CUDA_CC, sh_icol, sh_irow, sh_big, icol, pivinv);
 
 
-    mrqmin_1_end(CUDA_LCC, CUDA_CC);
+    /* OpenCL requires __local declarations at kernel scope; the solver runs
+       entirely in local memory (see gauss_errc.cl). covL comes in as a
+       runtime-sized kernel argument. */
+    __local double daL[DYT_STRIDE];
+    __local int ipivL[DYT_STRIDE];
+    __local double shBig[BLOCK_DIM];
+    __local int shIrow[BLOCK_DIM];
+    __local int shIcol[BLOCK_DIM];
+    __local double pivBC[1];
+    __local int icolBC[1];
+
+    mrqmin_1_end(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
 
     //if (blockIdx.x == 0) {
     //	printf("[%3d] sh_icol[%3d]: %3d\n", threadIdx.x, threadIdx.x, sh_icol[threadIdx.x]);
