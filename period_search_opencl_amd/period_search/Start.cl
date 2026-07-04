@@ -429,7 +429,11 @@ __kernel void ClCalculateIter1Mrqcof1Curve2(
 
     if (!(*CUDA_LCC).isAlamda) return;
 
-    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, inrel, lpoints);
+    /* OpenCL requires __local declarations at kernel scope */
+    __local double dydaT[CURVE2_K][DYT_STRIDE];
+    __local double tileS[3 * CURVE2_K];
+
+    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints);
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("[Mrqcof1Curve2] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
@@ -631,7 +635,11 @@ __kernel void ClCalculateIter1Mrqcof2Curve2(
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof2Curve2\n");
 
-    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
+    /* OpenCL requires __local declarations at kernel scope */
+    __local double dydaT[CURVE2_K][DYT_STRIDE];
+    __local double tileS[3 * CURVE2_K];
+
+    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar, (*CUDA_LCC).da, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
