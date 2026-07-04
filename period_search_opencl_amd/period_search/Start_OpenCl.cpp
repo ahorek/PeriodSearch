@@ -95,6 +95,7 @@ cl_kernel kernelCalculateIter1Mrqcof1Curve2;
 cl_kernel kernelCalculateIter1Mrqcof1Curve1Last;
 cl_kernel kernelCalculateIter1Mrqcof1End;
 cl_kernel kernelCalculateIter1Mrqmin1End;
+cl_ulong gDeviceLocalMemSize = 0;
 cl_kernel kernelCalculateIter1Mrqcof2Start;
 cl_kernel kernelCalculateIter1Mrqcof2Matrix;
 cl_kernel kernelCalculateIter1Mrqcof2Curve1;
@@ -305,6 +306,7 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
 
     cl_ulong clDeviceLocalMemSize;
     err_num = clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &clDeviceLocalMemSize, NULL);
+    gDeviceLocalMemSize = clDeviceLocalMemSize;
 
     uint clDeviceMaxConstantArgs;
     err_num = clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_ARGS, sizeof(uint), &clDeviceMaxConstantArgs, NULL);
@@ -790,6 +792,7 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
         return(1);
     }
     cerr << "Prefered kernel work group size multiple: " << preferedWGS << endl;
+
 
 
     /* The grid dimension is a work-GROUP count (concurrent frequency
@@ -1284,6 +1287,19 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 1, sizeof(cl_mem), &CUDA_CC);
+    {
+        /* the in-LDS Gauss-Jordan solver needs Mfit1*Mfit1 doubles of local
+           memory, passed as a runtime-sized argument so small matrices fit
+           the 32 KB per-work-group limit of older (GCN) GPUs */
+        size_t gaussLocalBytes = (size_t)(*Fa).Mfit1 * (*Fa).Mfit1 * sizeof(cl_double);
+        if (gDeviceLocalMemSize > 0 && gaussLocalBytes + 4096 > gDeviceLocalMemSize)
+        {
+            fprintf(stderr, "Error: the Gauss-Jordan solver needs %zu B of local memory (+ ~4 KB scratch) but the device offers %llu B\n",
+                gaussLocalBytes, (unsigned long long)gDeviceLocalMemSize);
+            exit(3);
+        }
+        err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
+    }
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
@@ -2058,6 +2074,19 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 1, sizeof(cl_mem), &CUDA_CC);
+    {
+        /* the in-LDS Gauss-Jordan solver needs Mfit1*Mfit1 doubles of local
+           memory, passed as a runtime-sized argument so small matrices fit
+           the 32 KB per-work-group limit of older (GCN) GPUs */
+        size_t gaussLocalBytes = (size_t)(*Fa).Mfit1 * (*Fa).Mfit1 * sizeof(cl_double);
+        if (gDeviceLocalMemSize > 0 && gaussLocalBytes + 4096 > gDeviceLocalMemSize)
+        {
+            fprintf(stderr, "Error: the Gauss-Jordan solver needs %zu B of local memory (+ ~4 KB scratch) but the device offers %llu B\n",
+                gaussLocalBytes, (unsigned long long)gDeviceLocalMemSize);
+            exit(3);
+        }
+        err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
+    }
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
