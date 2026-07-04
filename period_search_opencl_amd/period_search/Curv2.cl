@@ -9,8 +9,12 @@ void mrqcof_curve2(
 	__local double* dwsS,
 	__local double* dyS,
 	int inrel,
-	int lpoints)
+	int lpoints,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, j, k, m, lnp1, lnp2, Lpoints1 = lpoints + 1;
 	double dy, sig2i, wt, ymod, coef1, coef, wght, ltrial_chisq;
 
@@ -54,39 +58,39 @@ void mrqcof_curve2(
 			lnp1++;
 			int ixx = (jp - 1) * DYT_STRIDE + 1;
 			/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
-			(*CUDA_LCC).dytemp[ixx] = 0;
+			dytempG[ixx] = 0;
 
 			//if (blockIdx.x == 0)
-			//	printf("[%d][%d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
+			//	printf("[%d][%d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, dytempG[ixx]);
 
 			coef = (*CUDA_CC).Sig[lnp1] * lpoints / (*CUDA_LCC).ave;
 
 			//if (threadIdx.x == 0)
 			//	printf("[%d][%3d][%d] coef: %10.7f\n", blockIdx.x, threadIdx.x, jp, coef);
 
-			double yytmp = (*CUDA_LCC).ytemp[jp];
+			double yytmp = ytempG[jp];
 			coef1 = yytmp / (*CUDA_LCC).ave;
 
 			//if (blockIdx.x == 0 && threadIdx.x == 0)
 			//	printf("[Device | mrqcof_curve2_1] [%3d]  yytmp[%3d]: %10.7f, ave: %10.7f\n", threadIdx.x, jp, yytmp, (*CUDA_LCC).ave);
 
-			(*CUDA_LCC).ytemp[jp] = coef * yytmp;
+			ytempG[jp] = coef * yytmp;
 
 			//if (blockIdx.x == 0)
-			//	printf("[Device][%d][%3d] ytemp[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
+			//	printf("[Device][%d][%3d] ytemp[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, jp, ytempG[jp]);
 
 			ixx++;
 
 			//if (threadIdx.x == 0)
-			//	printf("[%3d] jp[%3d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
+			//	printf("[%3d] jp[%3d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, dytempG[ixx]);
 
 			for (l = 2; l <= (*CUDA_CC).ma; l++, ixx++)
 			{
-				(*CUDA_LCC).dytemp[ixx] = coef * ((*CUDA_LCC).dytemp[ixx] - coef1 * (*CUDA_LCC).dave[l]);
+				dytempG[ixx] = coef * (dytempG[ixx] - coef1 * (*CUDA_LCC).dave[l]);
 
 				//if (blockIdx.x == 0 && threadIdx.x == 0)
 				//	printf("[Device | mrqcof_curve2_1] [%3d]  coef1: %10.7f, dave[%3d]: %10.7f, dytemp[%3d]: %10.7f\n",
-				//		threadIdx.x, coef1, l, (*CUDA_LCC).dave[l], ixx, (*CUDA_LCC).dytemp[ixx]);
+				//		threadIdx.x, coef1, l, (*CUDA_LCC).dave[l], ixx, dytempG[ixx]);
 			}
 		}
 	}
@@ -126,14 +130,14 @@ void mrqcof_curve2(
 		/* stage the tile: consecutive work-items copy consecutive addresses */
 		for (m = threadIdx.x; m < P * DYT_STRIDE; m += BLOCK_DIM)
 		{
-			((__local double*)&dydaT[0][0])[m] = (*CUDA_LCC).dytemp[(jp0 - 1) * DYT_STRIDE + m];
+			((__local double*)&dydaT[0][0])[m] = dytempG[(jp0 - 1) * DYT_STRIDE + m];
 		}
 
 		/* per-point scalars (ymod comes from the renormalized ytemp) */
 		if (threadIdx.x < P)
 		{
 			jp = jp0 + threadIdx.x;
-			ymod = (*CUDA_LCC).ytemp[jp];
+			ymod = ytempG[jp];
 			sig2i = 1 / ((*CUDA_CC).Sig[lnp2 + jp] * (*CUDA_CC).Sig[lnp2 + jp]);
 			wght = (*CUDA_CC).Weight[lnp2 + jp];
 			dy = (*CUDA_CC).Brightness[lnp2 + jp] - ymod;

@@ -1,7 +1,9 @@
 #if !defined INTEL
 
 #if !defined _WIN32
-#define CL_TARGET_OPENCL_VERSION 110
+#ifndef CL_TARGET_OPENCL_VERSION
+#define CL_TARGET_OPENCL_VERSION 120 /* clEnqueueFillBuffer needs 1.2 */
+#endif
 #define CL_HPP_MINIMUM_OPENCL_VERSION 110
 #define CL_HPP_TARGET_OPENCL_VERSION 110
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
@@ -838,8 +840,13 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
         cl_ulong maxAlloc = 0, globalMemBytes = 0;
         clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(maxAlloc), &maxAlloc, NULL);
         clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(globalMemBytes), &globalMemBytes, NULL);
-        cl_ulong memBudget = maxAlloc < globalMemBytes / 4 * 3 ? maxAlloc : globalMemBytes / 4 * 3;
-        size_t memCap = (size_t)(memBudget / sizeof(mfreq_context));
+        cl_ulong memBudget = maxAlloc < globalMemBytes / 4 ? maxAlloc : globalMemBytes / 4;
+        int maxLcPtsCap = 0;
+        for (int icc = 1; icc <= l_curves; icc++)
+            if (l_points[icc] > maxLcPtsCap) maxLcPtsCap = l_points[icc];
+        /* upper bound of the per-context scratch (mfit1 <= DYT_STRIDE by the ma guard) */
+        size_t scrBound = (2 * (size_t)DYT_STRIDE * DYT_STRIDE + (size_t)(maxLcPtsCap + 1) * (DYT_STRIDE + 1 + 4 + 6 + 32) + 32) * sizeof(cl_double);
+        size_t memCap = (size_t)(memBudget / (sizeof(mfreq_context) + scrBound));
         if (CUDA_grid_dim > memCap) {
             CUDA_grid_dim = memCap;
         }
@@ -972,6 +979,37 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     m = lmfit + 1;
     (*Fa).Mfit1 = m;
 
+    /* Lay out the runtime-sized scratch buffer that replaced the fixed
+       worst-case work arrays in mfreq_context: one slice of scrStride
+       doubles per work-group, offsets in doubles. */
+    {
+        int maxLcPts = 0;
+        for (int ic = 1; ic <= l_curves; ic++)
+            if (l_points[ic] > maxLcPts) maxLcPts = l_points[ic];
+        const cl_int lcP1 = maxLcPts + 1;
+        const cl_int mf1 = m; /* Mfit1 */
+        cl_int off = 0;
+        (*Fa).lcPoints1 = lcP1;
+        (*Fa).offAlpha = off;   off += mf1 * mf1;
+        (*Fa).offCovar = off;   off += mf1 * mf1;
+        (*Fa).offDytemp = off;  off += lcP1 * DYT_STRIDE;
+        (*Fa).offYtemp = off;   off += lcP1;
+        (*Fa).offJpScale = off; off += lcP1;
+        (*Fa).offJpDphp1 = off; off += lcP1;
+        (*Fa).offJpDphp2 = off; off += lcP1;
+        (*Fa).offJpDphp3 = off; off += lcP1;
+        (*Fa).offE1 = off;      off += lcP1;
+        (*Fa).offE2 = off;      off += lcP1;
+        (*Fa).offE3 = off;      off += lcP1;
+        (*Fa).offE01 = off;     off += lcP1;
+        (*Fa).offE02 = off;     off += lcP1;
+        (*Fa).offE03 = off;     off += lcP1;
+        (*Fa).offDe = off;      off += lcP1 * 16;
+        (*Fa).offDe0 = off;     off += lcP1 * 16;
+        (*Fa).scrStride = ((off + 31) / 32) * 32;
+    }
+
+
     (*Fa).lastone = llastone;
     (*Fa).lastma = llastma;
 
@@ -1083,14 +1121,10 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     {
         // std::fill_n(&((mfreq_context*)pcc)[m].Area, MAX_N_FAC + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].Area), MAX_N_FAC + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].alpha), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].covar), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].beta), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].da), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].atry), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].dave), MAX_N_PAR + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].dytemp), std::size(((mfreq_context*)pcc)[m].dytemp), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].ytemp), POINTS_MAX + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_big), BLOCK_DIM, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_icol), BLOCK_DIM, 0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_irow), BLOCK_DIM, 0);
@@ -1123,6 +1157,15 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     // 18-SEP-2023
     cl_mem CUDA_MCC2 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, &err);
+    /* runtime-sized work-array scratch, zero-initialized on the device */
+    const size_t scrBytes__ = (size_t)CUDA_grid_dim_precalc * (size_t)(*Fa).scrStride * sizeof(cl_double);
+    cl_mem CUDA_SCRATCH = clCreateBuffer(context, CL_MEM_READ_WRITE, scrBytes__, NULL, &err);
+    {
+        const cl_double zeroPat__ = 0.0;
+        clEnqueueFillBuffer(queue, CUDA_SCRATCH, &zeroPat__, sizeof(zeroPat__), 0, scrBytes__, 0, NULL, NULL);
+        clFinish(queue);
+    }
+
     clEnqueueWriteBuffer(queue, CUDA_MCC2, CL_BLOCKING, 0, pccSize, pcc, 0, NULL, NULL);
 #elif defined NVIDIA
     queue.enqueueWriteBuffer(CUDA_MCC2, CL_BLOCKING, 0, pccSize, pcc);
@@ -1331,6 +1374,22 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
         }
         err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
     }
+    /* the runtime-sized scratch buffer, appended as each kernel's last argument */
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
@@ -1656,6 +1715,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 #endif
     } /* period loop */
 
+    clReleaseMemObject(CUDA_SCRATCH);
     clReleaseMemObject(CUDA_MCC2);
     clReleaseMemObject(CUDA_CC);
     clReleaseMemObject(CUDA_CC2);
@@ -1798,6 +1858,37 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
     m = lmfit + 1;
     (*Fa).Mfit1 = m;
 
+    /* Lay out the runtime-sized scratch buffer that replaced the fixed
+       worst-case work arrays in mfreq_context: one slice of scrStride
+       doubles per work-group, offsets in doubles. */
+    {
+        int maxLcPts = 0;
+        for (int ic = 1; ic <= l_curves; ic++)
+            if (l_points[ic] > maxLcPts) maxLcPts = l_points[ic];
+        const cl_int lcP1 = maxLcPts + 1;
+        const cl_int mf1 = m; /* Mfit1 */
+        cl_int off = 0;
+        (*Fa).lcPoints1 = lcP1;
+        (*Fa).offAlpha = off;   off += mf1 * mf1;
+        (*Fa).offCovar = off;   off += mf1 * mf1;
+        (*Fa).offDytemp = off;  off += lcP1 * DYT_STRIDE;
+        (*Fa).offYtemp = off;   off += lcP1;
+        (*Fa).offJpScale = off; off += lcP1;
+        (*Fa).offJpDphp1 = off; off += lcP1;
+        (*Fa).offJpDphp2 = off; off += lcP1;
+        (*Fa).offJpDphp3 = off; off += lcP1;
+        (*Fa).offE1 = off;      off += lcP1;
+        (*Fa).offE2 = off;      off += lcP1;
+        (*Fa).offE3 = off;      off += lcP1;
+        (*Fa).offE01 = off;     off += lcP1;
+        (*Fa).offE02 = off;     off += lcP1;
+        (*Fa).offE03 = off;     off += lcP1;
+        (*Fa).offDe = off;      off += lcP1 * 16;
+        (*Fa).offDe0 = off;     off += lcP1 * 16;
+        (*Fa).scrStride = ((off + 31) / 32) * 32;
+    }
+
+
     (*Fa).lastone = llastone;
     (*Fa).lastma = llastma;
 
@@ -1905,14 +1996,10 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         //pcc[m].pivinv = 0;
 
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].Area), MAX_N_FAC + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].alpha), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].covar), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].beta), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].da), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].atry), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].dave), MAX_N_PAR + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].dytemp), std::size(((mfreq_context*)pcc)[m].dytemp), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].ytemp), POINTS_MAX + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_big), BLOCK_DIM, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_icol), BLOCK_DIM, 0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_irow), BLOCK_DIM, 0);
@@ -1940,6 +2027,15 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
     //clFlush(queue);
 #endif
 #endif
+
+    /* runtime-sized work-array scratch, zero-initialized on the device */
+    const size_t scrBytes__ = (size_t)CUDA_grid_dim * (size_t)(*Fa).scrStride * sizeof(cl_double);
+    cl_mem CUDA_SCRATCH = clCreateBuffer(context, CL_MEM_READ_WRITE, scrBytes__, NULL, &err);
+    {
+        const cl_double zeroPat__ = 0.0;
+        clEnqueueFillBuffer(queue, CUDA_SCRATCH, &zeroPat__, sizeof(zeroPat__), 0, scrBytes__, 0, NULL, NULL);
+        clFinish(queue);
+    }
 
 #if !defined _WIN32
 #if defined (INTEL)
@@ -2118,6 +2214,22 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         }
         err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
     }
+    /* the runtime-sized scratch buffer, appended as each kernel's last argument */
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
@@ -2411,6 +2523,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     printf("\n");
 
+    clReleaseMemObject(CUDA_SCRATCH);
     clReleaseMemObject(CUDA_MCC2);
     clReleaseMemObject(CUDA_CC);
     clReleaseMemObject(CUDA_CC2);

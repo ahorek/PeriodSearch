@@ -36,29 +36,12 @@ struct alignas(8) mfreq_context
 	//double* ytemp;
 
 	 double Area[MAX_N_FAC + 1];
-	 double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	 double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	 double dytemp[(POINTS_MAX + 1) * DYT_STRIDE]; /* transposed: [(jp-1)*DYT_STRIDE + l] */
-	 double ytemp[POINTS_MAX + 1];
-
 	double beta[MAX_N_PAR + 1];
 	double atry[MAX_N_PAR + 1];
 	double da[MAX_N_PAR + 1];
 	double cg[MAX_N_PAR + 1];
 	double Blmat[4][4];
 	double Dblm[3][4][4];
-	double jp_Scale[POINTS_MAX + 1];
-	double jp_dphp_1[POINTS_MAX + 1];
-	double jp_dphp_2[POINTS_MAX + 1];
-	double jp_dphp_3[POINTS_MAX + 1];
-	double e_1[POINTS_MAX + 1];
-	double e_2[POINTS_MAX + 1];
-	double e_3[POINTS_MAX + 1];
-	double e0_1[POINTS_MAX + 1];
-	double e0_2[POINTS_MAX + 1];
-	double e0_3[POINTS_MAX + 1];
-	double de[POINTS_MAX + 1][4][4];
-	double de0[POINTS_MAX + 1][4][4];
 	double dave[MAX_N_PAR + 1];
 	double dyda[MAX_N_PAR + 1];
 
@@ -134,6 +117,27 @@ struct alignas(8) freq_context
 	cl_int Nphpar;
 	cl_int ndata;
 	cl_int Is_Precalc;
+
+	/* runtime dimensions + per-context offsets (in doubles) into the
+	   scratch buffer that replaced the fixed-size work arrays */
+	cl_int lcPoints1;
+	cl_int scrStride;
+	cl_int offAlpha;
+	cl_int offCovar;
+	cl_int offDytemp;
+	cl_int offYtemp;
+	cl_int offJpScale;
+	cl_int offJpDphp1;
+	cl_int offJpDphp2;
+	cl_int offJpDphp3;
+	cl_int offE1;
+	cl_int offE2;
+	cl_int offE3;
+	cl_int offE01;
+	cl_int offE02;
+	cl_int offE03;
+	cl_int offDe;
+	cl_int offDe0;
 };
 
 //extern __declspec(align(4)) freq_context* CUDA_CC2;

@@ -30,7 +30,8 @@ int gauss_errc(
 	__local int* shIrow,    /* [BLOCK_DIM] */
 	__local int* shIcol,    /* [BLOCK_DIM] */
 	__local double* pivBC,  /* [1] pivinv broadcast */
-	__local int* icolBC)    /* [1] icol broadcast */
+	__local int* icolBC,    /* [1] icol broadcast */
+	__global double* alphaG)
 {
 	double big, dum;
 	double tmpSwap;
@@ -58,10 +59,10 @@ int gauss_errc(
 		int ixx = j * mfit1 + 1;
 		for (k = 1; k <= n; k++, ixx++)
 		{
-			covL[ixx] = (*CUDA_LCC).alpha[ixx];
+			covL[ixx] = alphaG[ixx];
 		}
 		int qq = j * mfit1 + j;
-		covL[qq] = (*CUDA_LCC).alpha[qq] * (1 + (*CUDA_LCC).Alamda);
+		covL[qq] = alphaG[qq] * (1 + (*CUDA_LCC).Alamda);
 		daL[j] = (*CUDA_LCC).beta[j];
 	}
 

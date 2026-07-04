@@ -62,29 +62,18 @@ typedef struct mfreq_context
 	//double* ytemp;
 
 	double Area[MAX_N_FAC + 1];
-	double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	double dytemp[(POINTS_MAX + 1) * DYT_STRIDE]; /* transposed: [(jp-1)*DYT_STRIDE + l] */
-	double ytemp[POINTS_MAX + 1];
-
+	/* The point- and fit-dimensioned work arrays (alpha, covar, dytemp,
+	   ytemp, jp_*, e_*, de, de0) live in a separate runtime-sized scratch
+	   buffer - one slice of freq_context.scrStride doubles per work-group,
+	   at the offsets recorded in freq_context - instead of compile-time
+	   worst-case arrays here. That cuts per-context memory ~6x (2.27 MB ->
+	   ~0.4 MB for typical workunits). */
 	double beta[MAX_N_PAR + 1];
 	double atry[MAX_N_PAR + 1];
 	double da[MAX_N_PAR + 1];
 	double cg[MAX_N_PAR + 1];
 	double Blmat[4][4];
 	double Dblm[3][4][4];
-	double jp_Scale[POINTS_MAX + 1];
-	double jp_dphp_1[POINTS_MAX + 1];
-	double jp_dphp_2[POINTS_MAX + 1];
-	double jp_dphp_3[POINTS_MAX + 1];
-	double e_1[POINTS_MAX + 1];
-	double e_2[POINTS_MAX + 1];
-	double e_3[POINTS_MAX + 1];
-	double e0_1[POINTS_MAX + 1];
-	double e0_2[POINTS_MAX + 1];
-	double e0_3[POINTS_MAX + 1];
-	double de[POINTS_MAX + 1][4][4];
-	double de0[POINTS_MAX + 1][4][4];
 	double dave[MAX_N_PAR + 1];
 	double dyda[MAX_N_PAR + 1];
 
@@ -164,6 +153,27 @@ struct freq_context
 	int Nphpar;
 	int ndata;
 	int Is_Precalc;
+
+	/* runtime dimensions + per-context offsets (in doubles) into the
+	   scratch buffer that replaced the fixed-size work arrays */
+	int lcPoints1;
+	int scrStride;
+	int offAlpha;
+	int offCovar;
+	int offDytemp;
+	int offYtemp;
+	int offJpScale;
+	int offJpDphp1;
+	int offJpDphp2;
+	int offJpDphp3;
+	int offE1;
+	int offE2;
+	int offE3;
+	int offE01;
+	int offE02;
+	int offE03;
+	int offDe;
+	int offDe0;
 };
 
 //struct freq_result
@@ -419,8 +429,12 @@ void mrqcof_curve2(
 	__local double* dwsS,
 	__local double* dyS,
 	int inrel,
-	int lpoints)
+	int lpoints,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, j, k, m, lnp1, lnp2, Lpoints1 = lpoints + 1;
 	double dy, sig2i, wt, ymod, coef1, coef, wght, ltrial_chisq;
 
@@ -464,39 +478,39 @@ void mrqcof_curve2(
 			lnp1++;
 			int ixx = (jp - 1) * DYT_STRIDE + 1;
 			/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
-			(*CUDA_LCC).dytemp[ixx] = 0;
+			dytempG[ixx] = 0;
 
 			//if (blockIdx.x == 0)
-			//	printf("[%d][%d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
+			//	printf("[%d][%d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, dytempG[ixx]);
 
 			coef = (*CUDA_CC).Sig[lnp1] * lpoints / (*CUDA_LCC).ave;
 
 			//if (threadIdx.x == 0)
 			//	printf("[%d][%3d][%d] coef: %10.7f\n", blockIdx.x, threadIdx.x, jp, coef);
 
-			double yytmp = (*CUDA_LCC).ytemp[jp];
+			double yytmp = ytempG[jp];
 			coef1 = yytmp / (*CUDA_LCC).ave;
 
 			//if (blockIdx.x == 0 && threadIdx.x == 0)
 			//	printf("[Device | mrqcof_curve2_1] [%3d]  yytmp[%3d]: %10.7f, ave: %10.7f\n", threadIdx.x, jp, yytmp, (*CUDA_LCC).ave);
 
-			(*CUDA_LCC).ytemp[jp] = coef * yytmp;
+			ytempG[jp] = coef * yytmp;
 
 			//if (blockIdx.x == 0)
-			//	printf("[Device][%d][%3d] ytemp[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
+			//	printf("[Device][%d][%3d] ytemp[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, jp, ytempG[jp]);
 
 			ixx++;
 
 			//if (threadIdx.x == 0)
-			//	printf("[%3d] jp[%3d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
+			//	printf("[%3d] jp[%3d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, dytempG[ixx]);
 
 			for (l = 2; l <= (*CUDA_CC).ma; l++, ixx++)
 			{
-				(*CUDA_LCC).dytemp[ixx] = coef * ((*CUDA_LCC).dytemp[ixx] - coef1 * (*CUDA_LCC).dave[l]);
+				dytempG[ixx] = coef * (dytempG[ixx] - coef1 * (*CUDA_LCC).dave[l]);
 
 				//if (blockIdx.x == 0 && threadIdx.x == 0)
 				//	printf("[Device | mrqcof_curve2_1] [%3d]  coef1: %10.7f, dave[%3d]: %10.7f, dytemp[%3d]: %10.7f\n",
-				//		threadIdx.x, coef1, l, (*CUDA_LCC).dave[l], ixx, (*CUDA_LCC).dytemp[ixx]);
+				//		threadIdx.x, coef1, l, (*CUDA_LCC).dave[l], ixx, dytempG[ixx]);
 			}
 		}
 	}
@@ -536,14 +550,14 @@ void mrqcof_curve2(
 		/* stage the tile: consecutive work-items copy consecutive addresses */
 		for (m = threadIdx.x; m < P * DYT_STRIDE; m += BLOCK_DIM)
 		{
-			((__local double*)&dydaT[0][0])[m] = (*CUDA_LCC).dytemp[(jp0 - 1) * DYT_STRIDE + m];
+			((__local double*)&dydaT[0][0])[m] = dytempG[(jp0 - 1) * DYT_STRIDE + m];
 		}
 
 		/* per-point scalars (ymod comes from the renormalized ytemp) */
 		if (threadIdx.x < P)
 		{
 			jp = jp0 + threadIdx.x;
-			ymod = (*CUDA_LCC).ytemp[jp];
+			ymod = ytempG[jp];
 			sig2i = 1 / ((*CUDA_CC).Sig[lnp2 + jp] * (*CUDA_CC).Sig[lnp2 + jp]);
 			wght = (*CUDA_CC).Weight[lnp2 + jp];
 			dy = (*CUDA_CC).Brightness[lnp2 + jp] - ymod;
@@ -729,8 +743,22 @@ void matrix_neo(
 	__global double* cg,
 	int lnp1,
 	int Lpoints,
-	int num)
+	int num,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+	__global double* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
+	__global double* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
+	__global double* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
+	__global double* e_1G = scr + (*CUDA_CC).offE1;
+	__global double* e_2G = scr + (*CUDA_CC).offE2;
+	__global double* e_3G = scr + (*CUDA_CC).offE3;
+	__global double* e0_1G = scr + (*CUDA_CC).offE01;
+	__global double* e0_2G = scr + (*CUDA_CC).offE02;
+	__global double* e0_3G = scr + (*CUDA_CC).offE03;
+	__global double* deG = scr + (*CUDA_CC).offDe;
+	__global double* de0G = scr + (*CUDA_CC).offDe0;
 	__private double f, cf, sf, pom, pom0, alpha;
 	__private double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
 	__private int lnp;
@@ -793,14 +821,14 @@ void matrix_neo(
 		//	printf("[neo] [%2d][%3d] jp[%3d] f: %10.7f, cg[%3d] %10.7f, alpha %10.7f\n",
 		//		blockIdx.x, threadIdx.x, jp, f, (*CUDA_CC).Ncoef0 + 2, cg[(*CUDA_CC).Ncoef0 + 2], alpha);
 
-		(*CUDA_LCC).jp_Scale[jp] = 1 + cg[(*CUDA_CC).Ncoef0 + 1] * f + (cg[(*CUDA_CC).Ncoef0 + 3] * alpha);
-		(*CUDA_LCC).jp_dphp_1[jp] = f;
-		(*CUDA_LCC).jp_dphp_2[jp] = cg[(*CUDA_CC).Ncoef0 + 1] * f * alpha / (cg[(*CUDA_CC).Ncoef0 + 2] * cg[(*CUDA_CC).Ncoef0 + 2]);
-		(*CUDA_LCC).jp_dphp_3[jp] = alpha;
+		jp_ScaleG[jp] = 1 + cg[(*CUDA_CC).Ncoef0 + 1] * f + (cg[(*CUDA_CC).Ncoef0 + 3] * alpha);
+		jp_dphp_1G[jp] = f;
+		jp_dphp_2G[jp] = cg[(*CUDA_CC).Ncoef0 + 1] * f * alpha / (cg[(*CUDA_CC).Ncoef0 + 2] * cg[(*CUDA_CC).Ncoef0 + 2]);
+		jp_dphp_3G[jp] = alpha;
 
 		//if (blockIdx.x == 0)
 		//	printf("[neo] [%d][%3d] jp_Scale[%3d]: %10.7f, jp_dphp_1[]: %10.7F, jp_dphp_2[]: %10.7f, jp_dphp_3[]: %10.7f\n",
-		//		blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).jp_Scale[jp], (*CUDA_LCC).jp_dphp_1[jp], (*CUDA_LCC).jp_dphp_2[jp], (*CUDA_LCC).jp_dphp_3[jp]);
+		//		blockIdx.x, threadIdx.x, jp, jp_ScaleG[jp], jp_dphp_1G[jp], jp_dphp_2G[jp], jp_dphp_3G[jp]);
 
 		//  matrix start
 		f = cg[(*CUDA_CC).Ncoef0] * t + (*CUDA_CC).Phi_0;
@@ -824,11 +852,11 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = cf * (*CUDA_LCC).Blmat[1][3] + sf * (*CUDA_LCC).Blmat[2][3] + 0 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).e_1[jp] = pom + tmat * ee_3;
-		(*CUDA_LCC).e0_1[jp] = pom0 + tmat * ee0_3;
+		e_1G[jp] = pom + tmat * ee_3;
+		e0_1G[jp] = pom0 + tmat * ee0_3;
 
 		//if (blockIdx.x == 0)
-		//	printf("[%3d] jp[%3d] %10.7f, %10.7f\n", threadIdx.x, jp, (*CUDA_LCC).e_1[jp], (*CUDA_LCC).e0_1[jp]);
+		//	printf("[%3d] jp[%3d] %10.7f, %10.7f\n", threadIdx.x, jp, e_1G[jp], e0_1G[jp]);
 
 		tmat = (-sf) * (*CUDA_LCC).Blmat[1][1] + cf * (*CUDA_LCC).Blmat[2][1] + 0 * (*CUDA_LCC).Blmat[3][1];
 		pom = tmat * ee_1;
@@ -837,8 +865,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = (-sf) * (*CUDA_LCC).Blmat[1][3] + cf * (*CUDA_LCC).Blmat[2][3] + 0 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).e_2[jp] = pom + tmat * ee_3;
-		(*CUDA_LCC).e0_2[jp] = pom0 + tmat * ee0_3;
+		e_2G[jp] = pom + tmat * ee_3;
+		e0_2G[jp] = pom0 + tmat * ee0_3;
 
 		tmat = 0 * (*CUDA_LCC).Blmat[1][1] + 0 * (*CUDA_LCC).Blmat[2][1] + 1 * (*CUDA_LCC).Blmat[3][1];
 		pom = tmat * ee_1;
@@ -847,8 +875,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = 0 * (*CUDA_LCC).Blmat[1][3] + 0 * (*CUDA_LCC).Blmat[2][3] + 1 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).e_3[jp] = pom + tmat * ee_3;
-		(*CUDA_LCC).e0_3[jp] = pom0 + tmat * ee0_3;
+		e_3G[jp] = pom + tmat * ee_3;
+		e0_3G[jp] = pom0 + tmat * ee0_3;
 
 		tmat = cf * (*CUDA_LCC).Dblm[1][1][1] + sf * (*CUDA_LCC).Dblm[1][2][1] + 0 * (*CUDA_LCC).Dblm[1][3][1];
 		pom = tmat * ee_1;
@@ -857,8 +885,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = cf * (*CUDA_LCC).Dblm[1][1][3] + sf * (*CUDA_LCC).Dblm[1][2][3] + 0 * (*CUDA_LCC).Dblm[1][3][3];
-		(*CUDA_LCC).de[jp][1][1] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][1][1] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (1) * 4 + (1)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (1) * 4 + (1)] = pom0 + tmat * ee0_3;
 
 		tmat = cf * (*CUDA_LCC).Dblm[2][1][1] + sf * (*CUDA_LCC).Dblm[2][2][1] + 0 * (*CUDA_LCC).Dblm[2][3][1];
 		pom = tmat * ee_1;
@@ -867,8 +895,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = cf * (*CUDA_LCC).Dblm[2][1][3] + sf * (*CUDA_LCC).Dblm[2][2][3] + 0 * (*CUDA_LCC).Dblm[2][3][3];
-		(*CUDA_LCC).de[jp][1][2] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][1][2] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (1) * 4 + (2)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (1) * 4 + (2)] = pom0 + tmat * ee0_3;
 
 		tmat = (-t * sf) * (*CUDA_LCC).Blmat[1][1] + (t * cf) * (*CUDA_LCC).Blmat[2][1] + 0 * (*CUDA_LCC).Blmat[3][1];
 		pom = tmat * ee_1;
@@ -877,8 +905,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = (-t * sf) * (*CUDA_LCC).Blmat[1][3] + (t * cf) * (*CUDA_LCC).Blmat[2][3] + 0 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).de[jp][1][3] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][1][3] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (1) * 4 + (3)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (1) * 4 + (3)] = pom0 + tmat * ee0_3;
 
 		tmat = -sf * (*CUDA_LCC).Dblm[1][1][1] + cf * (*CUDA_LCC).Dblm[1][2][1] + 0 * (*CUDA_LCC).Dblm[1][3][1];
 		pom = tmat * ee_1;
@@ -887,8 +915,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = -sf * (*CUDA_LCC).Dblm[1][1][3] + cf * (*CUDA_LCC).Dblm[1][2][3] + 0 * (*CUDA_LCC).Dblm[1][3][3];
-		(*CUDA_LCC).de[jp][2][1] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][2][1] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (2) * 4 + (1)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (2) * 4 + (1)] = pom0 + tmat * ee0_3;
 
 		tmat = -sf * (*CUDA_LCC).Dblm[2][1][1] + cf * (*CUDA_LCC).Dblm[2][2][1] + 0 * (*CUDA_LCC).Dblm[2][3][1];
 		pom = tmat * ee_1;
@@ -897,8 +925,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = -sf * (*CUDA_LCC).Dblm[2][1][3] + cf * (*CUDA_LCC).Dblm[2][2][3] + 0 * (*CUDA_LCC).Dblm[2][3][3];
-		(*CUDA_LCC).de[jp][2][2] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][2][2] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (2) * 4 + (2)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (2) * 4 + (2)] = pom0 + tmat * ee0_3;
 
 		tmat = (-t * cf) * (*CUDA_LCC).Blmat[1][1] + (-t * sf) * (*CUDA_LCC).Blmat[2][1] + 0 * (*CUDA_LCC).Blmat[3][1];
 		pom = tmat * ee_1;
@@ -907,8 +935,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = (-t * cf) * (*CUDA_LCC).Blmat[1][3] + (-t * sf) * (*CUDA_LCC).Blmat[2][3] + 0 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).de[jp][2][3] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][2][3] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (2) * 4 + (3)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (2) * 4 + (3)] = pom0 + tmat * ee0_3;
 
 		tmat = 0 * (*CUDA_LCC).Dblm[1][1][1] + 0 * (*CUDA_LCC).Dblm[1][2][1] + 1 * (*CUDA_LCC).Dblm[1][3][1];
 		pom = tmat * ee_1;
@@ -917,8 +945,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = 0 * (*CUDA_LCC).Dblm[1][1][3] + 0 * (*CUDA_LCC).Dblm[1][2][3] + 1 * (*CUDA_LCC).Dblm[1][3][3];
-		(*CUDA_LCC).de[jp][3][1] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][3][1] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (3) * 4 + (1)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (3) * 4 + (1)] = pom0 + tmat * ee0_3;
 
 		tmat = 0 * (*CUDA_LCC).Dblm[2][1][1] + 0 * (*CUDA_LCC).Dblm[2][2][1] + 1 * (*CUDA_LCC).Dblm[2][3][1];
 		pom = tmat * ee_1;
@@ -927,8 +955,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = 0 * (*CUDA_LCC).Dblm[2][1][3] + 0 * (*CUDA_LCC).Dblm[2][2][3] + 1 * (*CUDA_LCC).Dblm[2][3][3];
-		(*CUDA_LCC).de[jp][3][2] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][3][2] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (3) * 4 + (2)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (3) * 4 + (2)] = pom0 + tmat * ee0_3;
 
 		tmat = 0 * (*CUDA_LCC).Blmat[1][1] + 0 * (*CUDA_LCC).Blmat[2][1] + 0 * (*CUDA_LCC).Blmat[3][1];
 		pom = tmat * ee_1;
@@ -937,8 +965,8 @@ void matrix_neo(
 		pom += tmat * ee_2;
 		pom0 += tmat * ee0_2;
 		tmat = 0 * (*CUDA_LCC).Blmat[1][3] + 0 * (*CUDA_LCC).Blmat[2][3] + 0 * (*CUDA_LCC).Blmat[3][3];
-		(*CUDA_LCC).de[jp][3][3] = pom + tmat * ee_3;
-		(*CUDA_LCC).de0[jp][3][3] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (3) * 4 + (3)] = pom + tmat * ee_3;
+		de0G[(jp) * 16 + (3) * 4 + (3)] = pom0 + tmat * ee0_3;
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);  //__syncthreads();
@@ -950,8 +978,24 @@ void bright(
 	__global double* cg,
 	int jp,
 	int Lpoints1,
-	int Inrel)
+	int Inrel,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
+	__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+	__global double* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
+	__global double* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
+	__global double* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
+	__global double* e_1G = scr + (*CUDA_CC).offE1;
+	__global double* e_2G = scr + (*CUDA_CC).offE2;
+	__global double* e_3G = scr + (*CUDA_CC).offE3;
+	__global double* e0_1G = scr + (*CUDA_CC).offE01;
+	__global double* e0_2G = scr + (*CUDA_CC).offE02;
+	__global double* e0_3G = scr + (*CUDA_CC).offE03;
+	__global double* deG = scr + (*CUDA_CC).offDe;
+	__global double* de0G = scr + (*CUDA_CC).offDe0;
 	double cl, cls, dnom, s, Scale;
 	double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
 	int ncoef0, ncoef, i, j, incl_count = 0;
@@ -967,30 +1011,30 @@ void bright(
 
 	/* matrix from neo */
 	/* derivatives */
-	e_1 = (*CUDA_LCC).e_1[jp];
-	e_2 = (*CUDA_LCC).e_2[jp];
-	e_3 = (*CUDA_LCC).e_3[jp];
-	e0_1 = (*CUDA_LCC).e0_1[jp];
-	e0_2 = (*CUDA_LCC).e0_2[jp];
-	e0_3 = (*CUDA_LCC).e0_3[jp];
-	de[1][1] = (*CUDA_LCC).de[jp][1][1];
-	de[1][2] = (*CUDA_LCC).de[jp][1][2];
-	de[1][3] = (*CUDA_LCC).de[jp][1][3];
-	de[2][1] = (*CUDA_LCC).de[jp][2][1];
-	de[2][2] = (*CUDA_LCC).de[jp][2][2];
-	de[2][3] = (*CUDA_LCC).de[jp][2][3];
-	de[3][1] = (*CUDA_LCC).de[jp][3][1];
-	de[3][2] = (*CUDA_LCC).de[jp][3][2];
-	de[3][3] = (*CUDA_LCC).de[jp][3][3];
-	de0[1][1] = (*CUDA_LCC).de0[jp][1][1];
-	de0[1][2] = (*CUDA_LCC).de0[jp][1][2];
-	de0[1][3] = (*CUDA_LCC).de0[jp][1][3];
-	de0[2][1] = (*CUDA_LCC).de0[jp][2][1];
-	de0[2][2] = (*CUDA_LCC).de0[jp][2][2];
-	de0[2][3] = (*CUDA_LCC).de0[jp][2][3];
-	de0[3][1] = (*CUDA_LCC).de0[jp][3][1];
-	de0[3][2] = (*CUDA_LCC).de0[jp][3][2];
-	de0[3][3] = (*CUDA_LCC).de0[jp][3][3];
+	e_1 = e_1G[jp];
+	e_2 = e_2G[jp];
+	e_3 = e_3G[jp];
+	e0_1 = e0_1G[jp];
+	e0_2 = e0_2G[jp];
+	e0_3 = e0_3G[jp];
+	de[1][1] = deG[(jp) * 16 + (1) * 4 + (1)];
+	de[1][2] = deG[(jp) * 16 + (1) * 4 + (2)];
+	de[1][3] = deG[(jp) * 16 + (1) * 4 + (3)];
+	de[2][1] = deG[(jp) * 16 + (2) * 4 + (1)];
+	de[2][2] = deG[(jp) * 16 + (2) * 4 + (2)];
+	de[2][3] = deG[(jp) * 16 + (2) * 4 + (3)];
+	de[3][1] = deG[(jp) * 16 + (3) * 4 + (1)];
+	de[3][2] = deG[(jp) * 16 + (3) * 4 + (2)];
+	de[3][3] = deG[(jp) * 16 + (3) * 4 + (3)];
+	de0[1][1] = de0G[(jp) * 16 + (1) * 4 + (1)];
+	de0[1][2] = de0G[(jp) * 16 + (1) * 4 + (2)];
+	de0[1][3] = de0G[(jp) * 16 + (1) * 4 + (3)];
+	de0[2][1] = de0G[(jp) * 16 + (2) * 4 + (1)];
+	de0[2][2] = de0G[(jp) * 16 + (2) * 4 + (2)];
+	de0[2][3] = de0G[(jp) * 16 + (2) * 4 + (3)];
+	de0[3][1] = de0G[(jp) * 16 + (3) * 4 + (1)];
+	de0[3][2] = de0G[(jp) * 16 + (3) * 4 + (2)];
+	de0[3][3] = de0G[(jp) * 16 + (3) * 4 + (3)];
 
 	/*Integrated brightness (phase coeff. used later) */
 	double lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
@@ -1047,30 +1091,30 @@ void bright(
 		}
 	}
 
-	Scale = (*CUDA_LCC).jp_Scale[jp];
+	Scale = jp_ScaleG[jp];
 	i = (jp - 1) * DYT_STRIDE + (ncoef0 - 3 + 1);
 	/* Ders. of brightness w.r.t. rotation parameters */
-	(*CUDA_LCC).dytemp[i] = Scale * tmp1;
+	dytempG[i] = Scale * tmp1;
 
 	i++;
-	(*CUDA_LCC).dytemp[i] = Scale * tmp2;
+	dytempG[i] = Scale * tmp2;
 	i++;
-	(*CUDA_LCC).dytemp[i] = Scale * tmp3;
+	dytempG[i] = Scale * tmp3;
 
 	i++;
 	/* Ders. of br. w.r.t. phase function params. */
-	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_1[jp];
+	dytempG[i] = br * jp_dphp_1G[jp];
 	i++;
-	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_2[jp];
+	dytempG[i] = br * jp_dphp_2G[jp];
 	i++;
-	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_3[jp];
+	dytempG[i] = br * jp_dphp_3G[jp];
 
 	/* Ders. of br. w.r.t. cl, cls */
-	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = Scale * tmp4 * cl;
-	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef)] = Scale * tmp5;
+	dytempG[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = Scale * tmp4 * cl;
+	dytempG[(jp - 1) * DYT_STRIDE + (ncoef)] = Scale * tmp5;
 
 	/* Scaled brightness */
-	(*CUDA_LCC).ytemp[jp] = br * Scale;
+	ytempG[jp] = br * Scale;
 
 	ncoef0 -= 3;
 	int iStart;
@@ -1107,17 +1151,17 @@ void bright(
 				}
 			}
 
-			(*CUDA_LCC).dytemp[d] = Scale * tmp;
+			dytempG[d] = Scale * tmp;
 			if ((i + 1) <= ncoef0)
 			{
-				(*CUDA_LCC).dytemp[d1] = Scale * tmp1;
+				dytempG[d1] = Scale * tmp1;
 			}
 		}
 	}
 	else
 	{
 		for (i = 1; i <= ncoef0; i++, d++)
-			(*CUDA_LCC).dytemp[d] = 0;
+			dytempG[d] = 0;
 	}
 
 	//return(0);
@@ -1307,9 +1351,10 @@ void mrqcof_matrix(
 	__global struct freq_context* CUDA_CC,
 	__global double* cg,
 	int Lpoints,
-	int num)
+	int num,
+	__global double* scr)
 {
-	matrix_neo(CUDA_LCC, CUDA_CC, cg, (*CUDA_LCC).np, Lpoints, num);
+	matrix_neo(CUDA_LCC, CUDA_CC, cg, (*CUDA_LCC).np, Lpoints, num, scr);
 }
 
 void mrqcof_curve1(
@@ -1319,8 +1364,12 @@ void mrqcof_curve1(
 	__local double* tmave,
 	int Inrel,
 	int Lpoints,
-	int num)
+	int num,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	//__local double tmave[BLOCK_DIM];  // __shared__
 	__private int Lpoints1 = Lpoints + 1;
 	__private int k, lnp, jp;
@@ -1345,7 +1394,7 @@ void mrqcof_curve1(
 	for (jp = brtmpl; jp <= brtmph; jp++)
 	{
 			/*  ---  BRIGHT  ---  */
-		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel);
+		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
@@ -1366,24 +1415,24 @@ void mrqcof_curve1(
 		{
 			//jp==1
 			ixx = l;
-			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
+			(*CUDA_LCC).dave[l] = dytempG[ixx];
 
 			//jp>=2
 			ixx += DYT_STRIDE;
 			for (int jp = 2; jp <= Lpoints; jp++, ixx += DYT_STRIDE)
 			{
-				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
-				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
+				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + dytempG[ixx];
+				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + dytempG[ixx];
 
 				//if (threadIdx.x == 1)
-				//	printf("[Device | mrqcof_curv1] [%3d] dytemp[%3d]: %10.7f, dave[%3d]: %10.7f\n", blockIdx.x, ixx, (*CUDA_LCC).dytemp[ixx], l, (*CUDA_LCC).dave[l]);
+				//	printf("[Device | mrqcof_curv1] [%3d] dytemp[%3d]: %10.7f, dave[%3d]: %10.7f\n", blockIdx.x, ixx, dytempG[ixx], l, (*CUDA_LCC).dave[l]);
 			}
 		}
 
 		tmave[threadIdx.x] = 0;
 		for (int jp = brtmpl; jp <= brtmph; jp++)
 		{
-			tmave[threadIdx.x] += (*CUDA_LCC).ytemp[jp];
+			tmave[threadIdx.x] += ytempG[jp];
 		}
 
 		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
@@ -1419,8 +1468,12 @@ void mrqcof_curve1_last(
 	__global double* beta,
 	__local double* res,
 	int Inrel,
-	int Lpoints)
+	int Lpoints,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, lnp;
 	double ymod, lave;
 	int3 threadIdx, blockIdx;
@@ -1469,14 +1522,14 @@ void mrqcof_curve1_last(
 
 		if (threadIdx.x == 0)
 		{
-			(*CUDA_LCC).ytemp[jp] = ymod;
+			ytempG[jp] = ymod;
 
 			if (Inrel == 1)
 				lave = lave + ymod;
 		}
 		for (l = tmpl; l <= tmph; l++)
 		{
-			(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
+			dytempG[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
 
 			if (Inrel == 1)
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
@@ -1549,7 +1602,8 @@ int gauss_errc(
 	__local int* shIrow,    /* [BLOCK_DIM] */
 	__local int* shIcol,    /* [BLOCK_DIM] */
 	__local double* pivBC,  /* [1] pivinv broadcast */
-	__local int* icolBC)    /* [1] icol broadcast */
+	__local int* icolBC,    /* [1] icol broadcast */
+	__global double* alphaG)
 {
 	double big, dum;
 	double tmpSwap;
@@ -1577,10 +1631,10 @@ int gauss_errc(
 		int ixx = j * mfit1 + 1;
 		for (k = 1; k <= n; k++, ixx++)
 		{
-			covL[ixx] = (*CUDA_LCC).alpha[ixx];
+			covL[ixx] = alphaG[ixx];
 		}
 		int qq = j * mfit1 + j;
-		covL[qq] = (*CUDA_LCC).alpha[qq] * (1 + (*CUDA_LCC).Alamda);
+		covL[qq] = alphaG[qq] * (1 + (*CUDA_LCC).Alamda);
 		daL[j] = (*CUDA_LCC).beta[j];
 	}
 
@@ -1748,7 +1802,8 @@ int mrqmin_1_end(
 	__local int* shIrow,
 	__local int* shIcol,
 	__local double* pivBC,
-	__local int* icolBC)
+	__local int* icolBC,
+	__global double* alphaG)
 {
 	int j;
 	int3 threadIdx, blockIdx;
@@ -1791,7 +1846,7 @@ int mrqmin_1_end(
 	// ClCalculateIter1Mrqcof2Start before mrqcof2 accumulates into it).
 
 	// <<< gauss_errc    ---- GAUS ERROR CODE ----
-	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
+	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC, alphaG);
 	if (err_code)
 	{
 		return err_code;
@@ -1820,8 +1875,12 @@ int mrqmin_1_end(
 
 void mrqmin_2_end(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC) //, int* ia, int ma)
+	__global struct freq_context* CUDA_CC,
+	__global double* scr)
 {
+	__global double* alphaG = scr + (*CUDA_CC).offAlpha;
+	__global double* covarG = scr + (*CUDA_CC).offCovar;
+
 	int j, k, l;
 	int3 blockIdx, threadIdx;
 	blockIdx.x = get_group_id(0);
@@ -1834,10 +1893,10 @@ void mrqmin_2_end(
 		{
 			for (k = 1; k <= (*CUDA_CC).Mfit; k++)
 			{
-				(*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k] = (*CUDA_LCC).covar[j * (*CUDA_CC).Mfit1 + k];
+				alphaG[j * (*CUDA_CC).Mfit1 + k] = covarG[j * (*CUDA_CC).Mfit1 + k];
 
 				//if (blockIdx.x == 0)
-				//	printf("alpha[%3d]: %10.7f\n", (*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k]);
+				//	printf("alpha[%3d]: %10.7f\n", alphaG[j * (*CUDA_CC).Mfit1 + k]);
 			}
 
 			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
@@ -2130,9 +2189,12 @@ __kernel void ClCalculateIter1Begin(
 
 __kernel void ClCalculateIter1Mrqcof1Start(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    __global double* scratch)
     //__global int* CUDA_End)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2155,15 +2217,18 @@ __kernel void ClCalculateIter1Mrqcof1Start(
     if (!(*CUDA_LCC).isAlamda) return; //>> 0
 
     // => mrqcof_start(CUDA_LCC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
-    mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta);
+    mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, scr + (*CUDA_CC).offAlpha, (*CUDA_LCC).beta);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
 __kernel void ClCalculateIter1Mrqcof1Matrix(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx;
     blockIdx.x = get_group_id(0);
     int x = blockIdx.x;
@@ -2186,7 +2251,7 @@ __kernel void ClCalculateIter1Mrqcof1Matrix(
         num = 0;
     }
 
-    mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, lpoints, num);
+    mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, lpoints, num, scr);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
@@ -2194,8 +2259,11 @@ __kernel void ClCalculateIter1Mrqcof1Curve1(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2219,7 +2287,7 @@ __kernel void ClCalculateIter1Mrqcof1Curve1(
         num = 0;
     }
 
-    mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, tmave, inrel, lpoints, num);
+    mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, tmave, inrel, lpoints, num, scr);
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("[Mrqcof1Curve1] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
@@ -2233,8 +2301,11 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2254,7 +2325,7 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof1Curve1Last\n");
 
-    mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
+    mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).cg, scr + (*CUDA_CC).offAlpha, (*CUDA_LCC).beta, res, inrel, lpoints, scr);
     //if (threadIdx.x == 0)
     //{
     //	int i = 56;
@@ -2269,8 +2340,11 @@ __kernel void ClCalculateIter1Mrqcof1Curve2(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2291,7 +2365,7 @@ __kernel void ClCalculateIter1Mrqcof1Curve2(
     __local double dydaT[CURVE2_K][DYT_STRIDE];
     __local double tileS[3 * CURVE2_K];
 
-    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints);
+    mrqcof_curve2(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha, (*CUDA_LCC).beta, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints, scr);
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("[Mrqcof1Curve2] [%d][%3d] alpha[56]: %10.7f\n", blockIdx.x, threadIdx.x, (*CUDA_LCC).alpha[56]);
@@ -2308,8 +2382,11 @@ __kernel void ClCalculateIter1Mrqcof1Curve2(
 
 __kernel void ClCalculateIter1Mrqcof1End(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2327,7 +2404,7 @@ __kernel void ClCalculateIter1Mrqcof1End(
     //	printf("Mrqcof1End\n");
 
 
-    (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, (*CUDA_LCC).alpha);
+    (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
 
 
     ////if (threadIdx.x == 0)
@@ -2345,8 +2422,11 @@ __kernel void ClCalculateIter1Mrqmin1End(
     __global struct freq_context* CUDA_CC,
     /* runtime-sized by the host to Mfit1*Mfit1 doubles (~24 KB for real
        workunits) so the kernel also fits GCN's 32 KB local-memory limit */
-    __local double* covL)
+    __local double* covL,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2385,7 +2465,7 @@ __kernel void ClCalculateIter1Mrqmin1End(
     __local double pivBC[1];
     __local int icolBC[1];
 
-    mrqmin_1_end(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC);
+    mrqmin_1_end(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC, scr + (*CUDA_CC).offAlpha);
 
     //if (blockIdx.x == 0) {
     //	printf("[%3d] sh_icol[%3d]: %3d\n", threadIdx.x, threadIdx.x, sh_icol[threadIdx.x]);
@@ -2395,8 +2475,11 @@ __kernel void ClCalculateIter1Mrqmin1End(
 
 __kernel void ClCalculateIter1Mrqcof2Start(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2413,7 +2496,7 @@ __kernel void ClCalculateIter1Mrqcof2Start(
 
 
     //mrqcof_start(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da);
-    mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da);
+    mrqcof_start(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, scr + (*CUDA_CC).offCovar, (*CUDA_LCC).da);
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("alpha[56]: %10.7f\n", (*CUDA_LCC).alpha[56]);
@@ -2423,8 +2506,11 @@ __kernel void ClCalculateIter1Mrqcof2Start(
 __kernel void ClCalculateIter1Mrqcof2Matrix(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
 
@@ -2448,7 +2534,7 @@ __kernel void ClCalculateIter1Mrqcof2Matrix(
     //	printf("Mrqcof2Matrix\n");
 
     //mrqcof_matrix(CUDA_LCC, (*CUDA_LCC).atry, lpoints);
-    mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, lpoints, num);
+    mrqcof_matrix(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, lpoints, num, scr);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
@@ -2456,8 +2542,11 @@ __kernel void ClCalculateIter1Mrqcof2Curve1(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2482,7 +2571,7 @@ __kernel void ClCalculateIter1Mrqcof2Curve1(
     //	printf("Mrqcof2Curve1\n");
 
     //mrqcof_curve1(CUDA_LCC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, inrel, lpoints);
-    mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, tmave, inrel, lpoints, num);
+    mrqcof_curve1(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, tmave, inrel, lpoints, num, scr);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
@@ -2491,8 +2580,11 @@ __kernel void ClCalculateIter1Mrqcof2Curve2(
     __global struct freq_context* CUDA_CC,
     //__global double* CUDA_Dytemp,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2511,7 +2603,7 @@ __kernel void ClCalculateIter1Mrqcof2Curve2(
     __local double dydaT[CURVE2_K][DYT_STRIDE];
     __local double tileS[3 * CURVE2_K];
 
-    mrqcof_curve2(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar, (*CUDA_LCC).da, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints);
+    mrqcof_curve2(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar, (*CUDA_LCC).da, dydaT, tileS, tileS + CURVE2_K, tileS + 2 * CURVE2_K, inrel, lpoints, scr);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
@@ -2519,8 +2611,11 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int inrel,
-    const int lpoints)
+    const int lpoints,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2536,14 +2631,17 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
     __local double res[BLOCK_DIM];
 
     //mrqcof_curve1_last(CUDA_LCC, CUDA_CC, dytemp, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
-    mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, (*CUDA_LCC).covar, (*CUDA_LCC).da, res, inrel, lpoints);
+    mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, scr + (*CUDA_CC).offCovar, (*CUDA_LCC).da, res, inrel, lpoints, scr);
     barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);
 }
 
 __kernel void ClCalculateIter1Mrqcof2End(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2555,7 +2653,7 @@ __kernel void ClCalculateIter1Mrqcof2End(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    (*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, CUDA_CC, (*CUDA_LCC).covar);
+    (*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Chisq: %10.7f\n", threadIdx.x, (*CUDA_LCC).Chisq);
@@ -2564,8 +2662,11 @@ __kernel void ClCalculateIter1Mrqcof2End(
 
 __kernel void ClCalculateIter1Mrqmin2End(
     __global struct mfreq_context* CUDA_mCC,
-    __global struct freq_context* CUDA_CC)
+    __global struct freq_context* CUDA_CC,
+    __global double* scratch)
 {
+    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
     threadIdx.x = get_local_id(0);
@@ -2581,7 +2682,7 @@ __kernel void ClCalculateIter1Mrqmin2End(
     //	printf("Mrqmin2End\n");
 
     //mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
-    mrqmin_2_end(CUDA_LCC, CUDA_CC);
+    mrqmin_2_end(CUDA_LCC, CUDA_CC, scr);
 
     (*CUDA_LCC).Niter++;
 
