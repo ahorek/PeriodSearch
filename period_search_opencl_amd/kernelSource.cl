@@ -14,6 +14,12 @@
 #define TINY                  1e-8          /* precision parameter for mu, mu0*/
 #define N_POLES              10             /* number of initial poles */
 
+/* dytemp is stored transposed - dytemp[(jp-1)*DYT_STRIDE + l], l = 1..ma - so
+   consecutive work-items reading consecutive parameters hit consecutive
+   addresses. Requires ma <= DYT_STRIDE-1 (spherical-harmonics degree <= 6,
+   i.e. every production workunit); enforced on the host. */
+#define DYT_STRIDE           64
+
 #define PI                 M_PI             /* 3.14159265358979323846 */
 #define AU            149597870.691         /* Astronomical Unit [km] */
 #define C_SPEED       299792458             /* speed of light [m/s]*/
@@ -54,7 +60,7 @@ typedef struct mfreq_context
 	double Area[MAX_N_FAC + 1];
 	double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
 	double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
+	double dytemp[(POINTS_MAX + 1) * DYT_STRIDE]; /* transposed: [(jp-1)*DYT_STRIDE + l] */
 	double ytemp[POINTS_MAX + 1];
 
 	double beta[MAX_N_PAR + 1];
@@ -448,7 +454,7 @@ void mrqcof_curve2(
 		for (jp = tmpl; jp <= tmph; jp++)
 		{
 			lnp1++;
-			int ixx = jp + 1 * Lpoints1;
+			int ixx = (jp - 1) * DYT_STRIDE + 1;
 			/* Set the size scale coeff. deriv. explicitly zero for relative lcurves */
 			(*CUDA_LCC).dytemp[ixx] = 0;
 
@@ -471,12 +477,12 @@ void mrqcof_curve2(
 			//if (blockIdx.x == 0)
 			//	printf("[Device][%d][%3d] ytemp[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, jp, (*CUDA_LCC).ytemp[jp]);
 
-			ixx += Lpoints1;
+			ixx++;
 
 			//if (threadIdx.x == 0)
 			//	printf("[%3d] jp[%3d] dytemp[%3d]: %10.7f\n", blockIdx.x, jp, ixx, (*CUDA_LCC).dytemp[ixx]);
 
-			for (l = 2; l <= (*CUDA_CC).ma; l++, ixx += Lpoints1)
+			for (l = 2; l <= (*CUDA_CC).ma; l++, ixx++)
 			{
 				(*CUDA_LCC).dytemp[ixx] = coef * ((*CUDA_LCC).dytemp[ixx] - coef1 * (*CUDA_LCC).dave[l]);
 
@@ -503,8 +509,8 @@ void mrqcof_curve2(
 		{
 			ymod = (*CUDA_LCC).ytemp[jp];
 
-			int ixx = jp + matmpl * Lpoints1;
-			for (l = matmpl; l <= matmph; l++, ixx += Lpoints1)
+			int ixx = (jp - 1) * DYT_STRIDE + matmpl;
+			for (l = matmpl; l <= matmph; l++, ixx++)
 				(*CUDA_LCC).dyda[l] = (*CUDA_LCC).dytemp[ixx];
 			barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
@@ -597,8 +603,8 @@ void mrqcof_curve2(
 			//if (blockIdx.x == 0 && threadIdx.x == 0)
 			//	printf("Curve2_2b >>> [%3d][%3d] jp[%3d] ymod: %10.7f\n", blockIdx.x, threadIdx.x, jp, ymod);
 
-			int ixx = jp + matmpl * Lpoints1;
-			for (l = matmpl; l <= matmph; l++, ixx += Lpoints1)
+			int ixx = (jp - 1) * DYT_STRIDE + matmpl;
+			for (l = matmpl; l <= matmph; l++, ixx++)
 			{
 				(*CUDA_LCC).dyda[l] = (*CUDA_LCC).dytemp[ixx];  // jp[1] dytemp[315] 0.0 - ?!?  must be -1051420.6747227
 
@@ -1056,26 +1062,26 @@ void bright(
 	}
 
 	Scale = (*CUDA_LCC).jp_Scale[jp];
-	i = jp + (ncoef0 - 3 + 1) * Lpoints1;
+	i = (jp - 1) * DYT_STRIDE + (ncoef0 - 3 + 1);
 	/* Ders. of brightness w.r.t. rotation parameters */
 	(*CUDA_LCC).dytemp[i] = Scale * tmp1;
 
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = Scale * tmp2;
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = Scale * tmp3;
 
-	i += Lpoints1;
+	i++;
 	/* Ders. of br. w.r.t. phase function params. */
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_1[jp];
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_2[jp];
-	i += Lpoints1;
+	i++;
 	(*CUDA_LCC).dytemp[i] = br * (*CUDA_LCC).jp_dphp_3[jp];
 
 	/* Ders. of br. w.r.t. cl, cls */
-	(*CUDA_LCC).dytemp[jp + (ncoef - 1) * (Lpoints1)] = Scale * tmp4 * cl;
-	(*CUDA_LCC).dytemp[jp + (ncoef) * (Lpoints1)] = Scale * tmp5;
+	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = Scale * tmp4 * cl;
+	(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + (ncoef)] = Scale * tmp5;
 
 	/* Scaled brightness */
 	(*CUDA_LCC).ytemp[jp] = br * Scale;
@@ -1085,10 +1091,10 @@ void bright(
 	int d, d1, dr;
 
 	iStart = Inrel + 1;
-	d = jp + (Lpoints1 << Inrel);
+	d = (jp - 1) * DYT_STRIDE + iStart;
 
-	d1 = d + Lpoints1;
-	dr = 2 * Lpoints1;
+	d1 = d + 1;
+	dr = 2;
 
 	/* Derivatives of brightness w.r.t. g-coeffs */
 	if (incl_count)
@@ -1124,7 +1130,7 @@ void bright(
 	}
 	else
 	{
-		for (i = 1; i <= ncoef0; i++, d += Lpoints1)
+		for (i = 1; i <= ncoef0; i++, d++)
 			(*CUDA_LCC).dytemp[d] = 0;
 	}
 
@@ -1370,17 +1376,15 @@ void mrqcof_curve1(
 		if (tmpl == 1) tmpl++;
 
 		int ixx;
-		ixx = tmpl * Lpoints1;
-
 		for (int l = tmpl; l <= tmph; l++)
 		{
 			//jp==1
-			ixx++;
+			ixx = l;
 			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
 
 			//jp>=2
-			ixx++;
-			for (int jp = 2; jp <= Lpoints; jp++, ixx++)
+			ixx += DYT_STRIDE;
+			for (int jp = 2; jp <= Lpoints; jp++, ixx += DYT_STRIDE)
 			{
 				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
@@ -1486,8 +1490,7 @@ void mrqcof_curve1_last(
 		}
 		for (l = tmpl; l <= tmph; l++)
 		{
-			//(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
-			(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
+			(*CUDA_LCC).dytemp[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
 
 			if (Inrel == 1)
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
