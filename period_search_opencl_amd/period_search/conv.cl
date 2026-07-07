@@ -52,19 +52,15 @@ double conv(
 	//parallel reduction end
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
-	//int m = blockIdx.x * (*CUDA_CC).Dg_block + tmpl * (*CUDA_CC).Numfac1);   // <<<<<<<<<<<<<<<<<<<<<<<<<<<<< !!!
-	int m = tmpl * (*CUDA_CC).Numfac1;
-	for (j = tmpl; j <= tmph; j++)  //, m += (*CUDA_CC).Numfac1)
+	for (j = tmpl; j <= tmph; j++)
 	{
-		// printf("m: %4d\n", m);
 		dtmp = 0;
 		if (j <= (*CUDA_CC).Ncoef)
 		{
-			int mm = m + 1;
-			for (i = 1; i <= (*CUDA_CC).Numfac; i++, mm++)
+			for (i = 1; i <= (*CUDA_CC).Numfac; i++)
 			{
-				// dtmp += CUDA_Darea[i] * CUDA_Dg[mm] * CUDA_Nor[i][nc];
-				dtmp += (*CUDA_CC).Darea[i] * (*CUDA_LCC).Dg[mm] * (*CUDA_CC).Nor[i][nc];
+				/* Darea[i] * Dg[i][j] == Area[i] * Dsph[i][j] (Area = Darea*g) */
+				dtmp += (*CUDA_LCC).Area[i] * (*CUDA_CC).Dsph[i][j] * (*CUDA_CC).Nor[i][nc];
 
 				//if (blockIdx.x == 0 && j == 8)
 				//	printf("[%d][%3d]  Darea[%4d]: %.7f, Dg[%4d]: %.7f, Nor[%3d][%3d]: %10.7f\n",
