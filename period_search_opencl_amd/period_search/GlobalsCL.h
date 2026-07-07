@@ -24,29 +24,18 @@ typedef struct mfreq_context
 	//double* ytemp;
 
 	double Area[MAX_N_FAC + 1];
-	double alpha[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	double covar[(MAX_N_PAR + 1) * (MAX_N_PAR + 1)];
-	double dytemp[(POINTS_MAX + 1) * (MAX_N_PAR + 1)];
-	double ytemp[POINTS_MAX + 1];
-
+	/* The point- and fit-dimensioned work arrays (alpha, covar, dytemp,
+	   ytemp, jp_*, e_*, de, de0) live in a separate runtime-sized scratch
+	   buffer - one slice of freq_context.scrStride doubles per work-group,
+	   at the offsets recorded in freq_context - instead of compile-time
+	   worst-case arrays here. That cuts per-context memory ~6x (2.27 MB ->
+	   ~0.4 MB for typical workunits). */
 	double beta[MAX_N_PAR + 1];
 	double atry[MAX_N_PAR + 1];
 	double da[MAX_N_PAR + 1];
 	double cg[MAX_N_PAR + 1];
 	double Blmat[4][4];
 	double Dblm[3][4][4];
-	double jp_Scale[POINTS_MAX + 1];
-	double jp_dphp_1[POINTS_MAX + 1];
-	double jp_dphp_2[POINTS_MAX + 1];
-	double jp_dphp_3[POINTS_MAX + 1];
-	double e_1[POINTS_MAX + 1];
-	double e_2[POINTS_MAX + 1];
-	double e_3[POINTS_MAX + 1];
-	double e0_1[POINTS_MAX + 1];
-	double e0_2[POINTS_MAX + 1];
-	double e0_3[POINTS_MAX + 1];
-	double de[POINTS_MAX + 1][4][4];
-	double de0[POINTS_MAX + 1][4][4];
 	double dave[MAX_N_PAR + 1];
 	double dyda[MAX_N_PAR + 1];
 
@@ -126,6 +115,27 @@ struct freq_context
 	int Nphpar;
 	int ndata;
 	int Is_Precalc;
+
+	/* runtime dimensions + per-context offsets (in doubles) into the
+	   scratch buffer that replaced the fixed-size work arrays */
+	int lcPoints1;
+	int scrStride;
+	int offAlpha;
+	int offCovar;
+	int offDytemp;
+	int offYtemp;
+	int offJpScale;
+	int offJpDphp1;
+	int offJpDphp2;
+	int offJpDphp3;
+	int offE1;
+	int offE2;
+	int offE3;
+	int offE01;
+	int offE02;
+	int offE03;
+	int offDe;
+	int offDe0;
 };
 
 //struct freq_result

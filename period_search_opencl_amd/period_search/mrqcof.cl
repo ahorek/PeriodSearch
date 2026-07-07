@@ -103,9 +103,10 @@ void mrqcof_matrix(
 	__global struct freq_context* CUDA_CC,
 	__global double* cg,
 	int Lpoints,
-	int num)
+	int num,
+	__global double* scr)
 {
-	matrix_neo(CUDA_LCC, CUDA_CC, cg, (*CUDA_LCC).np, Lpoints, num);
+	matrix_neo(CUDA_LCC, CUDA_CC, cg, (*CUDA_LCC).np, Lpoints, num, scr);
 }
 
 void mrqcof_curve1(
@@ -115,8 +116,12 @@ void mrqcof_curve1(
 	__local double* tmave,
 	int Inrel,
 	int Lpoints,
-	int num)
+	int num,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	//__local double tmave[BLOCK_DIM];  // __shared__
 	__private int Lpoints1 = Lpoints + 1;
 	__private int k, lnp, jp;
@@ -141,7 +146,7 @@ void mrqcof_curve1(
 	for (jp = brtmpl; jp <= brtmph; jp++)
 	{
 			/*  ---  BRIGHT  ---  */
-		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel);
+		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
@@ -158,30 +163,28 @@ void mrqcof_curve1(
 		if (tmpl == 1) tmpl++;
 
 		int ixx;
-		ixx = tmpl * Lpoints1;
-
 		for (int l = tmpl; l <= tmph; l++)
 		{
 			//jp==1
-			ixx++;
-			(*CUDA_LCC).dave[l] = (*CUDA_LCC).dytemp[ixx];
+			ixx = l;
+			(*CUDA_LCC).dave[l] = dytempG[ixx];
 
 			//jp>=2
-			ixx++;
-			for (int jp = 2; jp <= Lpoints; jp++, ixx++)
+			ixx += DYT_STRIDE;
+			for (int jp = 2; jp <= Lpoints; jp++, ixx += DYT_STRIDE)
 			{
-				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
-				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dytemp[ixx];
+				//(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + dytempG[ixx];
+				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + dytempG[ixx];
 
 				//if (threadIdx.x == 1)
-				//	printf("[Device | mrqcof_curv1] [%3d] dytemp[%3d]: %10.7f, dave[%3d]: %10.7f\n", blockIdx.x, ixx, (*CUDA_LCC).dytemp[ixx], l, (*CUDA_LCC).dave[l]);
+				//	printf("[Device | mrqcof_curv1] [%3d] dytemp[%3d]: %10.7f, dave[%3d]: %10.7f\n", blockIdx.x, ixx, dytempG[ixx], l, (*CUDA_LCC).dave[l]);
 			}
 		}
 
 		tmave[threadIdx.x] = 0;
 		for (int jp = brtmpl; jp <= brtmph; jp++)
 		{
-			tmave[threadIdx.x] += (*CUDA_LCC).ytemp[jp];
+			tmave[threadIdx.x] += ytempG[jp];
 		}
 
 		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
@@ -217,8 +220,12 @@ void mrqcof_curve1_last(
 	__global double* beta,
 	__local double* res,
 	int Inrel,
-	int Lpoints)
+	int Lpoints,
+	__global double* scr)
 {
+	/* runtime-sized work arrays, one slice per work-group */
+	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, lnp;
 	double ymod, lave;
 	int3 threadIdx, blockIdx;
@@ -267,15 +274,14 @@ void mrqcof_curve1_last(
 
 		if (threadIdx.x == 0)
 		{
-			(*CUDA_LCC).ytemp[jp] = ymod;
+			ytempG[jp] = ymod;
 
 			if (Inrel == 1)
 				lave = lave + ymod;
 		}
 		for (l = tmpl; l <= tmph; l++)
 		{
-			//(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
-			(*CUDA_LCC).dytemp[jp + l * (Lpoints + 1)] = (*CUDA_LCC).dyda[l];
+			dytempG[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
 
 			if (Inrel == 1)
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
