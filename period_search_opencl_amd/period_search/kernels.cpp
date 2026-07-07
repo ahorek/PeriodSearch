@@ -1136,7 +1136,7 @@ inline const char* ocl_src_kernelSource =
 "			double l_dbr = dbr[0];\n"
 "			int l_incl = incl[0];\n"
 "			tmp = l_dbr * (*CUDA_CC).Dsph[l_incl][i];\n"
-"           int is_next_coef_valid = (i + 1) <= ncoef0;\n"
+"			int is_next_coef_valid = (i + 1) <= ncoef0;\n"
 "			if (is_next_coef_valid)\n"
 "			{\n"
 "				tmp1 = l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];\n"
