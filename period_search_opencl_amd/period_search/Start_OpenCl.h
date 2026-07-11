@@ -3,7 +3,7 @@
 #include "mfile.h"
 
 
-extern cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double cl, cl_double Alambda_start, cl_double Alambda_incr,
+extern cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId, int clCustomPlatformId, int clCustomDeviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double cl, cl_double Alambda_start, cl_double Alambda_incr,
 	cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata);
 
 extern cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, cl_double stop_condition, cl_int n_iter_min, cl_double* conw_r,

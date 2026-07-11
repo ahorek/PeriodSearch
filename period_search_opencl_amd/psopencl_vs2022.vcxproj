@@ -342,7 +342,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;C:\boincsdk\boinc\win_build\Build\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi.lib;libboincopencl.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
     </Link>
@@ -372,7 +372,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;C:\boincsdk\boinc\win_build\Build\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;libcmtd.lib;libcpmtd.lib;libboinc.lib;libboincapi.lib;libboincopencl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <StackReserveSize>10000000</StackReserveSize>
     </Link>
@@ -459,7 +459,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\boincsdk\boinc\api;C:\boincsdk\boinc\lib;C:\boincsdk\boinc\win_build\Build\x64\Release;$(AMDAPPSDKROOT)lib\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>10000000</StackReserveSize>
-      <AdditionalDependencies>OpenCL.lib;libcmt.lib;libcpmt.lib;libboinc.lib;libboincapi.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;libcmt.lib;libcpmt.lib;libboinc.lib;libboincapi.lib;libboincopencl.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
@@ -498,7 +498,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(AMDAPPSDKROOT)lib\x86_64;C:\boincsdk\boinc\win_build\Build\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>10000000</StackReserveSize>
-      <AdditionalDependencies>OpenCL.lib;libcmt.lib;libcpmt.lib;libboinc.lib;libboincapi.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenCL.lib;libcmt.lib;libcpmt.lib;libboinc.lib;libboincapi.lib;libboincopencl.lib;shlwapi.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
