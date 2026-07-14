@@ -2,21 +2,19 @@
 
 #if !defined _WIN32
 #ifndef CL_TARGET_OPENCL_VERSION
-#define CL_TARGET_OPENCL_VERSION 120 /* clEnqueueFillBuffer needs 1.2 */
+#define CL_TARGET_OPENCL_VERSION 200 /* OpenCL 2.0 */
 #endif
-#define CL_HPP_MINIMUM_OPENCL_VERSION 110
-#define CL_HPP_TARGET_OPENCL_VERSION 110
+#define CL_HPP_MINIMUM_OPENCL_VERSION 200
+#define CL_HPP_TARGET_OPENCL_VERSION 200
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
-#define CL_HPP_CL_1_1_DEFAULT_BUILD
 // #define CL_API_SUFFIX__VERSION_1_0 CL_API_SUFFIX_COMMON
 #define CL_BLOCKING 	CL_TRUE
 #else // WIN32
-#define CL_TARGET_OPENCL_VERSION 120
+#define CL_TARGET_OPENCL_VERSION 200
 // #define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
-#define CL_HPP_TARGET_OPENCL_VERSION 120
+#define CL_HPP_MINIMUM_OPENCL_VERSION 200
+#define CL_HPP_TARGET_OPENCL_VERSION 200
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
-#define CL_HPP_CL_1_2_DEFAULT_BUILD
 #define CL_HPP_ENABLE_EXCEPTIONS
 typedef unsigned int uint;
 #endif
@@ -563,14 +561,13 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
             return EXIT_FAILURE;
         }
 
-        //char options[]{ "-Werror" };
-        char options[]{ "-w" };
+        char options[]{ "-w -cl-std=CL2.0" };
 #if defined (AMD)
-        err_num = clBuildProgram(binProgram, 1, &device, options, NULL, NULL); // "-Werror -cl-std=CL1.1"
+        err_num = clBuildProgram(binProgram, 1, &device, options, NULL, NULL); // "-w -cl-std=CL2.0"
 #elif defined (NVIDIA)
-        binProgram.build(devices, "-D NVIDIA -w -cl-std=CL1.2"); // "-w" "-Werror"
+        binProgram.build(devices, "-D NVIDIA -w -cl-std=CL2.0"); // "-w" "-Werror"
 #elif defined (INTEL)
-        binProgram.build(devices, "-D INTEL -cl-std=CL1.2");
+        binProgram.build(devices, "-D INTEL -cl-std=CL2.0");
 #endif
 
 #if defined (NDEBUG)
@@ -646,11 +643,11 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
         //char options[]{ "-Werror" };
         char options[]{ "-w" };
 #if defined (AMD)
-        err_num = clBuildProgram(program, 1, &device, options, NULL, NULL); // "-Werror -cl-std=CL1.1" "-g -x cl -cl-std=CL1.2 -Werror"
+        err_num = clBuildProgram(program, 1, &device, options, NULL, NULL); // "-w -cl-std=CL2.0"
 #elif defined (NVIDIA)
-        program.build(devices); //, "-D NVIDIA -w -cl-std=CL1.2"); // "-Werror" "-w"
+        program.build(devices, "-D NVIDIA -w -cl-std=CL2.0"); // "-Werror" "-w"
 #elif defined (INTEL)
-        program.build(devices, "-D INTEL -cl-std=CL1.2");
+        program.build(devices, "-D INTEL -cl-std=CL2.0");
 #endif
         if (err_num != CL_SUCCESS)
         {
@@ -670,8 +667,9 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
             return(1);
         }
 
-        //cl_command_queue_properties properties;
-        queue = clCreateCommandQueue(context, device, 0, &err_num);
+        // Create command queue with OpenCL 2.0 API
+        cl_queue_properties queue_properties[] = { 0 };
+        queue = clCreateCommandQueueWithProperties(context, device, queue_properties, &err_num);
         if (err_num != CL_SUCCESS) {
             std::cerr << " Error creating queue: " << cl_error_to_str(err_num) << "(" << err_num << ")\n";
             return(1);
@@ -686,7 +684,7 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
         err_num = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_STATUS, sizeof(buildStatus), &buildStatus, NULL);
 
 #if _DEBUG
-#if CL_TARGET_OPENCL_VERSION > 110
+#if CL_TARGET_OPENCL_VERSION >= 200
         size_t bufSize;
         size_t numKernels;
         err_num = clGetProgramInfo(program, CL_PROGRAM_NUM_KERNELS, sizeof(numKernels), &numKernels, NULL);

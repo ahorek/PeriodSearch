@@ -15,7 +15,7 @@ OPENCL_LIB_PATH ?= /usr/lib/x86_64-linux-gnu
 OBJ_DIR = build/Release
 
 CLDEFS = -DCL_TARGET_OPENCL_VERSION=200 -DCL_HPP_TARGET_OPENCL_VERSION=200 \
-	-DCL_HPP_MINIMUM_OPENCL_VERSION=110
+	-DCL_HPP_MINIMUM_OPENCL_VERSION=200
 
 CXXFLAGS = -O2 -w -s -std=c++17 -m64 -fstack-protector-strong -fstack-clash-protection -ffunction-sections \
 	-DNDEBUG -DAMD -DCL_HPP_ENABLE_EXCEPTIONS $(CLDEFS) \
@@ -43,7 +43,7 @@ SOURCE_FILES = trifac.cpp areanorm.cpp sphfunc.cpp ellfit.cpp ludcmp.cpp lubksb.
 
 OBJECT_FILES = $(SOURCE_FILES:%.cpp=$(OBJ_DIR)/%.o)
 
-PROGS = period_search_BOINC_linux_amd_opencl_110_x64_Release
+PROGS = period_search_BOINC_linux_amd_opencl_200_x64_Release
 EXECUTABLE_FILES = $(PROGS:%=$(OBJ_DIR)/%)
 
 all: $(EXECUTABLE_FILES)
