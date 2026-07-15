@@ -795,7 +795,7 @@ void matrix_neo(
 		//printf("tim[%3d]: %10.7f\n", lnp, t);
 		//printf("lnp: %3d, ee[%d]: %.7f, ee0[%d]: %.7f\n", lnp, lnp * 3 + 0, (*CUDA_CC).ee[lnp][0], lnp, (*CUDA_CC).ee0[lnp][0]);
 
-		alpha = acos(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3);
+		alpha = acos(clamp(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3, -1.0, 1.0));
 
 
 		//if (blockIdx.x == 0 && threadIdx.x == 0)

@@ -796,7 +796,7 @@ inline const char* ocl_src_kernelSource =
 "		//printf(\"tim[%3d]: %10.7f\\n\", lnp, t);\n"
 "		//printf(\"lnp: %3d, ee[%d]: %.7f, ee0[%d]: %.7f\\n\", lnp, lnp * 3 + 0, (*CUDA_CC).ee[lnp][0], lnp, (*CUDA_CC).ee0[lnp][0]);\n"
 "\n"
-"		alpha = acos(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3);\n"
+"		alpha = acos(clamp(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3, -1.0, 1.0));\n"
 "\n"
 "\n"
 "		//if (blockIdx.x == 0 && threadIdx.x == 0)\n"
