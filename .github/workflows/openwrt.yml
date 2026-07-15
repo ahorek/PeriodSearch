@@ -1,0 +1,89 @@
+name: OpenWRT
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - openwrt
+
+  pull_request:
+    branches:
+      - main
+      - dev
+      - openwrt
+
+env:
+  OPENWRT_VERSION: 24.10.4
+
+jobs:
+  aarch64:
+    runs-on: ubuntu-latest
+
+    name: 'OpenWRT aarch64'
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+            path: PeriodSearch
+
+      - name: Download and setup OpenWRT SDK
+        run: |
+          # Download OpenWRT SDK for aarch64_cortex-a53
+          wget https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/mediatek/mt7622/openwrt-sdk-${{ env.OPENWRT_VERSION }}-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          tar --zstd -xf openwrt-sdk-${{ env.OPENWRT_VERSION }}-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          mv openwrt-sdk-${{ env.OPENWRT_VERSION }}-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64 openwrt
+
+      - name: Print toolchain info
+        run: |
+          export STAGING_DIR=$PWD/openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+          if [ -f "$STAGING_DIR/bin/aarch64-openwrt-linux-musl-g++" ]; then
+            $STAGING_DIR/bin/aarch64-openwrt-linux-musl-g++ -v
+          else
+            echo "Toolchain not found, listing staging_dir contents:"
+            ls -la openwrt/staging_dir/
+          fi
+    
+      - name: Checkout BOINC
+        uses: actions/checkout@v5
+        with:
+          repository: BOINC/boinc
+          path: boinc_src
+          ref: 'client_release/8.2/8.2.4'
+
+      - name: Prepare boinc libraries
+        working-directory: ./boinc_src
+        run: |
+          ./_autosetup
+          # Configure BOINC for cross-compilation
+          export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+          export PATH="$STAGING_DIR/bin:$PATH"
+          ./configure --disable-server --disable-client --disable-manager --host=aarch64-openwrt-linux-musl
+          make -j
+
+      - name: Build ps_common library
+        working-directory: ./PeriodSearch/period_search_common
+        run: |
+          export STAGING_DIR=$PWD/../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+          # Update Makefile with correct GCC version
+          sed -i 's/gcc-13\.3\.0/gcc-13.3.0/g' Makefile_OpenWRT_aarch64
+          make -f Makefile_OpenWRT_aarch64 -j
+
+      - name: Build period_search
+        working-directory: PeriodSearch/period_search_optimization_simd/period_search
+        run: |
+          export STAGING_DIR=$PWD/../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-12.3.0_musl
+          # Update Makefile with correct paths and GCC version
+          sed -i 's/gcc-13\.3\.0/gcc-13.3.0/g' Makefile_OpenWRT_aarch64
+          make -f Makefile_OpenWRT_aarch64 -j
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenWRT_aarch64
+          retention-days: 1
+          path: PeriodSearch/period_search_optimization_simd/period_search/build/period_search_openwrt_aarch64

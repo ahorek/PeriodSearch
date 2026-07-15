@@ -1,0 +1,96 @@
+# This should work on Linux with OpenWRT SDK.
+#
+# Compilation process:
+#
+# 1. Download OpenWRT SDK for aarch64_cortex-a53:
+#    wget https://downloads.openwrt.org/releases/24.10.3/targets/mediatek/mt7622/openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#    tar --zstd -xf openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#    mv openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64 ../../../openwrt
+#    rm openwrt-sdk-24.10.3-mediatek-mt7622_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+#
+# 2. Prepare BOINC API:
+#    git clone --depth 1 -b client_release/8.2/8.2.4 https://github.com/BOINC/boinc.git ../../../boinc_src
+#    cd ../../../boinc_src
+#    ./_autosetup
+#    export STAGING_DIR=$PWD/../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    export PATH="$STAGING_DIR/bin:$PATH"
+#    ./configure --disable-server --disable-client --disable-manager --host=aarch64-openwrt-linux-musl
+#    make -j
+#
+# 3. Build ps_common library:
+#    cd ../../period_search_common
+#    export STAGING_DIR=$PWD/../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    make -f Makefile_OpenWRT_aarch64 -j
+#
+# 4. Build period_search:
+#    cd ../period_search_optimization_simd/period_search
+#    export STAGING_DIR=$PWD/../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+#    make -f Makefile_OpenWRT_aarch64 -j
+#
+# Output binary: build/period_search_openwrt_aarch64
+# Target: ARM64 (armv8-a) with ASIMD/NEON optimizations
+# C Library: musl (lightweight, ideal for embedded systems)
+# Toolchain: aarch64-openwrt-linux-musl-g++ (GCC 13.3.0)
+
+
+BUILD_DIR = build
+BOINC_DIR = ../../../boinc_src
+BOINC_API_DIR = $(BOINC_DIR)/api
+BOINC_LIB_DIR = $(BOINC_DIR)/lib
+PS_COMMON_DIR = ../../period_search_common
+PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
+
+STAGING_DIR = ../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
+CXX = $(STAGING_DIR)/bin/aarch64-openwrt-linux-musl-g++
+
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -frecord-gcc-switches \
+    -DARM64 \
+	-I$(BOINC_DIR) \
+	-I$(BOINC_LIB_DIR) \
+	-I$(BOINC_API_DIR) \
+	-I$(PS_COMMON_DIR) \
+	-L$(PS_COMMON_LIB_DIR) \
+	-L$(STAGING_DIR)/lib \
+	-L.
+
+# Define the target executable
+TARGET = $(BUILD_DIR)/period_search_openwrt_aarch64
+
+# Define the source files
+SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_asimd.cpp \
+	conv.cpp conv_asimd.cpp \
+	covsrt.cpp CpuInfoArm64.cpp curv.cpp curv_asimd.cpp \
+	ellfit.cpp EnumHelpers.cpp gauss_errc.cpp gauss_errc_asimd.cpp \
+	lubksb.cpp ludcmp.cpp matrix.cpp \
+	mrqcof.cpp mrqcof_asimd.cpp \
+	mrqmin.cpp phasec.cpp sphfunc.cpp systeminfo.cpp \
+	trifac.cpp VersionInfo.cpp period_search_BOINC.cpp
+# Define the object files
+OBJ = $(SRC:%.cpp=$(BUILD_DIR)/%.o)
+
+# Default target to build the executable
+all: $(BUILD_DIR) $(TARGET)
+
+# Rule to create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+ # Rule to build the static library
+$(TARGET): $(OBJ) $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	STAGING_DIR=$(STAGING_DIR) $(CXX) $(CXXFLAGS) -o $@ $(OBJ) -pthread \
+	$(PS_COMMON_LIB_DIR)/libps_common.a \
+	$(BOINC_API_DIR)/libboinc_api.a \
+	$(BOINC_LIB_DIR)/libboinc.a \
+	-lm
+
+# Rule to build object files
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(BUILD_DIR)
+	STAGING_DIR=$(STAGING_DIR) $(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Clean rule to remove compiled files
+clean:
+	rm -rf $(BUILD_DIR)
+
+.PHONY: all clean
+
