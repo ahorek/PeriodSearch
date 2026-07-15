@@ -371,7 +371,8 @@ void bright(
 			double l_dbr = dbr[0];
 			int l_incl = incl[0];
 			tmp = l_dbr * (*CUDA_LCC).Dg[m + l_incl];
-			if ((i + 1) <= ncoef0)
+			int is_next_coef_valid = (i + 1) <= ncoef0;
+			if (is_next_coef_valid)
 			{
 				tmp1 = l_dbr * (*CUDA_LCC).Dg[m1 + l_incl];
 			}
@@ -381,14 +382,14 @@ void bright(
 				double l_dbr = dbr[j];
 				int l_incl = incl[j];
 				tmp += l_dbr * (*CUDA_LCC).Dg[m + l_incl];
-				if ((i + 1) <= ncoef0)
+				if (is_next_coef_valid)
 				{
 					tmp1 += l_dbr * (*CUDA_LCC).Dg[m1 + l_incl];
 				}
 			}
 
 			(*CUDA_LCC).dytemp[d] = Scale * tmp;
-			if ((i + 1) <= ncoef0)
+			if (is_next_coef_valid)
 			{
 				(*CUDA_LCC).dytemp[d1] = Scale * tmp1;
 			}
