@@ -120,6 +120,7 @@
 #include "util.h"
 #include "filesys.h"
 #include "boinc_api.h"
+#include "boinc_opencl.h"
 #include "mfile.h"
 //#include "graphics2.h"
 
@@ -604,26 +605,10 @@ int main(int argc, char** argv)
         }
     }
 
-	int clDevice = -1;
-    if (aid.gpu_device_num >= 0)
-    {
-        clDevice = aid.gpu_device_num;
-    }
-    else
-    {
-	    for (int ii = 0; ii < argc; ii++) {
-            if (clDevice < 0 && strcmp(argv[ii], "--device") == 0 && ii + 1 < argc)
-                clDevice = atoi(argv[++ii]);
-	    }
-    }
-
-	if (clDevice < 0)
-		clDevice = 0;
-
     if (!checkpointExists)
     {
         fprintf(stderr, "BOINC client version %d.%d.%d\n", aid.major_version, aid.minor_version, aid.release);
-        fprintf(stderr, "BOINC GPU type '%s', deviceId=%d, slot=%d\n", aid.gpu_type, clDevice, aid.slot);
+        fprintf(stderr, "BOINC GPU type '%s', deviceId=%d, slot=%d\n", aid.gpu_type, aid.gpu_device_num, aid.slot);
 
         int major, minor, build, revision;
 #if !defined __GNUC__ && defined _WIN32
@@ -641,7 +626,28 @@ int main(int argc, char** argv)
         fprintf(stderr, "Version: %d.%d.%d.%d\n", major, minor, build, revision);
     }
 
-	retval = ClPrepare(clDevice, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
+	cl_platform_id clBoincPlatformId = nullptr;
+	cl_device_id clBoincDeviceId = nullptr;
+	int clCustomDeviceId = -1;
+	int clCustomPlatformId = -1;
+
+	for (int ii = 0; ii < argc; ii++) {
+		if (strcmp(argv[ii], "--device") == 0 && ii + 1 < argc) {
+			clCustomDeviceId = atoi(argv[++ii]);
+		}
+		if (strcmp(argv[ii], "--platform") == 0 && ii + 1 < argc) {
+			clCustomPlatformId = atoi(argv[++ii]);
+		}
+	}
+
+	if(!boinc_is_standalone()) {
+		int result = boinc_get_opencl_ids(&clBoincDeviceId, &clBoincPlatformId);
+		if(CL_SUCCESS != result) {
+			fprintf(stderr, "Failed to get OpenCL platform/device info from BOINC (error: %d)!", result);
+		}
+	}
+
+	retval = ClPrepare(clBoincPlatformId, clBoincDeviceId, clCustomPlatformId, clCustomDeviceId, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
 	if (retval)
 	{
 		fflush(stderr);

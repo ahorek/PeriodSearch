@@ -171,114 +171,97 @@ cl_int SaveKernelsToBinary(cl_program binProgram, const char* kernelFileName)
     return 0;
 }
 
-cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double lcoef, cl_double a_lamda_start, cl_double a_lamda_incr,
+cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId, int clCustomPlatformId, int clCustomDeviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double lcoef, cl_double a_lamda_start, cl_double a_lamda_incr,
     cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata)
 {
-#if !defined _WIN32
-
-#else
-#ifndef INTEL
-    //Fa = static_cast<freq_context*>(malloc(sizeof(freq_context)));
-#else
-
-#endif
-#endif
-
-    //try {
     cl_int err_num;
-    cl_uint num_platforms_available;
-    err_num = clGetPlatformIDs(0, NULL, &num_platforms_available);
-
-    auto platforms = new cl_platform_id[num_platforms_available];
-    err_num = clGetPlatformIDs(num_platforms_available, platforms, NULL);
-    // clGetPlatformIDs(1, platforms, &num_platforms);
-    // vector<cl::Platform>::iterator iter;
     cl_platform_id platform = nullptr;
-#if !defined _WIN32
-    char name[1024];
-    char vendor[1024];
-#else
-#if defined AMD
-    auto name = new char[1024];
-    auto vendor = new char[1024];
-#else
-    cl::STRING_CLASS name;
-    cl::STRING_CLASS vendor;
-#endif
-#endif
+    cl_device_id device = nullptr;
 
-    //for (iter = platforms.begin(); iter != platforms.end(); ++iter)
-    for (uint i = 0; i < num_platforms_available; i++)
-    {
-        platform = platforms[i];
-        err_num = clGetPlatformInfo(platform, CL_PLATFORM_NAME, 1024, name, NULL);
-        err_num = clGetPlatformInfo(platform, CL_PLATFORM_VENDOR, 1024, vendor, NULL);
-        if (!strcmp(name, "Clover")) {
-            continue;
-        }
-#if defined (AMD)
-        if (!strcmp(vendor, "Advanced Micro Devices, Inc."))
-        {
-            break;
-        }
-#elif defined (NVIDIA)
-        if (!strcmp(vendor, "NVIDIA Corporation"))
-        {
-            break;
-        }
-#elif defined (INTEL)
-        if (!strcmp(vendor, "Intel(R) Corporation"))
-        {
-            break;
-        }
+    char name[1024] = {0};
+    char vendor[1024] = {0};
+
+    if (clBoincPlatformId && clBoincDeviceId) {
+        // BOINC-controlled device
+        platform = clBoincPlatformId;
+        device = clBoincDeviceId;
+    } else {
+        cl_uint num_platforms_available;
+        err_num = clGetPlatformIDs(0, NULL, &num_platforms_available);
+        std::vector<cl_platform_id> platforms(num_platforms_available);
+        err_num = clGetPlatformIDs(num_platforms_available, platforms.data(), NULL);
+
+        if (clCustomPlatformId != -1 || clCustomDeviceId != -1) {
+            // Custom platform/device from command line
+            if (clCustomPlatformId < 0) clCustomPlatformId = 0;
+            if (clCustomPlatformId >= num_platforms_available) {
+                std::cerr << "Platform ID not found: " << clCustomPlatformId << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            platform = platforms[clCustomPlatformId];
+        } else {
+            // Select a suitable platform
+            char profile[32] = {0};
+
+            for (const auto& plt : platforms) {
+                err_num = clGetPlatformInfo(plt, CL_PLATFORM_PROFILE, sizeof(profile), profile, NULL);
+                if (strcmp(profile, "FULL_PROFILE") != 0) continue;
+
+                err_num = clGetPlatformInfo(plt, CL_PLATFORM_NAME, sizeof(name), name, NULL);
+                err_num = clGetPlatformInfo(plt, CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
+
+                if (strcmp(name, "Clover") == 0) continue;
+#if defined(AMD)
+                if (strcmp(vendor, "Advanced Micro Devices, Inc.") == 0) {
+                    platform = plt;
+                    break;
+                }
+#elif defined(NVIDIA)
+                if (strcmp(vendor, "NVIDIA Corporation") == 0) {
+                    platform = plt;
+                    break;
+                }
+#elif defined(INTEL)
+                if (strcmp(vendor, "Intel(R) Corporation") == 0) {
+                    platform = plt;
+                    break;
+                }
 #endif
-        if (!strcmp(name, "rusticl"))
-        {
-            break;
+                if (strcmp(name, "rusticl") == 0) {
+                    platform = plt;
+                    break;
+                }
+            }
+
+            if (!platform) {
+                std::cerr << "No suitable platform found." << std::endl;
+                return EXIT_FAILURE;
+            }
+        }
+
+        err_num = clGetPlatformInfo(platform, CL_PLATFORM_NAME, sizeof(name), name, NULL);
+        err_num = clGetPlatformInfo(platform, CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
+        std::cerr << "Platform name: " << name << std::endl;
+        std::cerr << "Platform vendor: " << vendor << std::endl;
+
+        cl_uint num_devices;
+        err_num = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+        if (num_devices < 1) {
+            std::cerr << "No GPU devices found for platform: " << vendor << " (" << name << ")" << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        std::vector<cl_device_id> devices(num_devices);
+        err_num = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, num_devices, devices.data(), NULL);
+
+        if (clCustomDeviceId >= 0 && clCustomDeviceId < num_devices) {
+            device = devices[clCustomDeviceId];
+        } else {
+            device = devices[0];
         }
     }
 
-    std::cerr << "Platform name: " << name << endl;
-    std::cerr << "Platform vendor: " << vendor << endl;
-
-    // auto platform = (*iter)();
-    // cl_int errNum;
-    //cl_device_id deviceIds = new int[numDevices];
-    // cl_device_id* deviceIds;
-
-    // Detect OpenCL devices
-    cl_uint numDevices;
-    err_num = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 0, NULL, &numDevices);
-
-    cl_device_id* devices = new cl_device_id[numDevices];
-    err_num = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, devices, NULL);
-
-
-    if (numDevices < 1)
-    {
-        cerr << "No GPU device found for platform " << vendor << "(" << name << ")" << endl;
-        return (1);
-    }
-
-    // if (numDevices > 0)
-    // {
-    // 	// TODO: Tedt with CL_DEVICE_TYPE_ALL & CL_DEVICE_TYPE_CPU
-    // 	deviceIds = (cl_device_id*)malloc(numDevices * sizeof(cl_device_id)); // << GNUC? alloca
-    // 	err_num = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, numDevices, deviceIds, NULL);
-    // }
-
-
-    // auto dev1 = deviceIds[deviceId];
-    // auto device = cl::Device(dev1);
-    // for (int i = 0; i < numDevices; i++)
-    // {
-    // 	devices.push_back(cl::Device(deviceIds[i]));
-    // }
-
-
-    // cl_device_id device = devices[1]; // RX 550
-
-    cl_device_id device = devices[deviceId];
     // Create an OpenCL context for the choosen device
     cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform, 0 };
     // cl_context clContext;
@@ -288,32 +271,15 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
         return EXIT_FAILURE;
     }
 
-    // deviceId = 0;
     const uint strBufSize = 1024;
-    // char deviceName[strBufSize];
+    char deviceName[strBufSize];
     char deviceVendor[strBufSize];
     char driverVersion[strBufSize];
 
-#if !defined _WIN32
-#if defined INTEL
-#else
-    char deviceName[strBufSize]; // Another AMD thing... Don't ask
-    err_num = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(deviceName), &deviceName, NULL);
-#endif
-#else
-#if defined INTEL
-    size_t nameSize;
-    err_num = clGetDeviceInfo(device, CL_DEVICE_NAME, 0, NULL, &nameSize);
-    //auto deviceNameChars = new char[nameSize];
-    auto deviceName = (char*)malloc(nameSize);
-    //char deviceName[strBufSize];
-    err_num = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(char) * nameSize, &deviceName, NULL);
-#else
-    char deviceName[strBufSize]; // Another AMD thing... Don't ask
-    err_num = clGetDeviceInfo(device, CL_DEVICE_BOARD_NAME_AMD, sizeof(deviceName), &deviceName, NULL);
-#endif
-
-#endif
+    err_num = clGetDeviceInfo(device, CL_DEVICE_BOARD_NAME_AMD, sizeof(deviceName), &deviceName, NULL); // Another AMD thing... Don't ask
+    if (err_num != CL_SUCCESS) {
+        err_num = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(deviceName), &deviceName, NULL); // Fall back to checking the device name
+    }
 
     //const auto devicePlatform = device.getInfo<CL_DEVICE_PLATFORM>();
     err_num = clGetDeviceInfo(device, CL_DEVICE_VENDOR, sizeof(deviceVendor), &deviceVendor, NULL);
@@ -387,7 +353,7 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
     err_num = clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(devWorkItemSizes), &devWorkItemSizes, NULL);
 
     cerr << "OpenCL device C version: " << openClVersion << " | " << clDeviceVersion << endl;
-    cerr << "OpenCL device Id: " << deviceId << endl;
+    // cerr << "OpenCL device Id: " << deviceId << endl;
     string sufix = "MB";
     if (globalMemory > 1024) {
         globalMemory /= 1024;
@@ -710,6 +676,9 @@ cl_int ClPrepare(cl_int deviceId, cl_double* beta_pole, cl_double* lambda_pole, 
 
         //char deviceName[128]; // Another AMD thing... Don't ask
         err_num = clGetDeviceInfo(device, CL_DEVICE_BOARD_NAME_AMD, sizeof(deviceName), &deviceName, NULL);
+        if (err_num != CL_SUCCESS) {
+            err_num = clGetDeviceInfo(device, CL_DEVICE_NAME, sizeof(deviceName), &deviceName, NULL); // Fall back to checking the device name
+        }
 
         cerr << "Program build log for " << deviceName << ":" << std::endl << buildlogStr << " (" << buildStatus << ")" << endl;
     }
