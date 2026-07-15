@@ -1094,7 +1094,7 @@ int main(int argc, char** argv)
         auto fraction = fraction_done * 100;
         auto time = std::time(nullptr);   // get time now
         std::tm now{};
-#ifdef __GNUC__
+#if defined __GNUC__ && !defined _WIN32
         localtime_r(&time, &now);
 #else
         _localtime64_s(&now, &time);
