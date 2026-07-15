@@ -19,7 +19,7 @@ std::string GetCpuInfo()
 	return "";
 }
 
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__APPLE__)
 void DetectArmv8CpuFeatures(long hwcaps)
 {
     if(hwcaps & HWCAP_AES)
