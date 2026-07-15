@@ -67,6 +67,7 @@ void matrix(double omg, double t, double tmat[][4], double dtm[][4][4]);
 #elif defined __GNUC__
 	bool GetVersionInfo(int& major, int& minor, int& build, int& revision);
 #endif
+std::string GetCompilerInfo();
 
 std::string GetCpuInfo();
 SIMDEnum GetBestSupportedSIMD();
