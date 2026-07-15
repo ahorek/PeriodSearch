@@ -6,7 +6,16 @@
 
 int mrqmin_1_end(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC)
+	__global struct freq_context* CUDA_CC,
+	__local double* covL,
+	__local double* daL,
+	__local int* ipivL,
+	__local double* shBig,
+	__local int* shIrow,
+	__local int* shIcol,
+	__local double* pivBC,
+	__local int* icolBC,
+	__global double* alphaG)
 {
 	int j;
 	int3 threadIdx, blockIdx;
@@ -44,25 +53,12 @@ int mrqmin_1_end(
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
-	// <<< Iter1Mrqmin1EndPre2
-	for (j = brtmpl; j <= brtmph; j++)
-	{
-		int ixx = j * (*CUDA_CC).Mfit1 + 1;
-		for (int k = 1; k <= (*CUDA_CC).Mfit; k++, ixx++)
-		{
-			(*CUDA_LCC).covar[ixx] = (*CUDA_LCC).alpha[ixx];
-		}
-
-		int qq = j * (*CUDA_CC).Mfit1 + j;
-		(*CUDA_LCC).covar[qq] = (*CUDA_LCC).alpha[qq] * (1 + (*CUDA_LCC).Alamda);
-		(*CUDA_LCC).da[j] = (*CUDA_LCC).beta[j];
-	}
-
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-	// >>> Iter1Mrqmin1EndPre2 END
+	// The damped matrix is staged straight from alpha into local memory by
+	// gauss_errc; covar is not touched at all (it is rezeroed by
+	// ClCalculateIter1Mrqcof2Start before mrqcof2 accumulates into it).
 
 	// <<< gauss_errc    ---- GAUS ERROR CODE ----
-	int err_code = gauss_errc(CUDA_LCC, CUDA_CC);
+	int err_code = gauss_errc(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC, alphaG);
 	if (err_code)
 	{
 		return err_code;
@@ -91,8 +87,12 @@ int mrqmin_1_end(
 
 void mrqmin_2_end(
 	__global struct mfreq_context* CUDA_LCC,
-	__global struct freq_context* CUDA_CC) //, int* ia, int ma)
+	__global struct freq_context* CUDA_CC,
+	__global double* scr)
 {
+	__global double* alphaG = scr + (*CUDA_CC).offAlpha;
+	__global double* covarG = scr + (*CUDA_CC).offCovar;
+
 	int j, k, l;
 	int3 blockIdx, threadIdx;
 	blockIdx.x = get_group_id(0);
@@ -105,10 +105,10 @@ void mrqmin_2_end(
 		{
 			for (k = 1; k <= (*CUDA_CC).Mfit; k++)
 			{
-				(*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k] = (*CUDA_LCC).covar[j * (*CUDA_CC).Mfit1 + k];
+				alphaG[j * (*CUDA_CC).Mfit1 + k] = covarG[j * (*CUDA_CC).Mfit1 + k];
 
 				//if (blockIdx.x == 0)
-				//	printf("alpha[%3d]: %10.7f\n", (*CUDA_LCC).alpha[j * (*CUDA_CC).Mfit1 + k]);
+				//	printf("alpha[%3d]: %10.7f\n", alphaG[j * (*CUDA_CC).Mfit1 + k]);
 			}
 
 			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];

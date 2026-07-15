@@ -15,6 +15,16 @@
 #define TINY                  1e-8          /* precision parameter for mu, mu0*/
 #define N_POLES              10             /* number of initial poles */
 
+/* dytemp is stored transposed - dytemp[(jp-1)*DYT_STRIDE + l], l = 1..ma - so
+   consecutive work-items reading consecutive parameters hit consecutive
+   addresses. Requires ma <= DYT_STRIDE-1 (spherical-harmonics degree <= 6,
+   i.e. every production workunit); enforced on the host. */
+#define DYT_STRIDE           64
+
+/* normal-equation accumulation tile: points per rank-K update in
+   mrqcof_curve2 */
+#define CURVE2_K             8
+
 #define PI                 M_PI             /* 3.14159265358979323846 */
 #define AU            149597870.691         /* Astronomical Unit [km] */
 #define C_SPEED       299792458             /* speed of light [m/s]*/

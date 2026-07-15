@@ -1,7 +1,9 @@
 #if !defined INTEL
 
 #if !defined _WIN32
-#define CL_TARGET_OPENCL_VERSION 110
+#ifndef CL_TARGET_OPENCL_VERSION
+#define CL_TARGET_OPENCL_VERSION 120 /* clEnqueueFillBuffer needs 1.2 */
+#endif
 #define CL_HPP_MINIMUM_OPENCL_VERSION 110
 #define CL_HPP_TARGET_OPENCL_VERSION 110
 #define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
@@ -95,6 +97,7 @@ cl_kernel kernelCalculateIter1Mrqcof1Curve2;
 cl_kernel kernelCalculateIter1Mrqcof1Curve1Last;
 cl_kernel kernelCalculateIter1Mrqcof1End;
 cl_kernel kernelCalculateIter1Mrqmin1End;
+cl_ulong gDeviceLocalMemSize = 0;
 cl_kernel kernelCalculateIter1Mrqcof2Start;
 cl_kernel kernelCalculateIter1Mrqcof2Matrix;
 cl_kernel kernelCalculateIter1Mrqcof2Curve1;
@@ -305,6 +308,7 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
 
     cl_ulong clDeviceLocalMemSize;
     err_num = clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &clDeviceLocalMemSize, NULL);
+    gDeviceLocalMemSize = clDeviceLocalMemSize;
 
     uint clDeviceMaxConstantArgs;
     err_num = clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_ARGS, sizeof(uint), &clDeviceMaxConstantArgs, NULL);
@@ -792,10 +796,37 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     cerr << "Prefered kernel work group size multiple: " << preferedWGS << endl;
 
 
-    if (CUDA_grid_dim > devMaxWorkGroupSize) {
-        CUDA_grid_dim = devMaxWorkGroupSize;
-        cerr << "Setting Grid Dim to " << CUDA_grid_dim << endl;
+
+    /* The grid dimension is a work-GROUP count (concurrent frequency
+       contexts); CL_DEVICE_MAX_WORK_GROUP_SIZE limits work-ITEMS within one
+       group, so capping the grid with it (as done before) cut the grid to 256
+       groups and had most of the LM iterations run nearly empty. The real
+       bound is device memory: every context costs sizeof(mfreq_context) bytes
+       inside one buffer, so bound the grid by the largest single allocation
+       the device allows and by 3/4 of its total memory (the app never runs
+       alone on a desktop GPU). */
+    {
+        cl_ulong maxAlloc = 0, globalMemBytes = 0;
+        clGetDeviceInfo(device, CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(maxAlloc), &maxAlloc, NULL);
+        clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(globalMemBytes), &globalMemBytes, NULL);
+        cl_ulong memBudget = maxAlloc < globalMemBytes / 4 ? maxAlloc : globalMemBytes / 4;
+        int maxLcPtsCap = 0;
+        for (int icc = 1; icc <= l_curves; icc++)
+            if (l_points[icc] > maxLcPtsCap) maxLcPtsCap = l_points[icc];
+        /* upper bound of the per-context scratch (mfit1 <= DYT_STRIDE by the ma guard) */
+        size_t scrBound = (2 * (size_t)DYT_STRIDE * DYT_STRIDE + (size_t)(maxLcPtsCap + 1) * (DYT_STRIDE + 1 + 4 + 6 + 32) + 32) * sizeof(cl_double);
+        size_t memCap = (size_t)(memBudget / (sizeof(mfreq_context) + scrBound));
+        if (CUDA_grid_dim > memCap) {
+            CUDA_grid_dim = memCap;
+        }
+        cerr << "Grid dim bounded by device memory (" << sizeof(mfreq_context) / 1048576.0
+             << " MB per context): " << CUDA_grid_dim << endl;
     }
+
+    /* one work-group per (frequency, pole) pair: keep the grid a multiple of
+       N_POLES (see ClCalculatePrepare/ClCalculatePreparePole) */
+    CUDA_grid_dim = (CUDA_grid_dim / N_POLES) * N_POLES;
+    if (CUDA_grid_dim < N_POLES) CUDA_grid_dim = N_POLES;
 
     return 0;
 }
@@ -888,6 +919,12 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     cl_int llastma = 0;
     cl_int llastone = 1;
     cl_int ma = n_coef + 5 + n_ph_par;
+
+    if (ma > DYT_STRIDE - 1)
+    {
+        fprintf(stderr, "Error: ma = %d exceeds the supported maximum of %d parameters (spherical-harmonics degree > 6)\n", (int)ma, DYT_STRIDE - 1);
+        exit(3);
+    }
     for (m = 1; m <= ma; m++)
     {
         if (ia[m])
@@ -911,17 +948,50 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     m = lmfit + 1;
     (*Fa).Mfit1 = m;
 
+    /* Lay out the runtime-sized scratch buffer that replaced the fixed
+       worst-case work arrays in mfreq_context: one slice of scrStride
+       doubles per work-group, offsets in doubles. */
+    {
+        int maxLcPts = 0;
+        for (int ic = 1; ic <= l_curves; ic++)
+            if (l_points[ic] > maxLcPts) maxLcPts = l_points[ic];
+        const cl_int lcP1 = maxLcPts + 1;
+        const cl_int mf1 = m; /* Mfit1 */
+        cl_int off = 0;
+        (*Fa).lcPoints1 = lcP1;
+        (*Fa).offAlpha = off;   off += mf1 * mf1;
+        (*Fa).offCovar = off;   off += mf1 * mf1;
+        (*Fa).offDytemp = off;  off += lcP1 * DYT_STRIDE;
+        (*Fa).offYtemp = off;   off += lcP1;
+        (*Fa).offJpScale = off; off += lcP1;
+        (*Fa).offJpDphp1 = off; off += lcP1;
+        (*Fa).offJpDphp2 = off; off += lcP1;
+        (*Fa).offJpDphp3 = off; off += lcP1;
+        (*Fa).offE1 = off;      off += lcP1;
+        (*Fa).offE2 = off;      off += lcP1;
+        (*Fa).offE3 = off;      off += lcP1;
+        (*Fa).offE01 = off;     off += lcP1;
+        (*Fa).offE02 = off;     off += lcP1;
+        (*Fa).offE03 = off;     off += lcP1;
+        (*Fa).offDe = off;      off += lcP1 * 16;
+        (*Fa).offDe0 = off;     off += lcP1 * 16;
+        (*Fa).scrStride = ((off + 31) / 32) * 32;
+    }
+
+
     (*Fa).lastone = llastone;
     (*Fa).lastma = llastma;
 
     m = ma - 2 - n_ph_par;
     (*Fa).Ncoef0 = m;
 
-    size_t CUDA_grid_dim_precalc = CUDA_grid_dim;
-    if (max_test_periods < CUDA_grid_dim_precalc)
+    /* all (test period, pole) pairs run concurrently */
+    size_t precalcFreqs = CUDA_grid_dim / N_POLES;
+    if ((size_t)max_test_periods < precalcFreqs)
     {
-        CUDA_grid_dim_precalc = max_test_periods;
+        precalcFreqs = max_test_periods;
     }
+    size_t CUDA_grid_dim_precalc = precalcFreqs * N_POLES;
 
     /* totalWorkItems = CUDA_grid_dim_precalc * BLOCK_DIM */
     size_t totalWorkItems = CUDA_grid_dim_precalc * BLOCK_DIM;
@@ -935,7 +1005,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     ////__declspec(align(8)) void* pcc = reinterpret_cast<mfreq_context*>(malloc(pccSize));
     //
-    //int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    //size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     //auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     //auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 
@@ -966,7 +1036,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // auto pcc = (mfreq_context *)aligned_alloc(8, optimizedSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, optimizedSize, pcc, err);
 
-    // cl_uint pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    // cl_usize_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     // void* pcc = reinterpret_cast<mfreq_context*>(malloc(pccSize));
 
     // auto pcc __attribute__((aligned(8))) = new mfreq_context[CUDA_grid_dim_precalc];
@@ -977,7 +1047,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // auto memPcc = (mfreq_context *)aligned_alloc(128, pccSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, pccSize, pcc, err);
     
-    // cl_uint pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    // cl_usize_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     // auto pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto pccSize = ((sizeof(mfreq_context) * CUDA_grid_dim_precalc) / 128 + 1) * 128;
     auto pcc = (mfreq_context*)aligned_alloc(128, pccSize);
@@ -987,7 +1057,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     // void* pcc = clEnqueueMapBuffer(queue, CUDA_MCC2, CL_BLOCKING, CL_MAP_WRITE, 0, pccSize, 0, NULL, NULL, &err);
 
 #elif NVIDIA
-    int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
@@ -1008,7 +1078,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     auto pccSize = ((sizeof(mfreq_context) * CUDA_grid_dim_precalc) / 128 + 1) * 128;
     auto pcc = (mfreq_context*)_aligned_malloc(pccSize, 128);
 #elif NVIDIA
-    int pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim_precalc * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim_precalc];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
@@ -1020,15 +1090,10 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     {
         // std::fill_n(&((mfreq_context*)pcc)[m].Area, MAX_N_FAC + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].Area), MAX_N_FAC + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].Dg), (MAX_N_FAC + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].alpha), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].covar), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].beta), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].da), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].atry), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].dave), MAX_N_PAR + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].dytemp), (POINTS_MAX + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].ytemp), POINTS_MAX + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_big), BLOCK_DIM, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_icol), BLOCK_DIM, 0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_irow), BLOCK_DIM, 0);
@@ -1061,6 +1126,15 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     // 18-SEP-2023
     cl_mem CUDA_MCC2 = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, &err);
+    /* runtime-sized work-array scratch, zero-initialized on the device */
+    const size_t scrBytes__ = (size_t)CUDA_grid_dim_precalc * (size_t)(*Fa).scrStride * sizeof(cl_double);
+    cl_mem CUDA_SCRATCH = clCreateBuffer(context, CL_MEM_READ_WRITE, scrBytes__, NULL, &err);
+    {
+        const cl_double zeroPat__ = 0.0;
+        clEnqueueFillBuffer(queue, CUDA_SCRATCH, &zeroPat__, sizeof(zeroPat__), 0, scrBytes__, 0, NULL, NULL);
+        clFinish(queue);
+    }
+
     clEnqueueWriteBuffer(queue, CUDA_MCC2, CL_BLOCKING, 0, pccSize, pcc, 0, NULL, NULL);
 #elif defined NVIDIA
     queue.enqueueWriteBuffer(CUDA_MCC2, CL_BLOCKING, 0, pccSize, pcc);
@@ -1256,6 +1330,35 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 1, sizeof(cl_mem), &CUDA_CC);
+    {
+        /* the in-LDS Gauss-Jordan solver needs Mfit1*Mfit1 doubles of local
+           memory, passed as a runtime-sized argument so small matrices fit
+           the 32 KB per-work-group limit of older (GCN) GPUs */
+        size_t gaussLocalBytes = (size_t)(*Fa).Mfit1 * (*Fa).Mfit1 * sizeof(cl_double);
+        if (gDeviceLocalMemSize > 0 && gaussLocalBytes + 4096 > gDeviceLocalMemSize)
+        {
+            fprintf(stderr, "Error: the Gauss-Jordan solver needs %zu B of local memory (+ ~4 KB scratch) but the device offers %llu B\n",
+                gaussLocalBytes, (unsigned long long)gDeviceLocalMemSize);
+            exit(3);
+        }
+        err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
+    }
+    /* the runtime-sized scratch buffer, appended as each kernel's last argument */
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
@@ -1294,7 +1397,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
     size_t local = BLOCK_DIM;
     size_t sLocal = 1;
 
-    for (n = 1; n <= max_test_periods; n += (int)CUDA_grid_dim_precalc)
+    for (n = 1; n <= max_test_periods; n += (int)precalcFreqs)
     {
 
 #if defined INTEL
@@ -1331,11 +1434,11 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
         if (getError(err)) return err;
         //clFinish(queue);
 
-        for (m = 1; m <= N_POLES; m++)
+        /* all N_POLES pole trials of this batch run concurrently as separate
+           work-groups */
         {
             theEnd = 0; //zero global End signal
             err = clEnqueueWriteBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);
-            err = clSetKernelArg(kernelCalculatePreparePole, 6, sizeof(m), &m);
             err = EnqueueNDRangeKernel(queue, kernelCalculatePreparePole, 1, NULL, &CUDA_grid_dim_precalc, &sLocal, 0, NULL, NULL);
             if (getError(err)) return err;
             //clFinish(queue);
@@ -1523,17 +1626,32 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 #else
         //auto res = (freq_result*)pfr;
         auto res = new freq_result[CUDA_grid_dim_precalc];
-        memcpy(res, pfr, frSize);
+        // frSize is padded up to a 128-byte multiple for the device buffer;
+        // res holds exactly CUDA_grid_dim_precalc records, so copy only that
+        // many bytes (copying the padded frSize overflows res).
+        memcpy(res, pfr, sizeof(freq_result) * CUDA_grid_dim_precalc);
 #endif
 
-        for (m = 1; m <= CUDA_grid_dim_precalc; m++)
+        for (m = 0; m < (int)precalcFreqs; m++)
         {
-            if (res[m - 1].isReported == 1)
+            /* best pole for this test period: smallest dev among the reported
+               ones, mirroring the old serial per-pole update rule in
+               ClCalculateFinishPole (dev_new < dev_best, so NaN never wins);
+               fall back to the first reported pole so the sum keeps one term
+               per period */
+            int best = -1, firstReported = -1;
+            for (auto p = 0; p < N_POLES; p++)
             {
-                sum_dark_facet = sum_dark_facet + res[m - 1].dark_best;
-#if defined _DEBUG
-                printf("[%3d] res[%3d].dark_best: %10.16f, sum_dark_facet: %10.16f\n", m, m - 1, res[m - 1].dark_best, sum_dark_facet);
-#endif
+                const auto b = m * N_POLES + p;
+                if (res[b].isReported != 1) continue;
+                if (firstReported < 0) firstReported = b;
+                if (!std::isnan(res[b].dev_best) && (best < 0 || res[b].dev_best < res[best].dev_best))
+                    best = b;
+            }
+            if (best < 0) best = firstReported;
+            if (best >= 0)
+            {
+                sum_dark_facet = sum_dark_facet + res[best].dark_best;
             }
         }
 
@@ -1566,6 +1684,7 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
 #endif
     } /* period loop */
 
+    clReleaseMemObject(CUDA_SCRATCH);
     clReleaseMemObject(CUDA_MCC2);
     clReleaseMemObject(CUDA_CC);
     clReleaseMemObject(CUDA_CC2);
@@ -1680,6 +1799,12 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     /* number of fitted parameters */
     int lmfit = 0, llastma = 0, llastone = 1, ma = n_coef + 5 + n_ph_par;
+
+    if (ma > DYT_STRIDE - 1)
+    {
+        fprintf(stderr, "Error: ma = %d exceeds the supported maximum of %d parameters (spherical-harmonics degree > 6)\n", (int)ma, DYT_STRIDE - 1);
+        exit(3);
+    }
     for (m = 1; m <= ma; m++)
     {
         if (ia[m])
@@ -1701,6 +1826,37 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     m = lmfit + 1;
     (*Fa).Mfit1 = m;
+
+    /* Lay out the runtime-sized scratch buffer that replaced the fixed
+       worst-case work arrays in mfreq_context: one slice of scrStride
+       doubles per work-group, offsets in doubles. */
+    {
+        int maxLcPts = 0;
+        for (int ic = 1; ic <= l_curves; ic++)
+            if (l_points[ic] > maxLcPts) maxLcPts = l_points[ic];
+        const cl_int lcP1 = maxLcPts + 1;
+        const cl_int mf1 = m; /* Mfit1 */
+        cl_int off = 0;
+        (*Fa).lcPoints1 = lcP1;
+        (*Fa).offAlpha = off;   off += mf1 * mf1;
+        (*Fa).offCovar = off;   off += mf1 * mf1;
+        (*Fa).offDytemp = off;  off += lcP1 * DYT_STRIDE;
+        (*Fa).offYtemp = off;   off += lcP1;
+        (*Fa).offJpScale = off; off += lcP1;
+        (*Fa).offJpDphp1 = off; off += lcP1;
+        (*Fa).offJpDphp2 = off; off += lcP1;
+        (*Fa).offJpDphp3 = off; off += lcP1;
+        (*Fa).offE1 = off;      off += lcP1;
+        (*Fa).offE2 = off;      off += lcP1;
+        (*Fa).offE3 = off;      off += lcP1;
+        (*Fa).offE01 = off;     off += lcP1;
+        (*Fa).offE02 = off;     off += lcP1;
+        (*Fa).offE03 = off;     off += lcP1;
+        (*Fa).offDe = off;      off += lcP1 * 16;
+        (*Fa).offDe0 = off;     off += lcP1 * 16;
+        (*Fa).scrStride = ((off + 31) / 32) * 32;
+    }
+
 
     (*Fa).lastone = llastone;
     (*Fa).lastma = llastma;
@@ -1742,10 +1898,10 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
     // auto pcc = (mfreq_context *)aligned_alloc(8, optimizedSize);
     // auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, optimizedSize, pcc, err);
 
-    cl_uint pccSize = CUDA_grid_dim * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim * sizeof(mfreq_context);
     auto pcc = new mfreq_context[CUDA_grid_dim];
 #elif NVIDIA
-    cl_uint pccSize = CUDA_grid_dim * sizeof(mfreq_context);
+    size_t pccSize = CUDA_grid_dim * sizeof(mfreq_context);
     auto alignas(8) pcc = new mfreq_context[CUDA_grid_dim];
     auto CUDA_MCC2 = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, pccSize, pcc, err);
 #endif // NVIDIA
@@ -1809,15 +1965,10 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         //pcc[m].pivinv = 0;
 
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].Area), MAX_N_FAC + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].Dg), (MAX_N_FAC + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].alpha), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].covar), (MAX_N_PAR + 1) * (MAX_N_PAR + 1), 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].beta), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].da), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].atry), MAX_N_PAR + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].dave), MAX_N_PAR + 1, 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].dytemp), (POINTS_MAX + 1) * (MAX_N_PAR + 1), 0.0);
-        std::fill_n(std::begin(((mfreq_context*)pcc)[m].ytemp), POINTS_MAX + 1, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_big), BLOCK_DIM, 0.0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_icol), BLOCK_DIM, 0);
         std::fill_n(std::begin(((mfreq_context*)pcc)[m].sh_irow), BLOCK_DIM, 0);
@@ -1845,6 +1996,15 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
     //clFlush(queue);
 #endif
 #endif
+
+    /* runtime-sized work-array scratch, zero-initialized on the device */
+    const size_t scrBytes__ = (size_t)CUDA_grid_dim * (size_t)(*Fa).scrStride * sizeof(cl_double);
+    cl_mem CUDA_SCRATCH = clCreateBuffer(context, CL_MEM_READ_WRITE, scrBytes__, NULL, &err);
+    {
+        const cl_double zeroPat__ = 0.0;
+        clEnqueueFillBuffer(queue, CUDA_SCRATCH, &zeroPat__, sizeof(zeroPat__), 0, scrBytes__, 0, NULL, NULL);
+        clFinish(queue);
+    }
 
 #if !defined _WIN32
 #if defined (INTEL)
@@ -2010,6 +2170,35 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 1, sizeof(cl_mem), &CUDA_CC);
+    {
+        /* the in-LDS Gauss-Jordan solver needs Mfit1*Mfit1 doubles of local
+           memory, passed as a runtime-sized argument so small matrices fit
+           the 32 KB per-work-group limit of older (GCN) GPUs */
+        size_t gaussLocalBytes = (size_t)(*Fa).Mfit1 * (*Fa).Mfit1 * sizeof(cl_double);
+        if (gDeviceLocalMemSize > 0 && gaussLocalBytes + 4096 > gDeviceLocalMemSize)
+        {
+            fprintf(stderr, "Error: the Gauss-Jordan solver needs %zu B of local memory (+ ~4 KB scratch) but the device offers %llu B\n",
+                gaussLocalBytes, (unsigned long long)gDeviceLocalMemSize);
+            exit(3);
+        }
+        err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 2, gaussLocalBytes, NULL);
+    }
+    /* the runtime-sized scratch buffer, appended as each kernel's last argument */
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof1End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin1End, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Matrix, 3, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve1Last, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2Curve2, 4, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqcof2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+    err = clSetKernelArg(kernelCalculateIter1Mrqmin2End, 2, sizeof(cl_mem), &CUDA_SCRATCH);
+
 
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 0, sizeof(cl_mem), &CUDA_MCC2);
     err = clSetKernelArg(kernelCalculateIter1Mrqcof2Start, 1, sizeof(cl_mem), &CUDA_CC);
@@ -2053,7 +2242,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     // freq_result* fres;
 
-    for (n = n_start_from; n <= n_max; n += (int)CUDA_grid_dim)
+    for (n = n_start_from; n <= n_max; n += (int)(CUDA_grid_dim / N_POLES))
     {
         auto fractionDone = (double)n / (double)n_max;
 
@@ -2085,13 +2274,11 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         if (getError(err)) return err;
         //clFinish(queue);
 
-        for (m = 1; m <= N_POLES; m++)
+        /* all N_POLES pole trials of this batch run concurrently as separate
+           work-groups */
         {
             auto mid = (double(fractionDone) - double(oldFractionDone));
-            auto inner = (double(mid) / double(N_POLES) * (double(m)));
-            //printf("mid: %.4f, inner: %.4f\n", mid, inner);
-            auto fractionDone2 = oldFractionDone + inner;
-            boinc_fraction_done(fractionDone2);
+            boinc_fraction_done(oldFractionDone);
 
 #ifdef _DEBUG
             float fraction2 = fractionDone2 * 100;
@@ -2105,7 +2292,6 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
             theEnd = 0;  //zero global End signal
             err = clEnqueueWriteBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);
-            err = clSetKernelArg(kernelCalculatePreparePole, 6, sizeof(m), &m);
             err = EnqueueNDRangeKernel(queue, kernelCalculatePreparePole, 1, NULL, &CUDA_grid_dim, &sLocal, 0, NULL, NULL);
             if (getError(err)) return err;
             //clFinish(queue);
@@ -2216,6 +2402,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
                 err = clEnqueueReadBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);
 
+                boinc_fraction_done(oldFractionDone + mid * ((double)theEnd / CUDA_grid_dim));
                 theEnd = theEnd == CUDA_grid_dim;
             }
 
@@ -2247,30 +2434,41 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         auto res = new freq_result[CUDA_grid_dim];
         memcpy(res, pfr, frSize);
 #endif
-        for (m = 1; m <= CUDA_grid_dim; m++)
+        for (m = 0; m < (int)(CUDA_grid_dim / N_POLES); m++)
         {
-            //mf.printf("%4d %3d  %.8f  %.6f  %.6f %4.1f %4.0f %4.0f | %d %d %d\n",
-            //	n, m, 24 * res[m].per_best, res[m].dev_best, res[m].dev_best * res[m].dev_best * (ndata - 3), conw_r * escl * escl,
-            //	round(res[m].la_best), round(res[m].be_best), res[m].isReported, res[m].isInvalid, res[m].isNiter);
-
-            if (res[m - 1].isReported == 1)
+            /* one output line per frequency: pick the best pole, i.e. the
+               smallest dev among the reported ones. This mirrors the update
+               rule the old serial pole loop applied in ClCalculateFinishPole
+               (dev_new < dev_best, so NaN never wins); if no pole produced a
+               usable dev, fall back to the first reported one so the line
+               count stays the same. */
+            int best = -1, firstReported = -1;
+            for (auto p = 0; p < N_POLES; p++)
             {
-                //LinesWritten++;
+                const auto b = m * N_POLES + p;
+                if (res[b].isReported != 1) continue;
+                if (firstReported < 0) firstReported = b;
+                if (!std::isnan(res[b].dev_best) && (best < 0 || res[b].dev_best < res[best].dev_best))
+                    best = b;
+            }
+            if (best < 0) best = firstReported;
+
+            if (best >= 0 && res[best].isReported == 1)
+            {
                 /* output file */
-                if (n == 1 && m == 1)
+                if (n == 1 && m == 0)
                 {
-                    //mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[m - 1].per_best, res[m - 1].dev_best, res[m - 1].dev_best * res[m - 1].dev_best * (ndata - 3), conw_r * escl * escl, round(res[m - 1].la_best), round(res[m - 1].be_best));
-                    mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[m - 1].per_best, res[m - 1].dev_best, res[m - 1].dev_best_x2, conw_r * escl * escl, round(res[m - 1].la_best), round(res[m - 1].be_best));
+                    mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[best].per_best, res[best].dev_best, res[best].dev_best_x2, conw_r * escl * escl, round(res[best].la_best), round(res[best].be_best));
                 }
                 else
                 {
                     // period_best, deviation_best, x2
-                    //mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[m - 1].per_best, res[m - 1].dev_best, res[m - 1].dev_best * res[m - 1].dev_best * (ndata - 3), res[m - 1].dark_best, round(res[m - 1].la_best), round(res[m - 1].be_best));
-                    mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[m - 1].per_best, res[m - 1].dev_best, res[m - 1].dev_best_x2, res[m - 1].dark_best, round(res[m - 1].la_best), round(res[m - 1].be_best));
+                    mf.printf("%.8f  %.6f  %.6f %4.1f %4.0f %4.0f\n", 24 * res[best].per_best, res[best].dev_best, res[best].dev_best_x2, res[best].dark_best, round(res[best].la_best), round(res[best].be_best));
                 }
             }
             LinesWritten++;
         }
+        delete[] res;
 
 #if defined (INTEL)
         queue.enqueueUnmapMemObject(CUDA_FR, fres);
@@ -2294,6 +2492,7 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
 
     printf("\n");
 
+    clReleaseMemObject(CUDA_SCRATCH);
     clReleaseMemObject(CUDA_MCC2);
     clReleaseMemObject(CUDA_CC);
     clReleaseMemObject(CUDA_CC2);

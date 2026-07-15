@@ -57,18 +57,8 @@ void curv(
 		//if (blockIdx.x == 0)
 		//	printf("Area[%d]: %.7f\n", i, Area[i]);
 
-		for (int k = 1; k <= n; k++)
-		{
-			// 290(1 + 1 * 289)    ...    867(288 + 2 * 289)
-			int idx = i + k * (*CUDA_CC).Numfac1;
-			(*CUDA_LCC).Dg[idx] = g * (*CUDA_CC).Dsph[i][k];
-
-			//printf("Dg[%4d]: %.7f\n", i + k * (*CUDA_CC).Numfac1, (*CUDA_LCC).Dg[i + k * (*CUDA_CC).Numfac1]);
-
-			//if (blockIdx.x == 0 && i == 1)
-			//	printf("[%d] i: %d, n: %d, k: %d, Dg[%4d]: %.7f\n", blockIdx.x, i, n, k, idx, (*CUDA_LCC).Dg[idx]);
-
-		}
+		/* Dg is no longer materialized: Dg[i][k] == g * Dsph[i][k] folds into the
+		   facet weights through Area (= Darea * g) - see bright.cl and conv.cl */
 	}
 
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
