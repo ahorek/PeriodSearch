@@ -9,6 +9,7 @@
 //#define MAX_LC              200				/* max number of lightcurves */
 //#define MAX_N_OBS         20000				/* max number of data points */
 #define MAX_N_FAC          1000				/* max number of facets */
+#define MAX_N_FPOINTS      500000			/* max number of frequency points */
 #define MAX_N_ITER          100				/* maximum number of iterations */
 #define MAX_N_PAR           200				/* maximum number of parameters */
 #define MAX_LM               10				/* maximum degree and order of sph. harm. */

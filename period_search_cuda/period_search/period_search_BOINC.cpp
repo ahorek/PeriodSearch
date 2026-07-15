@@ -731,6 +731,14 @@ int main(int argc, char** argv)
 			fprintf(stderr, "\nError: Number of parameters is greater than MAX_N_PAR = %d\n", MAX_N_PAR); fflush(stderr); exit(2);
 		}
 
+		int n_max = static_cast<int>((startFrequency - endFrequency) / frequencyStep) + 1;
+		if(n_max > MAX_N_FPOINTS) {
+			fprintf(stderr, "\nError: Frequency points %d is greater than MAX_N_FPOINTS = %d!\n", n_max, MAX_N_FPOINTS); fflush(stderr); std::exit(2);
+		}
+		if(n_max < 0 || endFrequency > startFrequency || frequencyStep <= 0) {
+			fprintf(stderr, "\nError: Invalid frequency points %d!\n", n_max); fflush(stderr); std::exit(2);
+		}
+
 		CUDAPrecalc(cuda_device, startFrequency, endFrequency, frequencyStep, stopCondition, nIterMin, &conwR, ndata, ia, ia_par, &newConw, cgFirst, sig, num_fac, 
 			brightness, gl);
 

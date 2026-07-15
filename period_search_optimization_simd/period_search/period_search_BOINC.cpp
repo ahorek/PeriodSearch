@@ -780,6 +780,14 @@ int main(int argc, char** argv)
         max_test_periods = 10;
         ave_dark_facet = 0.0;
         n_iter = static_cast<int>((freq_start - freq_end) / freq_step) + 1;
+
+        if(n_iter > MAX_N_FPOINTS) {
+            fprintf(stderr, "\nError: Frequency points %d is greater than MAX_N_FPOINTS = %d!\n", n_iter, MAX_N_FPOINTS); fflush(stderr); std::exit(2);
+        }
+        if(n_iter < 0 || freq_end > freq_start || freq_step <= 0) {
+            fprintf(stderr, "\nError: Invalid frequency points %d!\n", n_iter); fflush(stderr); std::exit(2);
+        }
+
         if (n_iter < max_test_periods)
             max_test_periods = n_iter;
 

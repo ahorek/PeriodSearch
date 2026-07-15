@@ -6,6 +6,7 @@
 #define MAX_N_FAC              1000             /* max number of facets */
 #define MAX_N_ITER              100             /* maximum number of iterations */
 #define MAX_N_PAR               200             /* maximum number of parameters */
+#define MAX_N_FPOINTS        500000             /* max number of frequency points */
 #define MAX_LM                   10             /* maximum degree and order of sph. harm. */
 #define N_PHOT_PAR                5             /* maximum number of parameters in scattering  law */
 #define TINY                   1e-8				/* precision parameter for mu, mu0*/
