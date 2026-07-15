@@ -158,7 +158,13 @@ bool SetCUDABlockingSync(const int device)
 	if (status != CUDA_SUCCESS)
 		return false;
 
-	status = cuCtxCreate(&hcuContext, 0x4, hcuDevice);
+	#if CUDA_VERSION >= 13000
+	  CUctxCreateParams params = {};
+	  status = cuCtxCreate(&hcuContext, &params, CU_CTX_SCHED_BLOCKING_SYNC, hcuDevice);
+	#else
+	  status = cuCtxCreate(&hcuContext, CU_CTX_SCHED_BLOCKING_SYNC, hcuDevice);
+	#endif
+
 	if (status != CUDA_SUCCESS)
 		return false;
 
@@ -508,6 +514,8 @@ int CUDAPrepare(int cudadev, double* beta_pole, double* lambda_pole, double* par
 			if (retval != NVML_SUCCESS) {
 				fprintf(stderr, "%s\n", nvmlErrorString(retval));
 				return 1;
+			} else if (CUDA_VERSION >= 13000 && atoi(drv_version_str) < 580) {
+				fprintf(stderr, "Please update your graphics driver, as the current version appears to be old\n");
 			}
 		}
 #endif
