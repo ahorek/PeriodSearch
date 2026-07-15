@@ -11,7 +11,10 @@
 
 __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, double freq_step)
 {
-	const auto n = n_start + blockIdx.x;
+	/* one block per (frequency, pole) pair: N_POLES consecutive blocks share
+	   the same trial frequency and each of them will run one of the initial
+	   poles, all concurrently (the poles used to be a serial host-side loop) */
+	const auto n = n_start + blockIdx.x / N_POLES;
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
 
@@ -37,10 +40,13 @@ __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, 
 	(*CUDA_LFR).dev_best = 1e40;
 }
 
-__global__ void CudaCalculatePreparePole(int m)
+__global__ void CudaCalculatePreparePole(void)
 {
 	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
 	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+
+	/* which of the initial poles this block runs (see CudaCalculatePrepare) */
+	const auto m = static_cast<int>(blockIdx.x) % N_POLES + 1;
 
 	if ((*CUDA_LCC).isInvalid)
 	{
