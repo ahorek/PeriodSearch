@@ -31,6 +31,7 @@ jobs:
       matrix:
         include:
           - { variant: 'cpu aarch64', os: 'ubuntu-latest', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile_arm' }
+          - { variant: 'cuda aarch64', os: 'ubuntu-latest', working-directory: './period_search_cuda/period_search', makefile: 'Makefile_arm' }
 
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +58,23 @@ jobs:
           ./_autosetup
           ./configure --host=aarch64-linux --with-boinc-platform="aarch64-unknown-linux-gnu" --disable-server --disable-manager --disable-client CXXFLAGS="-O3 "
           make -j
+
+      - name: Install cuda
+        if: success() && matrix.variant == 'cuda aarch64'
+        run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get -y install cuda-toolkit-12-9
+
+          wget https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda-repo-cross-aarch64-ubuntu2204-12-9-local_12.9.0-1_all.deb
+          sudo dpkg -i cuda-repo-cross-aarch64-ubuntu2204-12-9-local_12.9.0-1_all.deb
+          sudo cp /var/cuda-repo-cross-aarch64-ubuntu2204-12-9-local/cuda-*-keyring.gpg /usr/share/keyrings/
+          sudo apt-get update
+          sudo apt-get -y install cuda-cross-aarch64
+
+          sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda-12.9\/targets\/aarch64-linux/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+          sed -i 's/NVCC_PATH\s*=.*$/NVCC_PATH = \/usr\/local\/cuda\/bin/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 
       - name: Build ps_common library
         run: |
