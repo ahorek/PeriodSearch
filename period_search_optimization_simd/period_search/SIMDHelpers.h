@@ -59,7 +59,7 @@ struct AlignedDeleter
     void operator()(T* ptr) const
     {
         ptr->~T();			// Explicitly call the destructor
-#if defined __GNUC__
+#if defined __GNUC__ && !defined _WIN32
         free(ptr);
 #else
         _aligned_free(ptr);   // Free the aligned memory
