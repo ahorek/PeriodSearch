@@ -15,7 +15,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Neutrální (výchozí) resources
+// Neutral (Default) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
@@ -58,12 +58,12 @@ BEGIN
     END
 END
 
-#endif    // Neutrální (výchozí) resources
+#endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// Bulharština (Bulharsko) resources
+// Bulgarian (Bulgaria) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_BGR)
 LANGUAGE LANG_BULGARIAN, SUBLANG_DEFAULT
@@ -103,7 +103,7 @@ END
 // remains consistent on all systems.
 IDI_ICON1               ICON                    "logo_Nta_icon.ico"
 
-#endif    // Bulharština (Bulharsko) resources
+#endif    // Bulgarian (Bulgaria) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
