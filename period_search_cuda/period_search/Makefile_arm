@@ -53,7 +53,7 @@ CC=g++
 CXX=g++
 OPTFLAGS=-O3 -s
 CFLAGS=$(OPTFLAGS) -Wall
-LDFLAGS=-lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
+LDFLAGS=-lm -lrt -ldl -Xlinker -static-libgcc -static-libstdc++ -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
 
 MY_LIBS=$(addprefix $(BUILD_DIR)/, trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o curv.o blmatrix.o conv.o matrix.o \
 	bright.o gauss_errc.o pscuda.device-link.o start_CUDA.o curve2_CUDA.o Start.o ComputeCapability.o)
