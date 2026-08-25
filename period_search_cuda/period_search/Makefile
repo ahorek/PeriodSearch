@@ -45,13 +45,13 @@ NVCCFLAGS = -O3 --extra-device-vectorization  --ptxas-options=-v --generate-code
 	--generate-code arch=compute_61,code=sm_61 --generate-code arch=compute_62,code=sm_62 --generate-code arch=compute_70,code=sm_70 \
 	--generate-code arch=compute_72,code=sm_72 --generate-code arch=compute_75,code=sm_75 --generate-code arch=compute_80,code=sm_80 \
 	--generate-code arch=compute_86,code=sm_86 --generate-code arch=compute_87,code=sm_87 --generate-code arch=compute_89,code=sm_89 \
-	--generate-code arch=compute_90,code=sm_90 --maxrregcount=255 -rdc=true -Wno-deprecated-gpu-targets 
+	--generate-code arch=compute_90,code=sm_90 --generate-code arch=compute_100,code=sm_100 --generate-code arch=compute_120,code=sm_120  --maxrregcount=255 -rdc=true -Wno-deprecated-gpu-targets 
 
 CC=g++
 CXX=g++
 OPTFLAGS=-O3 -s
 CFLAGS=$(OPTFLAGS) -Wall
-LDFLAGS=-lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
+LDFLAGS=-lm -lrt -ldl -Xlinker -rpath -static-libgcc -static-libstdc++ . -L$(PS_COMMON_LIB_DIR) -lps_common
 
 MY_LIBS=$(addprefix $(BUILD_DIR)/, trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o curv.o blmatrix.o conv.o matrix.o \
 	bright.o gauss_errc.o pscuda.device-link.o start_CUDA.o curve2_CUDA.o Start.o ComputeCapability.o)

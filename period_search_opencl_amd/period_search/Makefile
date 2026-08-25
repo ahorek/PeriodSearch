@@ -51,7 +51,7 @@ CFLAGS=$(OPTFLAGS) \
 	-L$(OPENCL_LIB_PATH) \
 	-L. 
 
-LDFLAGS=-lm -lrt -Xlinker -rpath -m64 .
+LDFLAGS=-lm -lrt -Xlinker -rpath -static-libgcc -static-libstdc++ -m64 .
 
 MY_LIBS=$(OBJ_DIR)/trifac.o $(OBJ_DIR)/areanorm.o $(OBJ_DIR)/sphfunc.o $(OBJ_DIR)/ellfit.o $(OBJ_DIR)/ludcmp.o $(OBJ_DIR)/lubksb.o\
 	$(OBJ_DIR)/covsrt.o $(OBJ_DIR)/memory.o $(OBJ_DIR)/host_dot_product.o\
