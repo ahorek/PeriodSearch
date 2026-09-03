@@ -102,7 +102,7 @@ jobs:
 
           cd build
           ls
-          cp ../../input_period_search/input_period_search .
+          cp ../../input_period_search/period_search_in .
           ./period_search_BOINC_macos_10222_arm64_Release
           cat stderr.txt
 
