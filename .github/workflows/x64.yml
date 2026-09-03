@@ -37,7 +37,7 @@ jobs:
           git clone --depth 1 https://github.com/BOINC/boinc.git
           cd ./boinc
           sh ./_autosetup
-          sh ./configure --disable-server --disable-client --disable-manager CXXFLAGS="-O3 "
+          sh ./configure --disable-server --disable-client --disable-manager --enable-static CXXFLAGS="-O3 "
           make -j
 
       - name: Install opencl
@@ -54,7 +54,7 @@ jobs:
           wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring_1.1-1_all.deb
           sudo apt-get update
-          sudo apt-get -y install cuda-toolkit-11-8
+          sudo apt-get -y install cuda-toolkit-12-9
 
           sed -i 's/CUDA_PATH\s*=.*$/CUDA_PATH = \/usr\/local\/cuda/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
 

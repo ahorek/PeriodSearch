@@ -1,17 +1,6 @@
 name: OpenWRT
 
-on:
-  push:
-    branches:
-      - main
-      - dev
-      - openwrt
-
-  pull_request:
-    branches:
-      - main
-      - dev
-      - openwrt
+on: [push, pull_request]
 
 env:
   OPENWRT_VERSION: 24.10.4
