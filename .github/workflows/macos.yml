@@ -100,6 +100,10 @@ jobs:
 
           make -f ${{ matrix.makefile }} -j
 
+          cd build
+          ./period_search_BOINC_macos_10222_arm64_Release
+          cat stderr.txt
+
       - name: Verify minimum macOS version
         working-directory: ${{ matrix.working-directory }}
         run: |

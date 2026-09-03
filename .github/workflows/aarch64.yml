@@ -85,6 +85,9 @@ jobs:
           sed -i 's/g++ -print-file-name=libstdc++.a/aarch64-linux-gnu-g++ -print-file-name=libstdc++.a/' ${{ matrix.makefile }}
           make -f ${{ matrix.makefile }} -j
 
+          ./period_search_BOINC_linux_10222_arm_universal_linux_Release
+          cat stderr.txt
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
