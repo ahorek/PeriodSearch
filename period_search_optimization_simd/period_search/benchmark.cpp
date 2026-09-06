@@ -344,7 +344,11 @@ int RunBenchmark()
 		{ SIMDEnum::OptAVX512, CPUopt.hasAVX512 && CPUopt.hasAVX512dq },
 #endif
         { SIMDEnum::OptASIMD, CPUopt.hasASIMD },
-        { SIMDEnum::OptSVE, true }, // CPUopt.hasSVE },
+		#if defined(__ARM_FEATURE_SVE)
+        { SIMDEnum::OptSVE, CPUopt.hasSVE },
+		#else
+		{ SIMDEnum::OptSVE, true },
+		#endif
 	};
 
 	std::fprintf(stdout, "\nBenchmark workload: %d facets, %d coefficients, %d parameters (%d fitted), %d data points\n",
