@@ -48,33 +48,80 @@ void CalcStrategyAvx::gauss_errc(struct globals& gl, const int n, std::vector<do
 	//memset(ipiv, 0, n * sizeof(int));
 	std::vector<int> ipiv(n + 1 + 1, 0);
 
+	/* Pivot search. The ipiv state changes only once per pivot step, so the column
+	   bookkeeping is hoisted out of the row loop (O(n) per step instead of O(n*n))
+	   and the inner loop is left branch-free: a per-lane running maximum plus the
+	   index that produced it, reduced once per step. */
+	const int P = (n + 3) & ~3;				// columns rounded up to a whole vector
+	std::vector<double> colmask(P, 0.0);	// negative = column still free, 0.0 = taken
+	alignas(32) double max_val[4], max_idx[4];
+	double best;
+
+	__m256d sign_mask = _mm256_set1_pd(-0.0);
+	__m256d avx_reject = _mm256_set1_pd(-1.0);	// |a| >= 0, so a negative lane never wins
+	__m256d avx_step = _mm256_set1_pd(4.0);
+	__m256d avx_lane = _mm256_set_pd(3.0, 2.0, 1.0, 0.0);
 
 	for (i = 1; i <= n; i++)
 	{
-		big = 0.0;
-		for (j = 0; j < n; j++) {
-			if (ipiv[j] != 1)
+		for (k = 0; k < n; k++)
+		{
+			if (ipiv[k] > 1)
 			{
-				for (k = 0; k < n; k++)
-				{
-					if (ipiv[k] == 0)
-					{
-						if (fabs(a[j][k]) >= big)
-						{
-							big = fabs(a[j][k]);
-							irow = j;
-							icol = k;
-						}
-					}
-					else if (ipiv[k] > 1)
-					{
-						error = 1;
-
-						return;
-					}
-				}
+				error = 1;
+				return;
 			}
-        }
+
+			colmask[k] = ipiv[k] ? 0.0 : -1.0;	// blendv only looks at the sign bit
+		}
+
+		for (k = n; k < P; k++)
+			colmask[k] = 0.0;					// padding lanes can never win
+
+		__m256d avx_big = _mm256_setzero_pd();	// per-lane running 'big', starts at 0.0
+		__m256d avx_idx = _mm256_set1_pd(-1.0);	// per-lane winning index j*P+k, -1 = none
+
+		for (j = 0; j < n; j++)
+		{
+			if (ipiv[j] == 1) continue;
+
+			__m256d avx_cur = _mm256_add_pd(_mm256_set1_pd(static_cast<double>(j) * P), avx_lane);
+
+			for (k = 0; k < P; k += 4)
+			{
+				__m256d avx_abs = _mm256_andnot_pd(sign_mask, _mm256_loadu_pd(&a[j][k])); // abs
+				avx_abs = _mm256_blendv_pd(avx_reject, avx_abs, _mm256_loadu_pd(&colmask[k]));
+
+				__m256d avx_ge = _mm256_cmp_pd(avx_abs, avx_big, _CMP_GE_OQ);
+				avx_big = _mm256_blendv_pd(avx_big, avx_abs, avx_ge);
+				avx_idx = _mm256_blendv_pd(avx_idx, avx_cur, avx_ge);
+				avx_cur = _mm256_add_pd(avx_cur, avx_step);
+			}
+		}
+
+		/* Largest value wins; ties go to the largest index, which reproduces the
+		   scalar '>=' ("the last one seen wins") exactly. */
+		_mm256_store_pd(max_val, avx_big);
+		_mm256_store_pd(max_idx, avx_idx);
+		big = max_val[0];
+		best = max_idx[0];
+
+		for (l = 1; l < 4; l++)
+		{
+			if (max_val[l] > big || (max_val[l] == big && max_idx[l] > best))
+			{
+				big = max_val[l];
+				best = max_idx[l];
+			}
+		}
+
+		if (best >= 0.0)
+		{
+			const int idx = static_cast<int>(best);
+			irow = idx / P;
+			icol = idx - irow * P;
+		}
+
 		++(ipiv[icol]);
 		if (irow != icol)
 		{
