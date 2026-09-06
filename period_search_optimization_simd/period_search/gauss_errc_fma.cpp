@@ -54,7 +54,7 @@ void CalcStrategyFma::gauss_errc(struct globals& gl, const int n, std::vector<do
 	for (i = 1; i <= n; i++)
 	{
 		big = 0.0;
-		for (j = 0; j < n; j++)
+		for (j = 0; j < n; j++) {
 			if (ipiv[j] != 1)
 			{
 				for (k = 0; k < n; k++)
@@ -79,6 +79,7 @@ void CalcStrategyFma::gauss_errc(struct globals& gl, const int n, std::vector<do
 					}
 				}
 			}
+		}
 		++(ipiv[icol]);
 		if (irow != icol)
 		{

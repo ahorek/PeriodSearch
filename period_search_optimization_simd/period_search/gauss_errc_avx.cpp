@@ -52,7 +52,7 @@ void CalcStrategyAvx::gauss_errc(struct globals& gl, const int n, std::vector<do
 	for (i = 1; i <= n; i++)
 	{
 		big = 0.0;
-		for (j = 0; j < n; j++)
+		for (j = 0; j < n; j++) {
 			if (ipiv[j] != 1)
 			{
 				for (k = 0; k < n; k++)
@@ -68,15 +68,13 @@ void CalcStrategyAvx::gauss_errc(struct globals& gl, const int n, std::vector<do
 					}
 					else if (ipiv[k] > 1)
 					{
-						//deallocate_vector((void*)indxc);
-						//deallocate_vector((void*)indxr);
-						//deallocate_vector((void*)ipiv);
 						error = 1;
 
 						return;
 					}
 				}
 			}
+        }
 		++(ipiv[icol]);
 		if (irow != icol)
 		{
