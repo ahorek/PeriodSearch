@@ -315,6 +315,7 @@ int RunBenchmark()
 	if (CPUopt.hasSSE3) support += " sse3";
 	if (CPUopt.hasSSE2) support += " sse2";
 	if (CPUopt.hasASIMD) support += " asimd";
+	if (CPUopt.hasSVE) support += " sve";
 	
 
 	std::cerr << "Hardware SIMD support:" << support << std::endl;
@@ -343,6 +344,7 @@ int RunBenchmark()
 		{ SIMDEnum::OptAVX512, CPUopt.hasAVX512 && CPUopt.hasAVX512dq },
 #endif
         { SIMDEnum::OptASIMD, CPUopt.hasASIMD },
+        { SIMDEnum::OptSVE, true }, // CPUopt.hasSVE },
 	};
 
 	std::fprintf(stdout, "\nBenchmark workload: %d facets, %d coefficients, %d parameters (%d fitted), %d data points\n",
