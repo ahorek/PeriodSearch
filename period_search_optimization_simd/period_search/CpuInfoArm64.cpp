@@ -123,12 +123,13 @@ SIMDEnum CheckSupportedSIMDs(SIMDEnum simd)
 
 SIMDEnum GetBestSupportedSIMD()
 {
-	if (CPUopt.hasSVE)
-	{
-		std::cerr << "Using SVE SIMD optimizations." << std::endl;
-		return SIMDEnum::OptSVE;
-	}
-	else if (CPUopt.hasASIMD)
+	//if (CPUopt.hasSVE) // slower than ASIMD, don't choose automatically
+	//{
+	//	std::cerr << "Using SVE SIMD optimizations." << std::endl;
+	//	return SIMDEnum::OptSVE;
+	//}
+	//else 
+	if (CPUopt.hasASIMD)
 	{
 		std::cerr << "Using ASIMD (NEON) SIMD optimizations." << std::endl;
 		return SIMDEnum::OptASIMD;

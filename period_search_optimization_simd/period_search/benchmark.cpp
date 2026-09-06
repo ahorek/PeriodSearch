@@ -104,7 +104,7 @@ namespace
 	bool ChisqMatches(const double reference, const double value)
 	{
 		const double diff = std::fabs(value - reference);
-		const double scale = std::max(std::fabs(reference), 1.0);
+		const double scale = (std::max)(std::fabs(reference), 1.0);
 		return (diff / scale) < 1e-6;
 	}
 
@@ -277,7 +277,7 @@ namespace
 				wl.x1[np][2] = sin(th) * sin(ph);
 				wl.x1[np][3] = cos(th);
 
-				const double th0 = std::min(PI - 1e-3, th * 0.97 + 0.02);
+				const double th0 = (std::min)(PI - 1e-3, th * 0.97 + 0.02);
 				const double ph0 = ph + 0.7;
 
 				wl.x2[np][1] = sin(th0) * cos(ph0);
@@ -375,8 +375,8 @@ int RunBenchmark()
 
 		const double single_round_ms = TimedRounds(wl, 1);
 
-		auto rounds = static_cast<int>(benchmark_target_ms / std::max(single_round_ms, 0.001));
-		rounds = std::max(benchmark_min_rounds, std::min(rounds, benchmark_max_rounds));
+		auto rounds = static_cast<int>(benchmark_target_ms / (std::max)(single_round_ms, 0.001));
+		rounds = (std::max)(benchmark_min_rounds, (std::min)(rounds, benchmark_max_rounds));
 
 		const double ms_per_round = TimedRounds(wl, rounds);
 
