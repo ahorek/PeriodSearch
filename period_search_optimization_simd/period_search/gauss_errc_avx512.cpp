@@ -5,11 +5,10 @@
 #include <vector>
 #include <immintrin.h>
 #include "declarations.h"
-#include "bitcount.h"
 #include "CalcStrategyAvx512.hpp"
 
 #if defined(__GNUC__)
-__attribute__((target("avx512f,avx512dq")))
+__attribute__((target("avx512f")))
 #endif
 
 /**
@@ -49,84 +48,37 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 	//memset(ipiv, 0, n * sizeof(int));
 	std::vector<int> ipiv(n + 1 + 1, 0);
 
-	/* Pivot search. The ipiv state changes only once per pivot step, so the column
-	   bookkeeping is hoisted out of the row loop (O(n) per step instead of O(n*n))
-	   and the inner loop is left branch-free: a per-lane running maximum plus the
-	   index that produced it, reduced once per step. */
-	const int P = (n + 7) & ~7;						// columns rounded up to a whole vector
-	std::vector<unsigned char> colmask(P >> 3, 0);	// one bit per column, set = still free
-	alignas(64) double max_val[8], max_idx[8];
-	double best;
-
-	__m512d sign_mask = _mm512_set1_pd(-0.0);
-	__m512d avx_step = _mm512_set1_pd(8.0);
-	__m512d avx_lane = _mm512_set_pd(7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0, 0.0);
 
 	for (i = 1; i <= n; i++)
 	{
-		for (k = 0; k < P; k += 8)
-		{
-			__mmask8 m = 0;
-
-			for (l = 0; l < 8 && k + l < n; l++)		// columns past n stay masked off
-			{
-				if (ipiv[k + l] > 1)
-				{
-					error = 1;
-					return;
-				}
-
-				if (ipiv[k + l] == 0) m |= static_cast<__mmask8>(1u << l);
-			}
-
-			colmask[k >> 3] = m;
-		}
-
-		__m512d avx_big = _mm512_setzero_pd();	// per-lane running 'big', starts at 0.0
-		__m512d avx_idx = _mm512_set1_pd(-1.0);	// per-lane winning index j*P+k, -1 = none
-
+		big = 0.0;
 		for (j = 0; j < n; j++)
 		{
-			if (ipiv[j] == 1) continue;
-
-			__m512d avx_cur = _mm512_add_pd(_mm512_set1_pd(static_cast<double>(j) * P), avx_lane);
-
-			for (k = 0; k < P; k += 8)
+			if (ipiv[j] != 1)
 			{
-				const __mmask8 cmk = colmask[k >> 3];
-				// maskz load: used columns and the k >= n padding are never touched
-				__m512d avx_abs = _mm512_andnot_pd(sign_mask, _mm512_maskz_loadu_pd(cmk, &a[j][k]));
+				for (k = 0; k < n; k++)
+				{
+					if (ipiv[k] == 0)
+					{
+						if (fabs(a[j][k]) >= big)
+						{
+							big = fabs(a[j][k]);
+							irow = j;
+							icol = k;
+						}
+					}
+					else if (ipiv[k] > 1)
+					{
+						//deallocate_vector((void*)indxc);
+						//deallocate_vector((void*)ipiv);
+						//deallocate_vector((void*)indxr);
+						error = 1;
 
-				__mmask8 avx_ge = _mm512_mask_cmp_pd_mask(cmk, avx_abs, avx_big, _CMP_GE_OQ);
-				avx_big = _mm512_mask_mov_pd(avx_big, avx_ge, avx_abs);
-				avx_idx = _mm512_mask_mov_pd(avx_idx, avx_ge, avx_cur);
-				avx_cur = _mm512_add_pd(avx_cur, avx_step);
+						return;
+					}
+				}
 			}
 		}
-
-		/* Largest value wins; ties go to the largest index, which reproduces the
-		   scalar '>=' ("the last one seen wins") exactly. */
-		_mm512_store_pd(max_val, avx_big);
-		_mm512_store_pd(max_idx, avx_idx);
-		big = max_val[0];
-		best = max_idx[0];
-
-		for (l = 1; l < 8; l++)
-		{
-			if (max_val[l] > big || (max_val[l] == big && max_idx[l] > best))
-			{
-				big = max_val[l];
-				best = max_idx[l];
-			}
-		}
-
-		if (best >= 0.0)
-		{
-			const int idx = static_cast<int>(best);
-			irow = idx / P;
-			icol = idx - irow * P;
-		}
-
 		++(ipiv[icol]);
 		if (irow != icol)
 		{
@@ -150,22 +102,18 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 		pivinv = 1.0 / a[icol][icol];
 		__m512d avx_pivinv = _mm512_set1_pd(pivinv);
 		a[icol][icol] = 1.0;
+		int cyklus = (n >> 2) << 2;
 
-		for (l = 0; l + 7 < n; l += 8)
+		for (l = 0; l < cyklus; l += 8)
 		{
 			__m512d avx_a1 = _mm512_load_pd(&a[icol][l]);
 			avx_a1 = _mm512_mul_pd(avx_a1, avx_pivinv);
 			_mm512_store_pd(&a[icol][l], avx_a1);
 		}
 
-		int rem = n - (l - 1);
-		if (rem > 0) {
-			int rem = n - l;
-			__mmask8 mask = (__mmask8)((1 << rem) - 1);
-			__m512d avx_a1 = _mm512_maskz_loadu_pd(mask, &a[icol][l]);
-			avx_a1 = _mm512_mask_mul_pd(avx_a1, mask, avx_a1, avx_pivinv);
-			_mm512_mask_storeu_pd(&a[icol][l], mask, avx_a1);
-		}
+		if (l < n) a[icol][l] *= pivinv; //last odd value
+		if (l + 1 < n) a[icol][l + 1] *= pivinv; //last odd value
+		if (l + 2 < n) a[icol][l + 2] *= pivinv; //last odd value
 
 		b[icol] *= pivinv;
 		for (ll = 0; ll < n; ll++)
@@ -175,7 +123,7 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 				dum = a[ll][icol];
 				a[ll][icol] = 0.0;
 				__m512d avx_dum = _mm512_set1_pd(dum);
-				for (l = 0; l + 7 < n; l += 8)
+				for (l = 0; l < cyklus; l += 8)
 				{
 					__m512d avx_a = _mm512_load_pd(&a[ll][l]);
 					__m512d avx_aa = _mm512_load_pd(&a[icol][l]);
@@ -183,15 +131,9 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 					_mm512_store_pd(&a[ll][l], avx_a);
 				}
 
-				int rem = n - (l - 1);
-				if (rem > 0) {
-					int rem = n - l;
-					__mmask8 mask = (__mmask8)((1 << rem) - 1);
-					__m512d avx_a = _mm512_maskz_loadu_pd(mask, &a[ll][l]);
-					__m512d avx_aa = _mm512_maskz_loadu_pd(mask, &a[icol][l]);
-					avx_a = _mm512_mask_fnmadd_pd(avx_aa, mask, avx_dum, avx_a);
-					_mm512_mask_store_pd(&a[ll][l], mask, avx_a);
-				}
+				if (l < n) a[ll][l] -= a[icol][l] * dum; //last odd value
+				if (l + 1 < n) a[ll][l + 1] -= a[icol][l + 1] * dum; //last odd value
+				if (l + 2 < n) a[ll][l + 2] -= a[icol][l + 2] * dum; //last odd value
 
 				b[ll] -= b[icol] * dum;
 			}
