@@ -4,7 +4,7 @@
 #include "constants.h"
 #include "arrayHelpers.hpp"
 
-#if defined(__aarch64__) || defined(_M_ARM64)
+#if defined(__aarch64__)
   #include <arm_sve.h>
 #else
   #include "sve_emulator.hpp"
