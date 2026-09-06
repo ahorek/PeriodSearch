@@ -4,11 +4,7 @@
 #include "constants.h"
 #include "arrayHelpers.hpp"
 
-// The *_sve.cpp translation units have to be built with SVE enabled (-march=armv8-a+sve),
-// otherwise <arm_sve.h> is not usable and the emulator below is compiled instead. The
-// emulator is functionally identical but slow, so SveIsNative() reports which one this
-// build ended up with and the SIMD detection refuses to pick SVE unless it is the real one.
-#if defined(__ARM_FEATURE_SVE)
+#if defined(__aarch64__) || defined(_M_ARM64)
   #include <arm_sve.h>
 #else
   #include "sve_emulator.hpp"

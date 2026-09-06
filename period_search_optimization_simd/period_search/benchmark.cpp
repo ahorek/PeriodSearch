@@ -344,7 +344,7 @@ int RunBenchmark()
 		{ SIMDEnum::OptAVX512, CPUopt.hasAVX512 && CPUopt.hasAVX512dq },
 #endif
         { SIMDEnum::OptASIMD, CPUopt.hasASIMD },
-		#if defined(__ARM_FEATURE_SVE)
+		#if defined(__aarch64__) || defined(_M_ARM64)
         { SIMDEnum::OptSVE, CPUopt.hasSVE },
 		#else
 		{ SIMDEnum::OptSVE, true },
