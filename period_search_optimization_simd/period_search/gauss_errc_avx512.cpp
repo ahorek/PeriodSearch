@@ -5,7 +5,6 @@
 #include <vector>
 #include <immintrin.h>
 #include "declarations.h"
-#include "bitcount.h"
 #include "CalcStrategyAvx512.hpp"
 
 #if defined(__GNUC__)
@@ -49,9 +48,6 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 	//memset(ipiv, 0, n * sizeof(int));
 	std::vector<int> ipiv(n + 1 + 1, 0);
 
-	__m512d avx_ones = _mm512_set1_pd(1.0);
-	__m512d avx_zeros = _mm512_set1_pd(0.0);
-	__m512d sign_mask = _mm512_set1_pd(-0.0);
 
 	for (i = 1; i <= n; i++)
 	{
@@ -59,47 +55,19 @@ void CalcStrategyAvx512::gauss_errc(struct globals& gl, const int n, std::vector
 		for (j = 0; j < n; j++) {
 			if (ipiv[j] != 1)
 			{
-				for (k = 0; k + 8 < n; k += 8) {
-					__m512d avx_ipiv = _mm512_set_pd(ipiv[k + 7], ipiv[k + 6], ipiv[k + 5], ipiv[k + 4], ipiv[k + 3], ipiv[k + 2], ipiv[k + 1], ipiv[k]);
-
-					__mmask8 avx_iszero = _mm512_cmp_pd_mask(avx_ipiv, avx_zeros, _CMP_GT_OS);
-					if (avx_iszero == 255) { // all ipiv[k] == 1
-						continue;
-					}
-
-					__mmask8 avx_iserror = _mm512_cmp_pd_mask(avx_ipiv, avx_ones, _CMP_GT_OS);					
-					if (avx_iserror) { // any ipiv[k] == 2
-						error = 1;
-						return;
-					}
-
-					__m512d avx_val = _mm512_loadu_pd(&a[j][k]);
-					__m512d avx_abs = _mm512_andnot_pd(sign_mask, avx_val);
-
-					__mmask8 active_mask = _mm512_cmp_pd_mask(avx_ipiv, avx_zeros, _CMP_EQ_OQ);
-
-					__m512d avx_active = _mm512_mask_mov_pd(_mm512_set1_pd(-INFINITY), active_mask, avx_abs);
-
-					double max_val = _mm512_reduce_max_pd(avx_active);
-
-					if (max_val >= big) {
-						__mmask8 max_mask = _mm512_cmp_pd_mask(avx_active, _mm512_set1_pd(max_val), _CMP_EQ_OQ);
-
-						int idx = ctz(max_mask);
-						icol = k + idx;
-						irow = j;
-						big = max_val;
-					}
-				}
-
-				for (; k < n; k++) {
-					if (ipiv[k] == 0) {
-						if (fabs(a[j][k]) >= big) {
+				for (k = 0; k < n; k++)
+				{
+					if (ipiv[k] == 0)
+					{
+						if (fabs(a[j][k]) >= big)
+						{
 							big = fabs(a[j][k]);
 							irow = j;
 							icol = k;
 						}
-					} else if (ipiv[k] > 1) {
+					}
+					else if (ipiv[k] > 1)
+					{
 						error = 1;
 						return;
 					}
