@@ -31,6 +31,9 @@
  *
  * @date 8.11.2006
  */
+#if defined(__GNUC__) && !(defined __x86_64__ || defined(__i386__) || defined(_WIN32))
+__attribute__((__target__("+sve")))
+#endif
 void CalcStrategySve::gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error)
 {
 	int i, icol = 0, irow = 0, j, k, l, ll;
