@@ -287,50 +287,116 @@ void CalcStrategyAvx512::bright(const double t, std::vector<double>& cg, const i
 	gl.ymod = reduce_pd(res_br);
 
 	/* Derivatives of brightness w.r.t. g-coefficients */
-	int ncoef03 = ncoef0 - 3, dgi = 0, cyklus1 = (ncoef03 / 16) * 16;
+	int ncoef03 = ncoef0 - 3, dgi = 0;
+	i = 0;
+	const int nvec = (ncoef03 + 7) / 8;	/* 8-column vectors, the last may be partial */
 
-	for (i = 0; i < cyklus1; i += 16) //2 * 8 doubles
+	/* 8 vectors per pass over the visible facets (was fewer):
+	   more independent accumulator chains, and far fewer passes over the
+	   dbr/Dg_row lists. Every column keeps the original operation sequence
+	   (fma(dbr[j+1], D, fma(dbr[j], D, t))), over the
+	   facets in ascending order, and the same vectors are read and stored. */
+	for (; dgi + 8 <= nvec; dgi += 8, i += 64)
 	{
-		__m512d tmp1 = _mm512_setzero_pd();
-		__m512d tmp2 = _mm512_setzero_pd();
+		__m512d t0, t1, t2, t3;
+		__m512d t4, t5, t6, t7;
+		t0 = _mm512_setzero_pd();
+		t1 = _mm512_setzero_pd();
+		t2 = _mm512_setzero_pd();
+		t3 = _mm512_setzero_pd();
+		t4 = _mm512_setzero_pd();
+		t5 = _mm512_setzero_pd();
+		t6 = _mm512_setzero_pd();
+		t7 = _mm512_setzero_pd();
 
 		for (j = 0; j < incl_count; j += 2)
 		{
-			__m512d* Dgrow, * Dgrow1, pdbr, pdbr1;
+			const __m512d* r0 = &Dg_row[j][dgi];
+			const __m512d* r1 = &Dg_row[j + 1][dgi];
+			const __m512d d0 = dbr[j];
+			const __m512d d1 = dbr[j + 1];
 
-			Dgrow = &Dg_row[j][dgi];
-			pdbr = dbr[j];
-			Dgrow1 = &Dg_row[j + 1][dgi];
-			pdbr1 = dbr[j + 1];
-
-			tmp1 = _mm512_fmadd_pd(pdbr1, Dgrow1[0], _mm512_fmadd_pd(pdbr, Dgrow[0], tmp1));
-			tmp2 = _mm512_fmadd_pd(pdbr1, Dgrow1[1], _mm512_fmadd_pd(pdbr, Dgrow[1], tmp2));
+			t0 = _mm512_fmadd_pd(d1, r1[0], _mm512_fmadd_pd(d0, r0[0], t0));
+			t1 = _mm512_fmadd_pd(d1, r1[1], _mm512_fmadd_pd(d0, r0[1], t1));
+			t2 = _mm512_fmadd_pd(d1, r1[2], _mm512_fmadd_pd(d0, r0[2], t2));
+			t3 = _mm512_fmadd_pd(d1, r1[3], _mm512_fmadd_pd(d0, r0[3], t3));
+			t4 = _mm512_fmadd_pd(d1, r1[4], _mm512_fmadd_pd(d0, r0[4], t4));
+			t5 = _mm512_fmadd_pd(d1, r1[5], _mm512_fmadd_pd(d0, r0[5], t5));
+			t6 = _mm512_fmadd_pd(d1, r1[6], _mm512_fmadd_pd(d0, r0[6], t6));
+			t7 = _mm512_fmadd_pd(d1, r1[7], _mm512_fmadd_pd(d0, r0[7], t7));
 		}
-		dgi += 2;
-		tmp1 = _mm512_mul_pd(tmp1, avx_Scale);
-		_mm512_store_pd(&gl.dyda[i], tmp1);
-		tmp2 = _mm512_mul_pd(tmp2, avx_Scale);
-		_mm512_store_pd(&gl.dyda[i + 8], tmp2);
+
+		_mm512_store_pd(&gl.dyda[i + 0], _mm512_mul_pd(t0, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 8], _mm512_mul_pd(t1, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 16], _mm512_mul_pd(t2, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 24], _mm512_mul_pd(t3, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 32], _mm512_mul_pd(t4, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 40], _mm512_mul_pd(t5, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 48], _mm512_mul_pd(t6, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 56], _mm512_mul_pd(t7, avx_Scale));
 	}
-
-	for (; i < ncoef03; i += 8) //1 * 8 doubles
+	for (; dgi + 4 <= nvec; dgi += 4, i += 32)
 	{
-		__m512d tmp1 = _mm512_setzero_pd();
+		__m512d t0, t1, t2, t3;
+		t0 = _mm512_setzero_pd();
+		t1 = _mm512_setzero_pd();
+		t2 = _mm512_setzero_pd();
+		t3 = _mm512_setzero_pd();
 
 		for (j = 0; j < incl_count; j += 2)
 		{
-			__m512d* Dgrow, * Dgrow1, pdbr, pdbr1;
+			const __m512d* r0 = &Dg_row[j][dgi];
+			const __m512d* r1 = &Dg_row[j + 1][dgi];
+			const __m512d d0 = dbr[j];
+			const __m512d d1 = dbr[j + 1];
 
-			Dgrow = &Dg_row[j][dgi];
-			pdbr = dbr[j];
-			Dgrow1 = &Dg_row[j + 1][dgi];
-			pdbr1 = dbr[j + 1];
-
-			tmp1 = _mm512_fmadd_pd(pdbr1, Dgrow1[0], _mm512_fmadd_pd(pdbr, Dgrow[0], tmp1));
+			t0 = _mm512_fmadd_pd(d1, r1[0], _mm512_fmadd_pd(d0, r0[0], t0));
+			t1 = _mm512_fmadd_pd(d1, r1[1], _mm512_fmadd_pd(d0, r0[1], t1));
+			t2 = _mm512_fmadd_pd(d1, r1[2], _mm512_fmadd_pd(d0, r0[2], t2));
+			t3 = _mm512_fmadd_pd(d1, r1[3], _mm512_fmadd_pd(d0, r0[3], t3));
 		}
-		dgi++;
-		tmp1 = _mm512_mul_pd(tmp1, avx_Scale);
-		_mm512_store_pd(&gl.dyda[i], tmp1);
+
+		_mm512_store_pd(&gl.dyda[i + 0], _mm512_mul_pd(t0, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 8], _mm512_mul_pd(t1, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 16], _mm512_mul_pd(t2, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 24], _mm512_mul_pd(t3, avx_Scale));
+	}
+	for (; dgi + 2 <= nvec; dgi += 2, i += 16)
+	{
+		__m512d t0, t1;
+		t0 = _mm512_setzero_pd();
+		t1 = _mm512_setzero_pd();
+
+		for (j = 0; j < incl_count; j += 2)
+		{
+			const __m512d* r0 = &Dg_row[j][dgi];
+			const __m512d* r1 = &Dg_row[j + 1][dgi];
+			const __m512d d0 = dbr[j];
+			const __m512d d1 = dbr[j + 1];
+
+			t0 = _mm512_fmadd_pd(d1, r1[0], _mm512_fmadd_pd(d0, r0[0], t0));
+			t1 = _mm512_fmadd_pd(d1, r1[1], _mm512_fmadd_pd(d0, r0[1], t1));
+		}
+
+		_mm512_store_pd(&gl.dyda[i + 0], _mm512_mul_pd(t0, avx_Scale));
+		_mm512_store_pd(&gl.dyda[i + 8], _mm512_mul_pd(t1, avx_Scale));
+	}
+	for (; dgi + 1 <= nvec; dgi += 1, i += 8)
+	{
+		__m512d t0;
+		t0 = _mm512_setzero_pd();
+
+		for (j = 0; j < incl_count; j += 2)
+		{
+			const __m512d* r0 = &Dg_row[j][dgi];
+			const __m512d* r1 = &Dg_row[j + 1][dgi];
+			const __m512d d0 = dbr[j];
+			const __m512d d1 = dbr[j + 1];
+
+			t0 = _mm512_fmadd_pd(d1, r1[0], _mm512_fmadd_pd(d0, r0[0], t0));
+		}
+
+		_mm512_store_pd(&gl.dyda[i + 0], _mm512_mul_pd(t0, avx_Scale));
 	}
 
 	/* Derivatives of brightness w.r.t. rotation parameters */
