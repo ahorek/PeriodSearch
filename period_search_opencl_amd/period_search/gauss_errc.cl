@@ -75,7 +75,10 @@ int gauss_errc(
 
 	for (i = 1; i <= n; i++)
 	{
-		big = 0;
+		/* -1, not 0: work-items without a candidate row must never win the
+		   reduction below, otherwise an all-zero (singular) remainder selects
+		   icol = 0 and pivots on the never-staged covL[0] */
+		big = -1.0;
 		irow = 0;
 		licol = 0;
 		for (j = brtmpl; j <= brtmph; j++)
@@ -145,32 +148,32 @@ int gauss_errc(
 
 			if (covL[covarIdx] == 0.0)
 			{
-				/* singular pivot: report the (partial) step like the old code
-				   did, then bail with error 2 */
-				for (j = 1; j <= n; j++)
-				{
-					(*CUDA_LCC).da[j] = daL[j];
-				}
-				j = 0;
+				/* singular pivot: take no step (atry = cg), matching the CPU
+				   mrqmin, which returns before evaluating a trial point; the
+				   whole group then bails with error 2 after the barrier */
 				for (int l2 = 1; l2 <= (*CUDA_CC).ma; l2++)
 				{
-					if ((*CUDA_CC).ia[l2])
-					{
-						j++;
-						(*CUDA_LCC).atry[l2] = (*CUDA_LCC).cg[l2] + (*CUDA_LCC).da[j];
-					}
+					(*CUDA_LCC).atry[l2] = (*CUDA_LCC).cg[l2];
 				}
 
-				return(2);
+				icolBC[0] = -1;
 			}
+			else
+			{
+				pivBC[0] = 1.0 / covL[covarIdx];
+				covL[covarIdx] = 1.0;
 
-			pivBC[0] = 1.0 / covL[covarIdx];
-			covL[covarIdx] = 1.0;
-
-			daL[icolBC[0]] = daL[icolBC[0]] * pivBC[0];
+				daL[icolBC[0]] = daL[icolBC[0]] * pivBC[0];
+			}
 		}
 
 		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
+
+		/* uniform exit: every work-item sees the flag after the barrier */
+		if (icolBC[0] < 0)
+		{
+			return(2);
+		}
 
 		for (l = brtmpl; l <= brtmph; l++)
 		{
