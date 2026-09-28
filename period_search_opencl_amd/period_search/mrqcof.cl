@@ -217,7 +217,7 @@ void mrqcof_curve1_last(
 	__global double* a,
 	__global double* alpha,
 	__global double* beta,
-	__local double* res,
+	__local double* res,   /* [CONV_POINTS * BLOCK_DIM] */
 	int Inrel,
 	int Lpoints,
 	__global double* scr)
@@ -226,7 +226,7 @@ void mrqcof_curve1_last(
 	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
 	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, lnp;
-	double ymod, lave;
+	double ymod[CONV_POINTS], lave;
 	int3 threadIdx, blockIdx;
 	threadIdx.x = get_local_id(0);
 	blockIdx.x = get_group_id(0);
@@ -263,34 +263,22 @@ void mrqcof_curve1_last(
 	//if (threadIdx.x == 0)
 	//	printf("conv>>> [%d] \n", blockIdx.x);
 
-	for (jp = 1; jp <= Lpoints; jp++)
+	/* the derivatives w.r.t. the shape coefficients are computed for all
+	   points at once (see conv.cl); conv's first barrier also orders the dave
+	   reset above before its dave updates */
+	conv(CUDA_LCC, CUDA_CC, res, Lpoints, Inrel, tmpl, tmph, brtmpl, brtmph, dytempG, ymod);
+
+	if (threadIdx.x == 0)
 	{
-		lnp++;
-		// *--- CONV() ---* //
-		ymod = conv(CUDA_LCC, CUDA_CC, res, jp - 1, tmpl, tmph, brtmpl, brtmph);
-
-		if (threadIdx.x == 0)
+		for (jp = 1; jp <= Lpoints; jp++)
 		{
-			ytempG[jp] = ymod;
+			ytempG[jp] = ymod[jp - 1];
 
 			if (Inrel == 1)
-				lave = lave + ymod;
+				lave = lave + ymod[jp - 1];
 		}
-		for (l = tmpl; l <= tmph; l++)
-		{
-			dytempG[(jp - 1) * DYT_STRIDE + l] = (*CUDA_LCC).dyda[l];
-
-			if (Inrel == 1)
-				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
-		}
-		/* save lightcurves */
-		/* thread 0 must read res[0..1] before the next conv() overwrites it */
-		if (jp < Lpoints)
-			barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-
-		/*         if ((*CUDA_LCC).Lastcall == 1) always ==0
-					 (*CUDA_LCC).Yout[np] = ymod;*/
-	} /* jp, lpoints */
+	}
+	lnp += Lpoints;
 
 	if (threadIdx.x == 0)
 	{

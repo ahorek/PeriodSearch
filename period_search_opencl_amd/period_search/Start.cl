@@ -382,7 +382,7 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
 
     if (!(*CUDA_LCC).isAlamda) return;
 
-    __local double res[BLOCK_DIM];
+    __local double res[CONV_POINTS * BLOCK_DIM];
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof1Curve1Last\n");
@@ -682,7 +682,7 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    __local double res[BLOCK_DIM];
+    __local double res[CONV_POINTS * BLOCK_DIM];
 
     //mrqcof_curve1_last(CUDA_LCC, CUDA_CC, dytemp, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
     mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, scr + (*CUDA_CC).offCovar, (*CUDA_LCC).da, res, inrel, lpoints, scr);
