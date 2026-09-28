@@ -263,23 +263,79 @@ ulong sf_sub_mags(ulong a, ulong b, uint signZ)
 	return sf_norm_round_pack(signZ, expZ - 1, sigZ);
 }
 
-ulong sf_add(ulong a, ulong b)
+ulong sf_add_slow(ulong a, ulong b)
 {
 	uint sA = sf_sign(a);
 	return sA == sf_sign(b) ? sf_add_mags(a, b, sA) : sf_sub_mags(a, b, sA);
 }
 
-ulong sf_sub(ulong a, ulong b)
+ulong sf_sub_slow(ulong a, ulong b)
 {
 	uint sA = sf_sign(a);
 	return sA == sf_sign(b) ? sf_sub_mags(a, b, sA) : sf_add_mags(a, b, sA);
+}
+
+/* a + b for finite a, b on a single path (no data-dependent branches but
+   the rare over/underflow in sf_round_pack), so the lanes of a wavefront do
+   not diverge on sign and exponent differences: order by magnitude, align
+   the smaller significand with a sticky bit, add or subtract, normalize,
+   round. Same guard/sticky scheme and rounding as sf_add_mags/sf_sub_mags. */
+ulong sf_add_finite(ulong a, ulong b)
+{
+	const ulong absA = sf_abs(a), absB = sf_abs(b);
+	const int swap = absA < absB;
+	const ulong x = swap ? b : a, y = swap ? a : b;
+	const ulong absX = swap ? absB : absA, absY = swap ? absA : absB;
+	int eX = (int)(absX >> 52), eY = (int)(absY >> 52);
+	ulong sX = (absX & SF_FRAC) | (eX ? SF_HIDDEN : 0);
+	ulong sY = (absY & SF_FRAC) | (eY ? SF_HIDDEN : 0);
+	eX += !eX;
+	eY += !eY;
+	sX <<= 10;	/* leading one at bit 62 */
+	sY <<= 10;
+	/* sY >>= d with jam (d = 0 .. 2045) */
+	const uint d = (uint)(eX - eY);
+	const ulong lost = sY << ((64 - d) & 63);
+	const ulong sYj = d == 0 ? sY : d < 64 ? (sY >> d) | (ulong)(lost != 0) : (ulong)(sY != 0);
+	const uint signZ = sf_sign(x);
+	ulong sZ = signZ != sf_sign(y) ? sX - sYj : sX + sYj;
+	if (!sZ)
+		return a & b & SF_SIGN;	/* exact zero: -0 only for (-0) + (-0) */
+	/* normalize to the leading one at bit 62 */
+	const int lz = sf_clz64(sZ);
+	int eZ;
+	if (lz == 0)
+	{
+		sZ = (sZ >> 1) | (sZ & 1);
+		eZ = eX + 1;
+	}
+	else
+	{
+		sZ <<= lz - 1;
+		eZ = eX - (lz - 1);
+	}
+	return sf_round_pack(signZ, eZ - 1, sZ);
+}
+
+ulong sf_add(ulong a, ulong b)
+{
+	if (sf_abs(a) >= SF_INF || sf_abs(b) >= SF_INF)
+		return sf_add_slow(a, b);
+	return sf_add_finite(a, b);
+}
+
+ulong sf_sub(ulong a, ulong b)
+{
+	if (sf_abs(a) >= SF_INF || sf_abs(b) >= SF_INF)
+		return sf_sub_slow(a, b);
+	return sf_add_finite(a, b ^ SF_SIGN);
 }
 
 /* ================================================================== */
 /* mul / fma                                                            */
 /* ================================================================== */
 
-ulong sf_mul(ulong a, ulong b)
+ulong sf_mul_slow(ulong a, ulong b)
 {
 	int expA = sf_expf(a), expB = sf_expf(b);
 	ulong sigA = sf_frac(a), sigB = sf_frac(b);
@@ -305,8 +361,32 @@ ulong sf_mul(ulong a, ulong b)
 	return sf_round128(signZ, expA + expB - 2150, sf_mulhi(sigA, sigB), sigA * sigB);
 }
 
-/* a * b + c with a single rounding */
-ulong sf_fma(ulong a, ulong b, ulong c)
+/* a * b for normal a, b: the exact product of the two 53-bit significands
+   has its leading one at bit 104 or 105, so normalizing it is a fixed
+   shift - no clz and no 128-bit case analysis (same rounding as the general
+   path via sf_round128) */
+ulong sf_mul_normal(ulong a, ulong b)
+{
+	const ulong sigA = sf_frac(a) | SF_HIDDEN, sigB = sf_frac(b) | SF_HIDDEN;
+	const uint signZ = sf_sign(a) ^ sf_sign(b);
+	const ulong hi = sf_mulhi(sigA, sigB), lo = sigA * sigB;
+	/* hi in [2^40, 2^42): leading one to bit 62 */
+	const int top = (int)(hi >> 41);	/* 1: leading one at bit 105 */
+	const uint k = top ? 21 : 22;
+	const ulong sig = (hi << k) | (lo >> (64 - k)) | (ulong)((lo << k) != 0);
+	/* sf_round128: e - k' + 64 + 1084 with e = expA + expB - 2150, k' = k */
+	return sf_round_pack(signZ, sf_expf(a) + sf_expf(b) - 2150 - (int)k + 64 + 1084, sig);
+}
+
+ulong sf_mul(ulong a, ulong b)
+{
+	if ((uint)(sf_expf(a) - 1) >= 0x7FEu || (uint)(sf_expf(b) - 1) >= 0x7FEu)
+		return sf_mul_slow(a, b);
+	return sf_mul_normal(a, b);
+}
+
+/* a * b + c with a single rounding (general path) */
+ulong sf_fma_slow(ulong a, ulong b, ulong c)
 {
 	int expA = sf_expf(a), expB = sf_expf(b), expC = sf_expf(c);
 	ulong sigA = sf_frac(a), sigB = sf_frac(b), sigC = sf_frac(c);
@@ -430,6 +510,91 @@ ulong sf_fma(ulong a, ulong b, ulong c)
 			return 0;	/* exact cancellation: +0 */
 	}
 	return sf_round128(signZ, e, sHi, sLo);
+}
+
+/* 128-bit (hi:lo) >> n with jam, n >= 0, branch-free */
+void sf_shr128_jam(ulong* hi, ulong* lo, uint n)
+{
+	const ulong h = *hi, l = *lo;
+	/* a whole word first */
+	const int big = n >= 64;
+	const ulong h1 = big ? 0 : h, l1 = big ? h : l;
+	ulong st = big ? (ulong)(l != 0) : 0;
+	const uint m = big ? n - 64 : n;	/* < 64 unless n >= 128 */
+	const uint mm = m & 63, inv = (64 - mm) & 63;
+	const ulong l2 = mm ? (l1 >> mm) | (h1 << inv) : l1;
+	const ulong h2 = h1 >> mm;
+	st |= mm ? (ulong)((l1 << inv) != 0) : 0;
+	const int gone = n >= 128;
+	*hi = gone ? 0 : h2;
+	*lo = gone ? (ulong)((h | l) != 0) : (l2 | st);
+}
+
+/* sf_round128 without data-dependent branches (same result) */
+ulong sf_round128_bf(uint sign, int e, ulong hi, ulong lo)
+{
+	const int k = hi ? sf_clz64(hi) - 1 : 63 + sf_clz64(lo);
+	const int big = k >= 64;
+	const uint km = (uint)(big ? k - 64 : k) & 63, inv = (64 - km) & 63;
+	const ulong hs = big ? lo << km : (km ? (hi << km) | (lo >> inv) : hi);
+	const ulong ls = big ? 0 : lo << km;
+	return sf_round_pack(sign, e - k + 64 + 1084, hs | (ulong)(ls != 0));
+}
+
+/* a * b + c for normal a, b and normal or zero c on a single path: exact
+   128-bit product, the smaller of product / addend aligned with jam,
+   add or subtract (negating on borrow), normalize, round. Same layout and
+   rounding as the general sf_fma below. */
+ulong sf_fma_normal(ulong a, ulong b, ulong c)
+{
+	const int expA = sf_expf(a), expB = sf_expf(b);
+	const ulong sigA = sf_frac(a) | SF_HIDDEN, sigB = sf_frac(b) | SF_HIDDEN;
+	const uint signP = sf_sign(a) ^ sf_sign(b), signC = sf_sign(c);
+
+	/* P in [2^124, 2^126), value P * 2^expP */
+	ulong pHi = sf_mulhi(sigA, sigB), pLo = sigA * sigB;
+	pHi = (pHi << 20) | (pLo >> 44);
+	pLo <<= 20;
+	const int expP = expA + expB - 2170;
+
+	/* C in [2^124, 2^125), value C * 2^expCv; a zero c never wins the
+	   alignment and contributes nothing */
+	const int czero = sf_iszero(c);
+	const ulong cHi = czero ? 0 : (sf_frac(c) | SF_HIDDEN) << 8;
+	const int expCv = czero ? expP - 200 : sf_expf(c) - 1147;
+
+	const int d = expP - expCv;
+	const int pBig = d >= 0;
+	ulong xHi = pBig ? pHi : cHi, xLo = pBig ? pLo : 0;
+	ulong yHi = pBig ? cHi : pHi, yLo = pBig ? 0 : pLo;
+	const int e = pBig ? expP : expCv;
+	sf_shr128_jam(&yHi, &yLo, (uint)(pBig ? d : -d));
+
+	const uint signX = pBig ? signP : signC;
+	/* x + y or x - y as one 128-bit two's-complement add */
+	const int sub = signP != signC;
+	const ulong nyLo = ~yLo + 1, nyHi = ~yHi + (ulong)(nyLo == 0);
+	yLo = sub ? nyLo : yLo;
+	yHi = sub ? nyHi : yHi;
+	ulong sLo = xLo + yLo;
+	ulong sHi = xHi + yHi + (ulong)(sLo < xLo);
+	/* borrow: |y| > |x|, negate */
+	const int neg = (long)sHi < 0;
+	const ulong mLo = ~sLo + 1, mHi = ~sHi + (ulong)(mLo == 0);
+	sLo = neg ? mLo : sLo;
+	sHi = neg ? mHi : sHi;
+	const ulong r = sf_round128_bf(signX ^ (uint)neg, e, sHi, sLo);
+	return (sHi | sLo) ? r : 0;	/* exact cancellation: +0 */
+}
+
+ulong sf_fma(ulong a, ulong b, ulong c)
+{
+	/* the general path handles nan/inf, zero or subnormal a/b, and a
+	   subnormal/inf/nan c */
+	if ((uint)(sf_expf(a) - 1) >= 0x7FEu || (uint)(sf_expf(b) - 1) >= 0x7FEu
+		|| ((uint)(sf_expf(c) - 1) >= 0x7FEu && !sf_iszero(c)))
+		return sf_fma_slow(a, b, c);
+	return sf_fma_normal(a, b, c);
 }
 
 /* ================================================================== */
