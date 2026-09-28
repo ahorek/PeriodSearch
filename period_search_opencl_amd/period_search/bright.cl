@@ -308,6 +308,42 @@ void bright(
 	tmp4 = R_C(0.0);
 	tmp5 = R_C(0.0);
 
+#ifdef PS_FP32
+	/* FP32 build: the software-FP64 visibility test costs ~6 emulated
+	   operations per facet, so a float pre-scan first drops the facets it
+	   can prove hidden or unlit: lmu < -margin or lmu0 < -margin, margin =
+	   1e-5 of the sum of the term magnitudes plus an absolute 1e-30, far
+	   above the float error of the truncated operands (~5e-7 of that sum),
+	   so the exact lmu, lmu0 are then < 0 < TINY. The loop below applies
+	   the exact test to the remaining candidates and compacts incl / dbr in
+	   place, so the heavy terms still run over exactly the visible facets
+	   in ascending order: the results are bit-identical. */
+	{
+		const float fe_1 = R_TO_F32(e_1), fe_2 = R_TO_F32(e_2), fe_3 = R_TO_F32(e_3);
+		const float fe0_1 = R_TO_F32(e0_1), fe0_2 = R_TO_F32(e0_2), fe0_3 = R_TO_F32(e0_3);
+		for (i = 1; i <= (*CUDA_CC).Numfac; i++)
+		{
+			const float n1 = R_TO_F32((*CUDA_CC).Nor[i][0]);
+			const float n2 = R_TO_F32((*CUDA_CC).Nor[i][1]);
+			const float n3 = R_TO_F32((*CUDA_CC).Nor[i][2]);
+			const float a1 = fe_1 * n1, a2 = fe_2 * n2, a3 = fe_3 * n3;
+			const float b1 = fe0_1 * n1, b2 = fe0_2 * n2, b3 = fe0_3 * n3;
+			const float fmu = a1 + a2 + a3;
+			const float fmu0 = b1 + b2 + b3;
+			const float m = 1e-5f * (fabs(a1) + fabs(a2) + fabs(a3)) + 1e-30f;
+			const float m0 = 1e-5f * (fabs(b1) + fabs(b2) + fabs(b3)) + 1e-30f;
+			if (!(fmu < -m) && !(fmu0 < -m0))
+			{
+				incl[incl_count] = i;
+				incl_count++;
+			}
+		}
+	}
+	const int ncand = incl_count;
+	incl_count = 0;
+#define BRIGHT_NLIST ncand
+#define BRIGHT_SLOT incl_count
+#else
 	/* Two passes: the cheap visibility test first builds this work-item's
 	   list of visible facets, then the division-heavy terms run over that
 	   list. In a single pass a wavefront executed the heavy block for every
@@ -326,13 +362,23 @@ void bright(
 		}
 	}
 
-	for (int c = 0; c < incl_count; c++)
+#define BRIGHT_NLIST incl_count
+#define BRIGHT_SLOT c
+#endif
+
+	for (int c = 0; c < BRIGHT_NLIST; c++)
 	{
 		i = incl[c];
 		j = i;
 		lmu = R_ADDM(R_MADD(e_1, (*CUDA_CC).Nor[i][0], R_MUL(e_2, (*CUDA_CC).Nor[i][1])), e_3, (*CUDA_CC).Nor[i][2]);
 		lmu0 = R_ADDM(R_MADD(e0_1, (*CUDA_CC).Nor[i][0], R_MUL(e0_2, (*CUDA_CC).Nor[i][1])), e0_3, (*CUDA_CC).Nor[i][2]);
+#ifdef PS_FP32
+		if (R_GT(lmu, R_TINY) && R_GT(lmu0, R_TINY))
+#endif
 		{
+#ifdef PS_FP32
+			incl[incl_count] = i;
+#endif
 			dnom = R_ADD(lmu, lmu0);
 			s = R_MUL(R_MUL(lmu, lmu0), R_ADD(cl, R_DIV(cls, dnom)));
 			ar = (*CUDA_LCC).Area[j];
@@ -342,7 +388,7 @@ void bright(
 			   == (Area[i] * s) * Dsph[i][k]: fold g into the weight and
 			   gather from the one read-only, facet-major Dsph shared by
 			   all work-groups instead of the per-context Dg matrix */
-			dbr[c] = R_MUL(ar, s);
+			dbr[BRIGHT_SLOT] = R_MUL(ar, s);
 
 			real lmu0_dnom = R_DIV(lmu0, dnom);
 			dsmu = R_MADD(cls, R_MUL(lmu0_dnom, lmu0_dnom), R_MUL(cl, lmu0));
@@ -362,6 +408,9 @@ void bright(
 
 			R_ADDTOM(tmp4, R_MUL(lmu, lmu0), ar);
 			R_ADDTOM(tmp5, ar, R_DIV(R_MUL(lmu, lmu0), R_ADD(lmu, lmu0)));
+#ifdef PS_FP32
+			incl_count++;
+#endif
 		}
 	}
 
