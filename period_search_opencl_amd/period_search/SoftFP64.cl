@@ -10,19 +10,11 @@
 
 #ifdef PS_SWFP64
 
-#ifdef SF_HOST
-#define SF_CONST static const
-typedef long long sf_i64;
-#define sf_clz64(x) ((x) ? __builtin_clzll(x) : 64)
-#define sf_mulhi(a, b) ((ulong)(((unsigned __int128)(a) * (b)) >> 64))
-#define sf_as_uint(f) sf_host_as_uint(f)
-#else
 #define SF_CONST __constant
 typedef long sf_i64;
 #define sf_clz64(x) ((int)clz((ulong)(x)))
 #define sf_mulhi(a, b) mul_hi((ulong)(a), (ulong)(b))
 #define sf_as_uint(f) as_uint(f)
-#endif
 
 #define SF_SIGN     0x8000000000000000UL
 #define SF_INF      0x7FF0000000000000UL
@@ -84,15 +76,6 @@ ulong sf_round_pack(uint sign, int exp, ulong sig)
 	return sf_pack(sign, exp, sig);
 }
 
-ulong sf_norm_round_pack(uint sign, int exp, ulong sig)
-{
-	int shift = sf_clz64(sig) - 1;
-	exp -= shift;
-	if (shift >= 10 && (uint)exp < 0x7FDu)
-		return sf_pack(sign, sig ? exp : 0, sig << (shift - 10));
-	return sf_round_pack(sign, exp, sig << shift);
-}
-
 /* subnormal significand -> normalized (hidden bit at 52), biased exponent */
 ulong sf_norm_sub(ulong sig, int* exp)
 {
@@ -126,155 +109,22 @@ ulong sf_round128(uint sign, int e, ulong hi, ulong lo)
 /* add / sub                                                            */
 /* ================================================================== */
 
-ulong sf_add_mags(ulong a, ulong b, uint signZ)
+/* a + b with an Inf or NaN operand; b carries the effective sign (negated
+   for a subtraction), bNan is b as given, for the NaN propagation */
+ulong sf_addsub_special(ulong a, ulong b, ulong bNan)
 {
-	int expA = sf_expf(a), expB = sf_expf(b);
-	ulong sigA = sf_frac(a), sigB = sf_frac(b);
-	int expDiff = expA - expB;
-	int expZ;
-	ulong sigZ;
-	if (!expDiff)
-	{
-		if (!expA)
-			return a + sigB;
-		if (expA == 0x7FF)
-		{
-			if (sigA | sigB)
-				return sf_prop_nan(a, b);
-			return a;
-		}
-		expZ = expA;
-		sigZ = (0x0020000000000000UL + sigA + sigB) << 9;
-	}
-	else
-	{
-		sigA <<= 9;
-		sigB <<= 9;
-		if (expDiff < 0)
-		{
-			if (expB == 0x7FF)
-			{
-				if (sigB)
-					return sf_prop_nan(a, b);
-				return sf_pack(signZ, 0x7FF, 0);
-			}
-			expZ = expB;
-			if (expA)
-				sigA += 0x2000000000000000UL;
-			else
-				sigA <<= 1;
-			sigA = sf_shr_jam(sigA, (uint)(-expDiff));
-		}
-		else
-		{
-			if (expA == 0x7FF)
-			{
-				if (sigA)
-					return sf_prop_nan(a, b);
-				return a;
-			}
-			expZ = expA;
-			if (expB)
-				sigB += 0x2000000000000000UL;
-			else
-				sigB <<= 1;
-			sigB = sf_shr_jam(sigB, (uint)expDiff);
-		}
-		sigZ = 0x2000000000000000UL + sigA + sigB;
-		if (sigZ < 0x4000000000000000UL)
-		{
-			--expZ;
-			sigZ <<= 1;
-		}
-	}
-	return sf_round_pack(signZ, expZ, sigZ);
-}
-
-ulong sf_sub_mags(ulong a, ulong b, uint signZ)
-{
-	int expA = sf_expf(a), expB = sf_expf(b);
-	ulong sigA = sf_frac(a), sigB = sf_frac(b);
-	int expDiff = expA - expB;
-	if (!expDiff)
-	{
-		if (expA == 0x7FF)
-		{
-			if (sigA | sigB)
-				return sf_prop_nan(a, b);
-			return SF_NAN;
-		}
-		sf_i64 sigDiff = (sf_i64)sigA - (sf_i64)sigB;
-		if (!sigDiff)
-			return 0;	/* +0 under round-to-nearest */
-		if (expA)
-			--expA;
-		if (sigDiff < 0)
-		{
-			signZ ^= 1;
-			sigDiff = -sigDiff;
-		}
-		int shift = sf_clz64((ulong)sigDiff) - 11;
-		int expZ = expA - shift;
-		if (expZ < 0)
-		{
-			shift = expA;
-			expZ = 0;
-		}
-		return sf_pack(signZ, expZ, (ulong)sigDiff << shift);
-	}
-	sigA <<= 10;
-	sigB <<= 10;
-	int expZ;
-	ulong sigZ;
-	if (expDiff < 0)
-	{
-		signZ ^= 1;
-		if (expB == 0x7FF)
-		{
-			if (sigB)
-				return sf_prop_nan(a, b);
-			return sf_pack(signZ, 0x7FF, 0);
-		}
-		sigA += expA ? 0x4000000000000000UL : sigA;
-		sigA = sf_shr_jam(sigA, (uint)(-expDiff));
-		sigB |= 0x4000000000000000UL;
-		expZ = expB;
-		sigZ = sigB - sigA;
-	}
-	else
-	{
-		if (expA == 0x7FF)
-		{
-			if (sigA)
-				return sf_prop_nan(a, b);
-			return a;
-		}
-		sigB += expB ? 0x4000000000000000UL : sigB;
-		sigB = sf_shr_jam(sigB, (uint)expDiff);
-		sigA |= 0x4000000000000000UL;
-		expZ = expA;
-		sigZ = sigA - sigB;
-	}
-	return sf_norm_round_pack(signZ, expZ - 1, sigZ);
-}
-
-ulong sf_add_slow(ulong a, ulong b)
-{
-	uint sA = sf_sign(a);
-	return sA == sf_sign(b) ? sf_add_mags(a, b, sA) : sf_sub_mags(a, b, sA);
-}
-
-ulong sf_sub_slow(ulong a, ulong b)
-{
-	uint sA = sf_sign(a);
-	return sA == sf_sign(b) ? sf_sub_mags(a, b, sA) : sf_add_mags(a, b, sA);
+	if (sf_isnan(a) || sf_isnan(b))
+		return sf_prop_nan(a, bNan);
+	if (sf_abs(a) == SF_INF)
+		return sf_abs(b) == SF_INF && a != b ? SF_NAN : a;	/* inf - inf */
+	return b;
 }
 
 /* a + b for finite a, b on a single path (no data-dependent branches but
    the rare over/underflow in sf_round_pack), so the lanes of a wavefront do
    not diverge on sign and exponent differences: order by magnitude, align
    the smaller significand with a sticky bit, add or subtract, normalize,
-   round. Same guard/sticky scheme and rounding as sf_add_mags/sf_sub_mags. */
+   round (10 guard bits below the significand, SoftFloat style). */
 ulong sf_add_finite(ulong a, ulong b)
 {
 	const ulong absA = sf_abs(a), absB = sf_abs(b);
@@ -315,20 +165,29 @@ ulong sf_add_finite(ulong a, ulong b)
 ulong sf_add(ulong a, ulong b)
 {
 	if (sf_abs(a) >= SF_INF || sf_abs(b) >= SF_INF)
-		return sf_add_slow(a, b);
+		return sf_addsub_special(a, b, b);
 	return sf_add_finite(a, b);
 }
 
 ulong sf_sub(ulong a, ulong b)
 {
 	if (sf_abs(a) >= SF_INF || sf_abs(b) >= SF_INF)
-		return sf_sub_slow(a, b);
+		return sf_addsub_special(a, b ^ SF_SIGN, b);
 	return sf_add_finite(a, b ^ SF_SIGN);
 }
 
 /* ================================================================== */
 /* mul / fma                                                            */
 /* ================================================================== */
+
+/* significand (hidden bit at 52 - a subnormal is normalized, its exponent
+   then <= 0) and biased exponent of a nonzero finite value */
+ulong sf_unpack(ulong a, int* exp)
+{
+	const int e = sf_expf(a);
+	*exp = e;
+	return e ? sf_frac(a) | SF_HIDDEN : sf_norm_sub(sf_frac(a), exp);
+}
 
 ulong sf_mul_slow(ulong a, ulong b)
 {
@@ -611,14 +470,8 @@ ulong sf_div(ulong a, ulong b)
 		return sf_iszero(a) ? SF_NAN : sf_pack(signZ, 0x7FF, 0);
 	if (sf_iszero(a))
 		return sf_pack(signZ, 0, 0);
-	if (expA)
-		sigA |= SF_HIDDEN;
-	else
-		sigA = sf_norm_sub(sigA, &expA);
-	if (expB)
-		sigB |= SF_HIDDEN;
-	else
-		sigB = sf_norm_sub(sigB, &expB);
+	sigA = sf_unpack(a, &expA);
+	sigB = sf_unpack(b, &expB);
 
 	int e = expA - expB;
 	if (sigA < sigB)
@@ -666,10 +519,7 @@ ulong sf_sqrt(ulong a)
 		return SF_NAN;
 	if (exp == 0x7FF)
 		return a;
-	if (exp)
-		sig |= SF_HIDDEN;
-	else
-		sig = sf_norm_sub(sig, &exp);
+	sig = sf_unpack(a, &exp);
 	int E = exp - 1075;
 	if (E & 1)
 	{
@@ -833,10 +683,7 @@ ulong sf_ldexp(ulong a, int n)
 		return sf_isnan(a) ? a | SF_QUIET : a;
 	if (sf_iszero(a))
 		return a;
-	if (exp)
-		sig |= SF_HIDDEN;
-	else
-		sig = sf_norm_sub(sig, &exp);
+	sig = sf_unpack(a, &exp);
 	if (n > 4000)
 		n = 4000;
 	if (n < -4000)
