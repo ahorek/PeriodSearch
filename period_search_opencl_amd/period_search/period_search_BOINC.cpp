@@ -638,6 +638,9 @@ int main(int argc, char** argv)
 		if (strcmp(argv[ii], "--platform") == 0 && ii + 1 < argc) {
 			clCustomPlatformId = atoi(argv[++ii]);
 		}
+		if (strcmp(argv[ii], "--fp32") == 0) {
+			ClForceFp32(true);	/* FP32 (software FP64) variant on any device */
+		}
 	}
 
 	if(!boinc_is_standalone()) {

@@ -1,3 +1,7 @@
+/* double-only helpers: the FP32 (df64) build has its own division in
+   Real.cl and no double type */
+#ifndef PS_FP32
+
 /* WORKAROUND(rusticl / aco): runtime f64 '/' returns results with ~3*2^-29
    relative error (verified by [DIVTEST]); fma() and '*' are exact.
    Markstein sequence: two Newton steps refine the reciprocal, the final
@@ -127,3 +131,4 @@ int double2loint(double val)
 //    return result;
 //}
 
+#endif /* !PS_FP32 */

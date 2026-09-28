@@ -94,6 +94,20 @@ cl_kernel kernelCalculateIter1Mrqcof1Matrix;
    current parameters (cg -> alpha/beta), 1 = trial parameters (atry ->
    covar/da) */
 static const cl_int curvePassCurrent = 0, curvePassTrial = 1;
+
+/* FP32 mode: the device has no FP64 support (or --fp32 was given).
+   The kernels are then built with -D PS_FP32 and compute every double in
+   software (Real.cl, SoftFP64.cl) with results identical to the FP64
+   build. The values are still IEEE doubles in the same buffers, so the host
+   side is unchanged apart from the build options. */
+static bool gFp32 = false;
+static bool gForceFp32 = false;
+
+/* --fp32: use the FP32 variant even on an FP64 device (testing) */
+void ClForceFp32(bool force)
+{
+    gForceFp32 = force;
+}
 cl_kernel kernelCalculateIter1Mrqcof1Curve1;
 cl_kernel kernelCalculateIter1Mrqcof1Curve2;
 cl_kernel kernelCalculateIter1Mrqcof1Curve1Last;
@@ -447,11 +461,11 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     bool isFp64 = string(deviceExtensions).find("cl_khr_fp64") != std::string::npos
         || string(deviceExtensions).find("cl_amd_fp64") != std::string::npos;
 
-    bool doesNotSupportsFp64 = !isFp64;
-    if (doesNotSupportsFp64)
+    gFp32 = !isFp64 || gForceFp32;
+    if (gFp32)
     {
-        fprintf(stderr, "Double precision floating point not supported by OpenCL implementation on current device. Exiting...\n");
-        return (1);
+        cerr << (isFp64 ? "FP32 override" : "Double precision floating point not supported by the device")
+             << ": using software FP64 emulation" << endl;
     }
 
     auto SMXBlock = 32;
@@ -482,11 +496,14 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     (*Fa).Phi_0 = Phi_0;
 
     string kernelSourceFile = "kernelSource.cl";
-    const char* kernelFileName = "kernels.bin";
+    /* separate caches: the FP32 build is a different program */
+    const char* kernelFileName = gFp32 ? "kernels_fp32.bin" : "kernels.bin";
 #if defined (_DEBUG)
 #if !defined _WIN32
     // Load CL file, build CL program object, create CL kernel object
     std::ifstream constantsFile("constants.h", std::ios::in | std::ios::binary);
+    std::ifstream softFp64File("SoftFP64.cl", std::ios::in | std::ios::binary);
+    std::ifstream realFile("Real.cl", std::ios::in | std::ios::binary);
     std::ifstream globalsFile("GlobalsCL.h", std::ios::in | std::ios::binary);
     std::ifstream intrinsicsFile("Intrinsics.cl", std::ios::in | std::ios::binary);
     std::ifstream swapFile("swap.cl", std::ios::in | std::ios::binary);
@@ -502,6 +519,8 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
 #else
     // Load CL file, build CL program object, create CL kernel object
     std::ifstream constantsFile("period_search/constants.h");
+    std::ifstream softFp64File("period_search/SoftFP64.cl");
+    std::ifstream realFile("period_search/Real.cl");
     std::ifstream globalsFile("period_search/GlobalsCL.h");
     std::ifstream intrinsicsFile("period_search/Intrinsics.cl");
     std::ifstream swapFile("period_search/swap.cl");
@@ -520,6 +539,8 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
 
     // 1. First load all helper and function Cl files which will be used by the kernels;
     st << constantsFile.rdbuf();
+    st << softFp64File.rdbuf();
+    st << realFile.rdbuf();
     st << globalsFile.rdbuf();
     st << intrinsicsFile.rdbuf();
     st << swapFile.rdbuf();
@@ -538,6 +559,8 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     st.flush();
 
     constantsFile.close();
+    softFp64File.close();
+    realFile.close();
     globalsFile.close();
     intrinsicsFile.close();
     startFile.close();
@@ -581,9 +604,17 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
         }
 
 
-        const int nativeDivOK = DivProbe(context, device);
         char options[64];
-        snprintf(options, sizeof(options), "-w -D NATIVE_DIV_OK=%d", nativeDivOK);
+        if (gFp32)
+        {
+            /* no FP64 at all: software doubles (the division probe needs FP64) */
+            snprintf(options, sizeof(options), "-w -D PS_FP32");
+        }
+        else
+        {
+            const int nativeDivOK = DivProbe(context, device);
+            snprintf(options, sizeof(options), "-w -D NATIVE_DIV_OK=%d", nativeDivOK);
+        }
         //char options[]{ "-Werror" };
         err_num = clBuildProgram(binProgram, 1, &device, options, NULL, NULL); // "-Werror -cl-std=CL1.1"
 

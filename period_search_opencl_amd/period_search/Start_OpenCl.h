@@ -3,6 +3,8 @@
 #include "mfile.h"
 
 
+extern void ClForceFp32(bool force);
+
 extern cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId, int clCustomPlatformId, int clCustomDeviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double cl, cl_double Alambda_start, cl_double Alambda_incr,
 	cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata);
 

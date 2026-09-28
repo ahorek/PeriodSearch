@@ -7,15 +7,15 @@
 int mrqmin_1_end(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__local double* covL,
-	__local double* daL,
+	__local real* covL,
+	__local real* daL,
 	__local int* ipivL,
-	__local double* shBig,
+	__local real* shBig,
 	__local int* shIrow,
 	__local int* shIcol,
-	__local double* pivBC,
+	__local real* pivBC,
 	__local int* icolBC,
-	__global double* alphaG)
+	__global real* alphaG)
 {
 	int j;
 	int3 threadIdx, blockIdx;
@@ -72,7 +72,7 @@ int mrqmin_1_end(
 			if ((*CUDA_CC).ia[l])
 			{
 				j++;
-				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
+				(*CUDA_LCC).atry[l] = R_ADD((*CUDA_LCC).cg[l], (*CUDA_LCC).da[j]);
 			}
 	}
 
@@ -82,10 +82,10 @@ int mrqmin_1_end(
 void mrqmin_2_end(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__global double* scr)
+	__global real* scr)
 {
-	__global double* alphaG = scr + (*CUDA_CC).offAlpha;
-	__global double* covarG = scr + (*CUDA_CC).offCovar;
+	__global real* alphaG = scr + (*CUDA_CC).offAlpha;
+	__global real* covarG = scr + (*CUDA_CC).offCovar;
 
 	int j, k, l;
 	int3 blockIdx, threadIdx;
@@ -97,10 +97,10 @@ void mrqmin_2_end(
 	   Ochisq (else branch) sets Chisq = Ochisq, which keeps the test false. */
 	int lsize = get_local_size(0);
 
-	if ((*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
+	if (R_LT((*CUDA_LCC).Chisq, (*CUDA_LCC).Ochisq))
 	{
 		if (threadIdx.x == 0)
-			(*CUDA_LCC).Alamda = ddiv((*CUDA_LCC).Alamda, (*CUDA_CC).Alamda_incr);
+			(*CUDA_LCC).Alamda = R_DIV((*CUDA_LCC).Alamda, (*CUDA_CC).Alamda_incr);
 		for (j = 1; j <= (*CUDA_CC).Mfit; j++)
 		{
 			for (k = 1 + threadIdx.x; k <= (*CUDA_CC).Mfit; k += lsize)
@@ -122,7 +122,7 @@ void mrqmin_2_end(
 	}
 	else if (threadIdx.x == 0)
 	{
-		(*CUDA_LCC).Alamda = (*CUDA_CC).Alamda_incr * (*CUDA_LCC).Alamda;
+		(*CUDA_LCC).Alamda = R_MUL((*CUDA_CC).Alamda_incr, (*CUDA_LCC).Alamda);
 		(*CUDA_LCC).Chisq = (*CUDA_LCC).Ochisq;
 	}
 

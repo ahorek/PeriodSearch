@@ -7,27 +7,27 @@
 void matrix_neo(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__global double* cg,
+	__global real* cg,
 	int lnp1,
 	int Lpoints,
 	int num,
-	__global double* scr)
+	__global real* scr)
 {
 	/* runtime-sized work arrays, one slice per work-group */
-	__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
-	__global double* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
-	__global double* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
-	__global double* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
-	__global double* e_1G = scr + (*CUDA_CC).offE1;
-	__global double* e_2G = scr + (*CUDA_CC).offE2;
-	__global double* e_3G = scr + (*CUDA_CC).offE3;
-	__global double* e0_1G = scr + (*CUDA_CC).offE01;
-	__global double* e0_2G = scr + (*CUDA_CC).offE02;
-	__global double* e0_3G = scr + (*CUDA_CC).offE03;
-	__global double* deG = scr + (*CUDA_CC).offDe;
-	__global double* de0G = scr + (*CUDA_CC).offDe0;
-	__private double f, cf, sf, pom, pom0, alpha;
-	__private double ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
+	__global real* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+	__global real* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
+	__global real* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
+	__global real* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
+	__global real* e_1G = scr + (*CUDA_CC).offE1;
+	__global real* e_2G = scr + (*CUDA_CC).offE2;
+	__global real* e_3G = scr + (*CUDA_CC).offE3;
+	__global real* e0_1G = scr + (*CUDA_CC).offE01;
+	__global real* e0_2G = scr + (*CUDA_CC).offE02;
+	__global real* e0_3G = scr + (*CUDA_CC).offE03;
+	__global real* deG = scr + (*CUDA_CC).offDe;
+	__global real* de0G = scr + (*CUDA_CC).offDe0;
+	__private real f, cf, sf, pom, pom0, alpha;
+	__private real ee_1, ee_2, ee_3, ee0_1, ee0_2, ee0_3, t, tmat;
 	__private int lnp;
 
 	int3 threadIdx, blockIdx;
@@ -75,22 +75,22 @@ void matrix_neo(
 		//printf("tim[%3d]: %10.7f\n", lnp, t);
 		//printf("lnp: %3d, ee[%d]: %.7f, ee0[%d]: %.7f\n", lnp, lnp * 3 + 0, (*CUDA_CC).ee[lnp][0], lnp, (*CUDA_CC).ee0[lnp][0]);
 
-		alpha = acos(clamp(ee_1 * ee0_1 + ee_2 * ee0_2 + ee_3 * ee0_3, -1.0, 1.0));
+		alpha = R_ACOS(R_CLAMP(R_ADDM(R_MADD(ee_1, ee0_1, R_MUL(ee_2, ee0_2)), ee_3, ee0_3), R_C(-1.0), R_C(1.0)));
 
 
 		//if (blockIdx.x == 0 && threadIdx.x == 0)
 		//	printf("[neo] alpha[%3d]: %.7f, cg[%3d]: %10.7f\n", jp, alpha, q, (*CUDA_LCC).cg[q]);
 
 		/* Exp-lin model (const.term=1.) */
-		double f = exp(-ddiv(alpha, cg[(*CUDA_CC).Ncoef0 + 2]));	//f is temp here
+		real f = R_EXP(R_NEG(R_DIV(alpha, cg[(*CUDA_CC).Ncoef0 + 2])));	//f is temp here
 
 		//if (blockIdx.x == 0 && threadIdx.x == 0)
 		//	printf("[neo] [%2d][%3d] jp[%3d] f: %10.7f, cg[%3d] %10.7f, alpha %10.7f\n",
 		//		blockIdx.x, threadIdx.x, jp, f, (*CUDA_CC).Ncoef0 + 2, cg[(*CUDA_CC).Ncoef0 + 2], alpha);
 
-		jp_ScaleG[jp] = 1 + cg[(*CUDA_CC).Ncoef0 + 1] * f + (cg[(*CUDA_CC).Ncoef0 + 3] * alpha);
+		jp_ScaleG[jp] = R_ADDM(R_ADDM(R_C(1.0), cg[(*CUDA_CC).Ncoef0 + 1], f), cg[(*CUDA_CC).Ncoef0 + 3], alpha);
 		jp_dphp_1G[jp] = f;
-		jp_dphp_2G[jp] = ddiv(cg[(*CUDA_CC).Ncoef0 + 1] * f * alpha, cg[(*CUDA_CC).Ncoef0 + 2] * cg[(*CUDA_CC).Ncoef0 + 2]);
+		jp_dphp_2G[jp] = R_DIV(R_MUL(R_MUL(cg[(*CUDA_CC).Ncoef0 + 1], f), alpha), R_MUL(cg[(*CUDA_CC).Ncoef0 + 2], cg[(*CUDA_CC).Ncoef0 + 2]));
 		jp_dphp_3G[jp] = alpha;
 
 		//if (blockIdx.x == 0)
@@ -98,9 +98,9 @@ void matrix_neo(
 		//		blockIdx.x, threadIdx.x, jp, jp_ScaleG[jp], jp_dphp_1G[jp], jp_dphp_2G[jp], jp_dphp_3G[jp]);
 
 		//  matrix start
-		f = cg[(*CUDA_CC).Ncoef0] * t + (*CUDA_CC).Phi_0;
-		f = fmod(f, 2 * PI); /* may give little different results than Mikko's */
-		sf = sincos(f, &cf);
+		f = R_MADD(cg[(*CUDA_CC).Ncoef0], t, (*CUDA_CC).Phi_0);
+		f = R_FMOD_2PI(f); /* may give little different results than Mikko's */
+		sf = R_SINCOS(f, &cf);
 
 		//if (threadIdx.x == 0)
 		//	printf("jp[%3d] [%3d] cf: %10.7f, sf: %10.7f\n", jp, blockIdx.x, cf, sf);
@@ -112,151 +112,151 @@ void matrix_neo(
 
 		//	/* rotation matrix, Z axis, angle f */
 
-		tmat = cf * (*CUDA_LCC).Blmat[1][1] + sf * (*CUDA_LCC).Blmat[2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = cf * (*CUDA_LCC).Blmat[1][2] + sf * (*CUDA_LCC).Blmat[2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = cf * (*CUDA_LCC).Blmat[1][3] + sf * (*CUDA_LCC).Blmat[2][3];
-		e_1G[jp] = pom + tmat * ee_3;
-		e0_1G[jp] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(cf, (*CUDA_LCC).Blmat[1][1], R_MUL(sf, (*CUDA_LCC).Blmat[2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(cf, (*CUDA_LCC).Blmat[1][2], R_MUL(sf, (*CUDA_LCC).Blmat[2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(cf, (*CUDA_LCC).Blmat[1][3], R_MUL(sf, (*CUDA_LCC).Blmat[2][3]));
+		e_1G[jp] = R_ADDM(pom, tmat, ee_3);
+		e0_1G[jp] = R_ADDM(pom0, tmat, ee0_3);
 
 		//if (blockIdx.x == 0)
 		//	printf("[%3d] jp[%3d] %10.7f, %10.7f\n", threadIdx.x, jp, e_1G[jp], e0_1G[jp]);
 
-		tmat = (-sf) * (*CUDA_LCC).Blmat[1][1] + cf * (*CUDA_LCC).Blmat[2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = (-sf) * (*CUDA_LCC).Blmat[1][2] + cf * (*CUDA_LCC).Blmat[2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = (-sf) * (*CUDA_LCC).Blmat[1][3] + cf * (*CUDA_LCC).Blmat[2][3];
-		e_2G[jp] = pom + tmat * ee_3;
-		e0_2G[jp] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Blmat[1][1], R_MUL(cf, (*CUDA_LCC).Blmat[2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Blmat[1][2], R_MUL(cf, (*CUDA_LCC).Blmat[2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Blmat[1][3], R_MUL(cf, (*CUDA_LCC).Blmat[2][3]));
+		e_2G[jp] = R_ADDM(pom, tmat, ee_3);
+		e0_2G[jp] = R_ADDM(pom0, tmat, ee0_3);
 
 		tmat = (*CUDA_LCC).Blmat[3][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
 		tmat = (*CUDA_LCC).Blmat[3][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
 		tmat = (*CUDA_LCC).Blmat[3][3];
-		e_3G[jp] = pom + tmat * ee_3;
-		e0_3G[jp] = pom0 + tmat * ee0_3;
+		e_3G[jp] = R_ADDM(pom, tmat, ee_3);
+		e0_3G[jp] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = cf * (*CUDA_LCC).Dblm[1][1][1] + sf * (*CUDA_LCC).Dblm[1][2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = cf * (*CUDA_LCC).Dblm[1][1][2] + sf * (*CUDA_LCC).Dblm[1][2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = cf * (*CUDA_LCC).Dblm[1][1][3] + sf * (*CUDA_LCC).Dblm[1][2][3];
-		deG[(jp) * 16 + (1) * 4 + (1)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (1) * 4 + (1)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[1][1][1], R_MUL(sf, (*CUDA_LCC).Dblm[1][2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[1][1][2], R_MUL(sf, (*CUDA_LCC).Dblm[1][2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[1][1][3], R_MUL(sf, (*CUDA_LCC).Dblm[1][2][3]));
+		deG[(jp) * 16 + (1) * 4 + (1)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (1) * 4 + (1)] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = cf * (*CUDA_LCC).Dblm[2][1][1] + sf * (*CUDA_LCC).Dblm[2][2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = cf * (*CUDA_LCC).Dblm[2][1][2] + sf * (*CUDA_LCC).Dblm[2][2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = cf * (*CUDA_LCC).Dblm[2][1][3] + sf * (*CUDA_LCC).Dblm[2][2][3];
-		deG[(jp) * 16 + (1) * 4 + (2)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (1) * 4 + (2)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[2][1][1], R_MUL(sf, (*CUDA_LCC).Dblm[2][2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[2][1][2], R_MUL(sf, (*CUDA_LCC).Dblm[2][2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(cf, (*CUDA_LCC).Dblm[2][1][3], R_MUL(sf, (*CUDA_LCC).Dblm[2][2][3]));
+		deG[(jp) * 16 + (1) * 4 + (2)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (1) * 4 + (2)] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = (-t * sf) * (*CUDA_LCC).Blmat[1][1] + (t * cf) * (*CUDA_LCC).Blmat[2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = (-t * sf) * (*CUDA_LCC).Blmat[1][2] + (t * cf) * (*CUDA_LCC).Blmat[2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = (-t * sf) * (*CUDA_LCC).Blmat[1][3] + (t * cf) * (*CUDA_LCC).Blmat[2][3];
-		deG[(jp) * 16 + (1) * 4 + (3)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (1) * 4 + (3)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[1][1], R_MUL(R_MUL(t, cf), (*CUDA_LCC).Blmat[2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[1][2], R_MUL(R_MUL(t, cf), (*CUDA_LCC).Blmat[2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[1][3], R_MUL(R_MUL(t, cf), (*CUDA_LCC).Blmat[2][3]));
+		deG[(jp) * 16 + (1) * 4 + (3)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (1) * 4 + (3)] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = -sf * (*CUDA_LCC).Dblm[1][1][1] + cf * (*CUDA_LCC).Dblm[1][2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = -sf * (*CUDA_LCC).Dblm[1][1][2] + cf * (*CUDA_LCC).Dblm[1][2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = -sf * (*CUDA_LCC).Dblm[1][1][3] + cf * (*CUDA_LCC).Dblm[1][2][3];
-		deG[(jp) * 16 + (2) * 4 + (1)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (2) * 4 + (1)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[1][1][1], R_MUL(cf, (*CUDA_LCC).Dblm[1][2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[1][1][2], R_MUL(cf, (*CUDA_LCC).Dblm[1][2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[1][1][3], R_MUL(cf, (*CUDA_LCC).Dblm[1][2][3]));
+		deG[(jp) * 16 + (2) * 4 + (1)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (2) * 4 + (1)] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = -sf * (*CUDA_LCC).Dblm[2][1][1] + cf * (*CUDA_LCC).Dblm[2][2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = -sf * (*CUDA_LCC).Dblm[2][1][2] + cf * (*CUDA_LCC).Dblm[2][2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = -sf * (*CUDA_LCC).Dblm[2][1][3] + cf * (*CUDA_LCC).Dblm[2][2][3];
-		deG[(jp) * 16 + (2) * 4 + (2)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (2) * 4 + (2)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[2][1][1], R_MUL(cf, (*CUDA_LCC).Dblm[2][2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[2][1][2], R_MUL(cf, (*CUDA_LCC).Dblm[2][2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(R_NEG(sf), (*CUDA_LCC).Dblm[2][1][3], R_MUL(cf, (*CUDA_LCC).Dblm[2][2][3]));
+		deG[(jp) * 16 + (2) * 4 + (2)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (2) * 4 + (2)] = R_ADDM(pom0, tmat, ee0_3);
 
-		tmat = (-t * cf) * (*CUDA_LCC).Blmat[1][1] + (-t * sf) * (*CUDA_LCC).Blmat[2][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
-		tmat = (-t * cf) * (*CUDA_LCC).Blmat[1][2] + (-t * sf) * (*CUDA_LCC).Blmat[2][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
-		tmat = (-t * cf) * (*CUDA_LCC).Blmat[1][3] + (-t * sf) * (*CUDA_LCC).Blmat[2][3];
-		deG[(jp) * 16 + (2) * 4 + (3)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (2) * 4 + (3)] = pom0 + tmat * ee0_3;
+		tmat = R_MADD(R_MUL(R_NEG(t), cf), (*CUDA_LCC).Blmat[1][1], R_MUL(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[2][1]));
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
+		tmat = R_MADD(R_MUL(R_NEG(t), cf), (*CUDA_LCC).Blmat[1][2], R_MUL(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[2][2]));
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
+		tmat = R_MADD(R_MUL(R_NEG(t), cf), (*CUDA_LCC).Blmat[1][3], R_MUL(R_MUL(R_NEG(t), sf), (*CUDA_LCC).Blmat[2][3]));
+		deG[(jp) * 16 + (2) * 4 + (3)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (2) * 4 + (3)] = R_ADDM(pom0, tmat, ee0_3);
 
 		tmat = (*CUDA_LCC).Dblm[1][3][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
 		tmat = (*CUDA_LCC).Dblm[1][3][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
 		tmat = (*CUDA_LCC).Dblm[1][3][3];
-		deG[(jp) * 16 + (3) * 4 + (1)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (3) * 4 + (1)] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (3) * 4 + (1)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (3) * 4 + (1)] = R_ADDM(pom0, tmat, ee0_3);
 
 		tmat = (*CUDA_LCC).Dblm[2][3][1];
-		pom = tmat * ee_1;
-		pom0 = tmat * ee0_1;
+		pom = R_MUL(tmat, ee_1);
+		pom0 = R_MUL(tmat, ee0_1);
 		tmat = (*CUDA_LCC).Dblm[2][3][2];
-		pom += tmat * ee_2;
-		pom0 += tmat * ee0_2;
+		R_ADDTOM(pom, tmat, ee_2);
+		R_ADDTOM(pom0, tmat, ee0_2);
 		tmat = (*CUDA_LCC).Dblm[2][3][3];
-		deG[(jp) * 16 + (3) * 4 + (2)] = pom + tmat * ee_3;
-		de0G[(jp) * 16 + (3) * 4 + (2)] = pom0 + tmat * ee0_3;
+		deG[(jp) * 16 + (3) * 4 + (2)] = R_ADDM(pom, tmat, ee_3);
+		de0G[(jp) * 16 + (3) * 4 + (2)] = R_ADDM(pom0, tmat, ee0_3);
 
 
-		deG[(jp) * 16 + (3) * 4 + (3)] = 0;
-		de0G[(jp) * 16 + (3) * 4 + (3)] = 0;
+		deG[(jp) * 16 + (3) * 4 + (3)] = R_C(0.0);
+		de0G[(jp) * 16 + (3) * 4 + (3)] = R_C(0.0);
 	}
 }
 
 void bright(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__global double* cg,
+	__global real* cg,
 	int jp,
 	int Lpoints1,
 	int Inrel,
-	__global double* scr)
+	__global real* scr)
 {
 	/* runtime-sized work arrays, one slice per work-group */
-	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
-	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
-	__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
-	__global double* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
-	__global double* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
-	__global double* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
-	__global double* e_1G = scr + (*CUDA_CC).offE1;
-	__global double* e_2G = scr + (*CUDA_CC).offE2;
-	__global double* e_3G = scr + (*CUDA_CC).offE3;
-	__global double* e0_1G = scr + (*CUDA_CC).offE01;
-	__global double* e0_2G = scr + (*CUDA_CC).offE02;
-	__global double* e0_3G = scr + (*CUDA_CC).offE03;
-	__global double* deG = scr + (*CUDA_CC).offDe;
-	__global double* de0G = scr + (*CUDA_CC).offDe0;
-	double cl, cls, dnom, s, Scale;
-	double e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
+	__global real* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global real* ytempG = scr + (*CUDA_CC).offYtemp;
+	__global real* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+	__global real* jp_dphp_1G = scr + (*CUDA_CC).offJpDphp1;
+	__global real* jp_dphp_2G = scr + (*CUDA_CC).offJpDphp2;
+	__global real* jp_dphp_3G = scr + (*CUDA_CC).offJpDphp3;
+	__global real* e_1G = scr + (*CUDA_CC).offE1;
+	__global real* e_2G = scr + (*CUDA_CC).offE2;
+	__global real* e_3G = scr + (*CUDA_CC).offE3;
+	__global real* e0_1G = scr + (*CUDA_CC).offE01;
+	__global real* e0_2G = scr + (*CUDA_CC).offE02;
+	__global real* e0_3G = scr + (*CUDA_CC).offE03;
+	__global real* deG = scr + (*CUDA_CC).offDe;
+	__global real* de0G = scr + (*CUDA_CC).offDe0;
+	real cl, cls, dnom, s, Scale;
+	real e_1, e_2, e_3, e0_1, e0_2, e0_3, de[4][4], de0[4][4];
 	int ncoef0, ncoef, i, j, incl_count = 0;
 
 	int3 blockIdx, threadIdx;
@@ -265,7 +265,7 @@ void bright(
 
 	ncoef0 = (*CUDA_CC).Ncoef0;//ncoef - 2 - CUDA_Nphpar;
 	ncoef = (*CUDA_CC).ma;
-	cl = exp(cg[ncoef - 1]); /* Lambert */
+	cl = R_EXP(cg[ncoef - 1]); /* Lambert */
 	cls = cg[ncoef];       /* Lommel-Seeliger */
 
 	/* matrix from neo */
@@ -296,17 +296,17 @@ void bright(
 	de0[3][3] = de0G[(jp) * 16 + (3) * 4 + (3)];
 
 	/*Integrated brightness (phase coeff. used later) */
-	double lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
-	double br, ar, tmp1, tmp2, tmp3, tmp4, tmp5;
+	real lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
+	real br, ar, tmp1, tmp2, tmp3, tmp4, tmp5;
 	short int incl[MAX_N_FAC];
-	double dbr[MAX_N_FAC];
+	real dbr[MAX_N_FAC];
 
-	br = 0;
-	tmp1 = 0;
-	tmp2 = 0;
-	tmp3 = 0;
-	tmp4 = 0;
-	tmp5 = 0;
+	br = R_C(0.0);
+	tmp1 = R_C(0.0);
+	tmp2 = R_C(0.0);
+	tmp3 = R_C(0.0);
+	tmp4 = R_C(0.0);
+	tmp5 = R_C(0.0);
 
 	/* Two passes: the cheap visibility test first builds this work-item's
 	   list of visible facets, then the division-heavy terms run over that
@@ -317,9 +317,9 @@ void bright(
 	   visible facets in ascending order. */
 	for (i = 1; i <= (*CUDA_CC).Numfac; i++)
 	{
-		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
-		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
-		if ((lmu > TINY) && (lmu0 > TINY))
+		lmu = R_ADDM(R_MADD(e_1, (*CUDA_CC).Nor[i][0], R_MUL(e_2, (*CUDA_CC).Nor[i][1])), e_3, (*CUDA_CC).Nor[i][2]);
+		lmu0 = R_ADDM(R_MADD(e0_1, (*CUDA_CC).Nor[i][0], R_MUL(e0_2, (*CUDA_CC).Nor[i][1])), e0_3, (*CUDA_CC).Nor[i][2]);
+		if (R_GT(lmu, R_TINY) && R_GT(lmu0, R_TINY))
 		{
 			incl[incl_count] = i;
 			incl_count++;
@@ -330,65 +330,65 @@ void bright(
 	{
 		i = incl[c];
 		j = i;
-		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
-		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
+		lmu = R_ADDM(R_MADD(e_1, (*CUDA_CC).Nor[i][0], R_MUL(e_2, (*CUDA_CC).Nor[i][1])), e_3, (*CUDA_CC).Nor[i][2]);
+		lmu0 = R_ADDM(R_MADD(e0_1, (*CUDA_CC).Nor[i][0], R_MUL(e0_2, (*CUDA_CC).Nor[i][1])), e0_3, (*CUDA_CC).Nor[i][2]);
 		{
-			dnom = lmu + lmu0;
-			s = lmu * lmu0 * (cl + ddiv(cls, dnom));
+			dnom = R_ADD(lmu, lmu0);
+			s = R_MUL(R_MUL(lmu, lmu0), R_ADD(cl, R_DIV(cls, dnom)));
 			ar = (*CUDA_LCC).Area[j];
-			br += ar * s;
+			R_ADDTOM(br, ar, s);
 
 			/* Darea[i] * s * Dg[i][k] == Darea[i] * s * g * Dsph[i][k]
 			   == (Area[i] * s) * Dsph[i][k]: fold g into the weight and
 			   gather from the one read-only, facet-major Dsph shared by
 			   all work-groups instead of the per-context Dg matrix */
-			dbr[c] = ar * s;
+			dbr[c] = R_MUL(ar, s);
 
-			double lmu0_dnom = ddiv(lmu0, dnom);
-			dsmu = cls * (lmu0_dnom * lmu0_dnom) + cl * lmu0;
-			double lmu_dnom = ddiv(lmu, dnom);
-			dsmu0 = cls * (lmu_dnom * lmu_dnom) + cl * lmu;
+			real lmu0_dnom = R_DIV(lmu0, dnom);
+			dsmu = R_MADD(cls, R_MUL(lmu0_dnom, lmu0_dnom), R_MUL(cl, lmu0));
+			real lmu_dnom = R_DIV(lmu, dnom);
+			dsmu0 = R_MADD(cls, R_MUL(lmu_dnom, lmu_dnom), R_MUL(cl, lmu));
 
 
-			sum1 = (*CUDA_CC).Nor[i][0] * de[1][1] + (*CUDA_CC).Nor[i][1] * de[2][1] + (*CUDA_CC).Nor[i][2] * de[3][1];
-			sum10 = (*CUDA_CC).Nor[i][0] * de0[1][1] + (*CUDA_CC).Nor[i][1] * de0[2][1] + (*CUDA_CC).Nor[i][2] * de0[3][1];
-			tmp1 += ar * (dsmu * sum1 + dsmu0 * sum10);
-			sum2 = (*CUDA_CC).Nor[i][0] * de[1][2] + (*CUDA_CC).Nor[i][1] * de[2][2] + (*CUDA_CC).Nor[i][2] * de[3][2];
-			sum20 = (*CUDA_CC).Nor[i][0] * de0[1][2] + (*CUDA_CC).Nor[i][1] * de0[2][2] + (*CUDA_CC).Nor[i][2] * de0[3][2];
-			tmp2 += ar * (dsmu * sum2 + dsmu0 * sum20);
-			sum3 = (*CUDA_CC).Nor[i][0] * de[1][3] + (*CUDA_CC).Nor[i][1] * de[2][3] + (*CUDA_CC).Nor[i][2] * de[3][3];
-			sum30 = (*CUDA_CC).Nor[i][0] * de0[1][3] + (*CUDA_CC).Nor[i][1] * de0[2][3] + (*CUDA_CC).Nor[i][2] * de0[3][3];
-			tmp3 += ar * (dsmu * sum3 + dsmu0 * sum30);
+			sum1 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de[1][1], R_MUL((*CUDA_CC).Nor[i][1], de[2][1])), (*CUDA_CC).Nor[i][2], de[3][1]);
+			sum10 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de0[1][1], R_MUL((*CUDA_CC).Nor[i][1], de0[2][1])), (*CUDA_CC).Nor[i][2], de0[3][1]);
+			R_ADDTOM(tmp1, ar, R_MADD(dsmu, sum1, R_MUL(dsmu0, sum10)));
+			sum2 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de[1][2], R_MUL((*CUDA_CC).Nor[i][1], de[2][2])), (*CUDA_CC).Nor[i][2], de[3][2]);
+			sum20 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de0[1][2], R_MUL((*CUDA_CC).Nor[i][1], de0[2][2])), (*CUDA_CC).Nor[i][2], de0[3][2]);
+			R_ADDTOM(tmp2, ar, R_MADD(dsmu, sum2, R_MUL(dsmu0, sum20)));
+			sum3 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de[1][3], R_MUL((*CUDA_CC).Nor[i][1], de[2][3])), (*CUDA_CC).Nor[i][2], de[3][3]);
+			sum30 = R_ADDM(R_MADD((*CUDA_CC).Nor[i][0], de0[1][3], R_MUL((*CUDA_CC).Nor[i][1], de0[2][3])), (*CUDA_CC).Nor[i][2], de0[3][3]);
+			R_ADDTOM(tmp3, ar, R_MADD(dsmu, sum3, R_MUL(dsmu0, sum30)));
 
-			tmp4 += lmu * lmu0 * ar;
-			tmp5 += ar * ddiv(lmu * lmu0, lmu + lmu0);
+			R_ADDTOM(tmp4, R_MUL(lmu, lmu0), ar);
+			R_ADDTOM(tmp5, ar, R_DIV(R_MUL(lmu, lmu0), R_ADD(lmu, lmu0)));
 		}
 	}
 
 	Scale = jp_ScaleG[jp];
 	i = (jp - 1) * DYT_STRIDE + (ncoef0 - 3 + 1);
 	/* Ders. of brightness w.r.t. rotation parameters */
-	dytempG[i] = Scale * tmp1;
+	dytempG[i] = R_MUL(Scale, tmp1);
 
 	i++;
-	dytempG[i] = Scale * tmp2;
+	dytempG[i] = R_MUL(Scale, tmp2);
 	i++;
-	dytempG[i] = Scale * tmp3;
+	dytempG[i] = R_MUL(Scale, tmp3);
 
 	i++;
 	/* Ders. of br. w.r.t. phase function params. */
-	dytempG[i] = br * jp_dphp_1G[jp];
+	dytempG[i] = R_MUL(br, jp_dphp_1G[jp]);
 	i++;
-	dytempG[i] = br * jp_dphp_2G[jp];
+	dytempG[i] = R_MUL(br, jp_dphp_2G[jp]);
 	i++;
-	dytempG[i] = br * jp_dphp_3G[jp];
+	dytempG[i] = R_MUL(br, jp_dphp_3G[jp]);
 
 	/* Ders. of br. w.r.t. cl, cls */
-	dytempG[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = Scale * tmp4 * cl;
-	dytempG[(jp - 1) * DYT_STRIDE + (ncoef)] = Scale * tmp5;
+	dytempG[(jp - 1) * DYT_STRIDE + (ncoef - 1)] = R_MUL(R_MUL(Scale, tmp4), cl);
+	dytempG[(jp - 1) * DYT_STRIDE + (ncoef)] = R_MUL(Scale, tmp5);
 
 	/* Scaled brightness */
-	ytempG[jp] = br * Scale;
+	ytempG[jp] = R_MUL(br, Scale);
 
 	ncoef0 -= 3;
 	int iStart;
@@ -408,33 +408,33 @@ void bright(
 	{
 		for (i = iStart; i <= ncoef0; i += BRIGHT_GB)
 		{
-			double t[BRIGHT_GB];
+			real t[BRIGHT_GB];
 			{
-				double l_dbr = dbr[0];
-				__global double* row = (*CUDA_CC).Dsph[incl[0]] + i;
+				real l_dbr = dbr[0];
+				__global real* row = (*CUDA_CC).Dsph[incl[0]] + i;
 				for (int b = 0; b < BRIGHT_GB; b++)
-					t[b] = l_dbr * row[b];
+					t[b] = R_MUL(l_dbr, row[b]);
 			}
 
 			for (j = 1; j < incl_count; j++)
 			{
-				double l_dbr = dbr[j];
-				__global double* row = (*CUDA_CC).Dsph[incl[j]] + i;
+				real l_dbr = dbr[j];
+				__global real* row = (*CUDA_CC).Dsph[incl[j]] + i;
 				for (int b = 0; b < BRIGHT_GB; b++)
-					t[b] += l_dbr * row[b];
+					R_ADDTOM(t[b], l_dbr, row[b]);
 			}
 
 			for (int b = 0; b < BRIGHT_GB; b++)
 			{
 				if (i + b <= ncoef0)
-					dytempG[(jp - 1) * DYT_STRIDE + i + b] = Scale * t[b];
+					dytempG[(jp - 1) * DYT_STRIDE + i + b] = R_MUL(Scale, t[b]);
 			}
 		}
 	}
 	else
 	{
 		for (i = 1; i <= ncoef0; i++, d++)
-			dytempG[d] = 0;
+			dytempG[d] = R_C(0.0);
 	}
 
 	//return(0);

@@ -23,18 +23,18 @@
 int gauss_errc(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__local double* covL,   /* [DYT_STRIDE * DYT_STRIDE], indexed with Mfit1 stride */
-	__local double* daL,    /* [DYT_STRIDE] */
+	__local real* covL,   /* [DYT_STRIDE * DYT_STRIDE], indexed with Mfit1 stride */
+	__local real* daL,    /* [DYT_STRIDE] */
 	__local int* ipivL,     /* [DYT_STRIDE] */
-	__local double* shBig,  /* [BLOCK_DIM] */
+	__local real* shBig,  /* [BLOCK_DIM] */
 	__local int* shIrow,    /* [BLOCK_DIM] */
 	__local int* shIcol,    /* [BLOCK_DIM] */
-	__local double* pivBC,  /* [1] pivinv broadcast */
+	__local real* pivBC,  /* [1] pivinv broadcast */
 	__local int* icolBC,    /* [1] icol broadcast */
-	__global double* alphaG)
+	__global real* alphaG)
 {
-	double big, dum;
-	double tmpSwap;
+	real big, dum;
+	real tmpSwap;
 	int i, licol = 0, irow = 0, j, k, l, ll;
 	int n = (*CUDA_CC).Mfit;
 	int mfit1 = (*CUDA_CC).Mfit1;
@@ -62,7 +62,7 @@ int gauss_errc(
 			covL[ixx] = alphaG[ixx];
 		}
 		int qq = j * mfit1 + j;
-		covL[qq] = alphaG[qq] * (1 + (*CUDA_LCC).Alamda);
+		covL[qq] = R_MUL(alphaG[qq], R_ADD(R_C(1.0), (*CUDA_LCC).Alamda));
 		daL[j] = (*CUDA_LCC).beta[j];
 	}
 
@@ -75,7 +75,7 @@ int gauss_errc(
 
 	for (i = 1; i <= n; i++)
 	{
-		big = -1.0;
+		big = R_C(-1.0);
 		irow = 0;
 		licol = 0;
 		for (j = brtmpl; j <= brtmph; j++)
@@ -87,8 +87,8 @@ int gauss_errc(
 				{
 					if (ipivL[k] == 0)
 					{
-						double tmpcov = fabs(covL[ixx]);
-						if (tmpcov >= big)
+						real tmpcov = R_FABS(covL[ixx]);
+						if (R_GE(tmpcov, big))
 						{
 							big = tmpcov;
 							irow = j;
@@ -117,7 +117,7 @@ int gauss_errc(
 
 			for (j = 1; j < BLOCK_DIM; j++)
 			{
-				if (shBig[j] >= big)
+				if (R_GE(shBig[j], big))
 				{
 					big = shBig[j];
 					irow = shIrow[j];
@@ -143,7 +143,7 @@ int gauss_errc(
 
 			int covarIdx = icolBC[0] * mfit1 + icolBC[0];
 
-			if (covL[covarIdx] == 0.0)
+			if (R_EQ(covL[covarIdx], R_C(0.0)))
 			{
 				for (int l2 = 1; l2 <= (*CUDA_CC).ma; l2++)
 				{
@@ -154,10 +154,10 @@ int gauss_errc(
 			}
 			else
 			{
-				pivBC[0] = ddiv(1.0, covL[covarIdx]);
-				covL[covarIdx] = 1.0;
+				pivBC[0] = R_DIV(R_C(1.0), covL[covarIdx]);
+				covL[covarIdx] = R_C(1.0);
 
-				daL[icolBC[0]] = daL[icolBC[0]] * pivBC[0];
+				daL[icolBC[0]] = R_MUL(daL[icolBC[0]], pivBC[0]);
 			}
 		}
 
@@ -171,7 +171,7 @@ int gauss_errc(
 		for (l = brtmpl; l <= brtmph; l++)
 		{
 			int qq = icolBC[0] * mfit1 + l;
-			double covar1 = covL[qq] * pivBC[0];
+			real covar1 = R_MUL(covL[qq], pivBC[0]);
 			covL[qq] = covar1;
 		}
 
@@ -184,15 +184,15 @@ int gauss_errc(
 				int ixx = ll * mfit1;
 				int jxx = icolBC[0] * mfit1;
 				dum = covL[ixx + icolBC[0]];
-				covL[ixx + icolBC[0]] = 0.0;
+				covL[ixx + icolBC[0]] = R_C(0.0);
 				ixx++;
 				jxx++;
 				for (l = 1; l <= n; l++, ixx++, jxx++)
 				{
-					covL[ixx] -= covL[jxx] * dum;
+					R_SUBFROMM(covL[ixx], covL[jxx], dum);
 				}
 
-				daL[ll] -= daL[icolBC[0]] * dum;
+				R_SUBFROMM(daL[ll], daL[icolBC[0]], dum);
 			}
 		}
 

@@ -5,22 +5,22 @@
 void mrqcof_curve2(
 	__global struct mfreq_context* CUDA_LCC,
 	__global struct freq_context* CUDA_CC,
-	__global double* alpha,
-	__global double* beta,
-	__local double (*dydaT)[DYT_STRIDE],
-	__local double* s2wS,
-	__local double* dwsS,
-	__local double* dyS,
-	__local double* coefS,		/* 2 * CURVE2_K: per-point coef, coef1 */
+	__global real* alpha,
+	__global real* beta,
+	__local real (*dydaT)[DYT_STRIDE],
+	__local real* s2wS,
+	__local real* dwsS,
+	__local real* dyS,
+	__local real* coefS,		/* 2 * CURVE2_K: per-point coef, coef1 */
 	int inrel,
 	int lpoints,
-	__global double* scr)
+	__global real* scr)
 {
 	/* runtime-sized work arrays, one slice per work-group */
-	__global double* dytempG = scr + (*CUDA_CC).offDytemp;
-	__global double* ytempG = scr + (*CUDA_CC).offYtemp;
+	__global real* dytempG = scr + (*CUDA_CC).offDytemp;
+	__global real* ytempG = scr + (*CUDA_CC).offYtemp;
 	int l, jp, j, k, m, lnp1, lnp2, Lpoints1 = lpoints + 1;
-	double dy, sig2i, wt, ymod, coef1, coef, wght, ltrial_chisq;
+	real dy, sig2i, wt, ymod, coef1, coef, wght, ltrial_chisq;
 
 	int3 blockIdx, threadIdx;
 	blockIdx.x = get_group_id(0);
@@ -62,8 +62,8 @@ void mrqcof_curve2(
 	   renormalization). dytemp/ytemp are per-curve scratch: nothing reads the
 	   renormalized global copies afterwards. */
 	const int lnp1b = (*CUDA_LCC).np1;	/* point jp uses Sig[lnp1b + jp] */
-	const double ave = (*CUDA_LCC).ave;
-	__local double* coef1S = coefS + CURVE2_K;
+	const real ave = (*CUDA_LCC).ave;
+	__local real* coef1S = coefS + CURVE2_K;
 
 	/* everyone has read np1 before work-item 0 advances it */
 	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
@@ -91,7 +91,7 @@ void mrqcof_curve2(
 	   dydaT[p][l] is point jp0+p's staged derivative row (renormalization
 	   applied while staging for a relative curve), 1-based parameter l. */
 	int jp0, p, P;
-	double wp[CURVE2_K];
+	real wp[CURVE2_K];
 
 	/* Main triangle (rows l = l0..lastone, columns m = l0..l) flattened over
 	   the work-group: work-item t owns elements t, t + BLOCK_DIM, ... for the
@@ -111,13 +111,13 @@ void mrqcof_curve2(
 	const int ntri = nrows > 0 ? nrows * (nrows + 1) / 2 : 0;
 	const int Mfit1 = (*CUDA_CC).Mfit1;
 	int triLM[C2_EPT];		/* l * 64 + m of each owned element */
-	double triA[C2_EPT];	/* its running alpha value */
+	real triA[C2_EPT];	/* its running alpha value */
 	#pragma unroll
 	for (int t = 0; t < C2_EPT; t++)
 	{
 		int e = threadIdx.x + t * BLOCK_DIM;
 		triLM[t] = 0;
-		triA[t] = 0;
+		triA[t] = R_C(0.0);
 		if (e < ntri)
 		{
 			/* row r of the triangle holds r + 1 elements */
@@ -131,7 +131,7 @@ void mrqcof_curve2(
 	}
 	const int browL = l0 + threadIdx.x;	/* beta row owned by this work-item */
 	const int ownB = browL <= (*CUDA_CC).lastone;
-	double betaR = ownB ? beta[browL - rel] : 0;
+	real betaR = ownB ? beta[browL - rel] : R_C(0.0);
 
 	for (jp0 = 1; jp0 <= lpoints; jp0 += CURVE2_K)
 	{
@@ -146,18 +146,18 @@ void mrqcof_curve2(
 			ymod = ytempG[jp];
 			if (inrel)
 			{
-				coef = ddiv((*CUDA_CC).Sig[lnp1b + jp] * lpoints, ave);
-				coef1 = ddiv(ymod, ave);
+				coef = R_DIV(R_MUL((*CUDA_CC).Sig[lnp1b + jp], R_FROM_INT(lpoints)), ave);
+				coef1 = R_DIV(ymod, ave);
 				coefS[threadIdx.x] = coef;
 				coef1S[threadIdx.x] = coef1;
-				ymod = coef * ymod;
+				ymod = R_MUL(coef, ymod);
 			}
-			sig2i = ddiv(1.0, ((*CUDA_CC).Sig[lnp2 + jp] * (*CUDA_CC).Sig[lnp2 + jp]));
+			sig2i = R_DIV(R_C(1.0), R_MUL((*CUDA_CC).Sig[lnp2 + jp], (*CUDA_CC).Sig[lnp2 + jp]));
 			wght = (*CUDA_CC).Weight[lnp2 + jp];
-			dy = (*CUDA_CC).Brightness[lnp2 + jp] - ymod;
-			double sig2iwght = sig2i * wght;
+			dy = R_SUB((*CUDA_CC).Brightness[lnp2 + jp], ymod);
+			real sig2iwght = R_MUL(sig2i, wght);
 			s2wS[threadIdx.x] = sig2iwght;
-			dwsS[threadIdx.x] = dy * sig2iwght;
+			dwsS[threadIdx.x] = R_MUL(dy, sig2iwght);
 			dyS[threadIdx.x] = dy;
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
@@ -166,17 +166,17 @@ void mrqcof_curve2(
 		   renormalizing on the way for a relative curve */
 		for (m = threadIdx.x; m < P * DYT_STRIDE; m += BLOCK_DIM)
 		{
-			double v = dytempG[(jp0 - 1) * DYT_STRIDE + m];
+			real v = dytempG[(jp0 - 1) * DYT_STRIDE + m];
 			if (inrel)
 			{
 				p = m / DYT_STRIDE;
 				l = m % DYT_STRIDE;
 				if (l == 1)
-					v = 0;	/* size-scale derivative is explicitly zero */
+					v = R_C(0.0);	/* size-scale derivative is explicitly zero */
 				else if (l >= 2 && l <= (*CUDA_CC).ma)
-					v = coefS[p] * (v - coef1S[p] * (*CUDA_LCC).dave[l]);
+					v = R_MUL(coefS[p], R_SUBM(v, coef1S[p], (*CUDA_LCC).dave[l]));
 			}
-			((__local double*)&dydaT[0][0])[m] = v;
+			((__local real*)&dydaT[0][0])[m] = v;
 		}
 		barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -187,21 +187,21 @@ void mrqcof_curve2(
 			if (threadIdx.x + t * BLOCK_DIM < ntri)
 			{
 				int lr = triLM[t] / 64, mr = triLM[t] % 64;
-				double acc = 0;
+				real acc = R_C(0.0);
 				for (int pp = 0; pp < P; pp++)
 				{
-					double w = dydaT[pp][lr] * s2wS[pp];
-					acc += w * dydaT[pp][mr];
+					real w = R_MUL(dydaT[pp][lr], s2wS[pp]);
+					R_ADDTOM(acc, w, dydaT[pp][mr]);
 				}
-				triA[t] = triA[t] + acc;
+				triA[t] = R_ADD(triA[t], acc);
 			}
 		}
 		if (ownB)
 		{
-			double bacc = 0;
+			real bacc = R_C(0.0);
 			for (int pp = 0; pp < P; pp++)
-				bacc += dwsS[pp] * dydaT[pp][browL];
-			betaR = betaR + bacc;
+				R_ADDTOM(bacc, dwsS[pp], dydaT[pp][browL]);
+			betaR = R_ADD(betaR, bacc);
 		}
 
 		/* ia-gated tail rows l = lastone+1..lastma: unchanged */
@@ -214,16 +214,16 @@ void mrqcof_curve2(
 			{
 				j++;
 				for (p = 0; p < P; p++)
-					wp[p] = dydaT[p][l] * s2wS[p];
+					wp[p] = R_MUL(dydaT[p][l], s2wS[p]);
 
 				tmpl = latmpl;
 				if (rel && tmpl == 1) tmpl++;	//m==1
 				for (m = tmpl; m <= latmph; m++)
 				{
-					double acc = 0;
+					real acc = R_C(0.0);
 					for (p = 0; p < P; p++)
-						acc += wp[p] * dydaT[p][m];
-					alpha[j * Mfit1 + m - rel] = alpha[j * Mfit1 + m - rel] + acc;
+						R_ADDTOM(acc, wp[p], dydaT[p][m]);
+					alpha[j * Mfit1 + m - rel] = R_ADD(alpha[j * Mfit1 + m - rel], acc);
 				} /* m */
 				if (threadIdx.x == 0)
 				{
@@ -233,16 +233,16 @@ void mrqcof_curve2(
 						if ((*CUDA_CC).ia[m])
 						{
 							k++;
-							double acc = 0;
+							real acc = R_C(0.0);
 							for (p = 0; p < P; p++)
-								acc += wp[p] * dydaT[p][m];
-							alpha[j * Mfit1 + k] = alpha[j * Mfit1 + k] + acc;
+								R_ADDTOM(acc, wp[p], dydaT[p][m]);
+							alpha[j * Mfit1 + k] = R_ADD(alpha[j * Mfit1 + k], acc);
 						}
 					} /* m */
-					double bacc = 0;
+					real bacc = R_C(0.0);
 					for (p = 0; p < P; p++)
-						bacc += dwsS[p] * dydaT[p][l];
-					beta[j] = beta[j] + bacc;
+						R_ADDTOM(bacc, dwsS[p], dydaT[p][l]);
+					beta[j] = R_ADD(beta[j], bacc);
 				}
 			}
 		} /* l */
@@ -250,7 +250,7 @@ void mrqcof_curve2(
 		/* chi-square: same per-point terms in the same ascending order */
 		for (p = 0; p < P; p++)
 		{
-			ltrial_chisq = ltrial_chisq + dyS[p] * dyS[p] * s2wS[p];
+			ltrial_chisq = R_ADDM(ltrial_chisq, R_MUL(dyS[p], dyS[p]), s2wS[p]);
 		}
 
 		/* everyone must finish reading dydaT before the next tile overwrites it */

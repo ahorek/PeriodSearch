@@ -122,6 +122,8 @@
     <None Include="..\period_search\dave.cl" />
     <None Include="..\period_search\gauss_errc.cl" />
     <None Include="..\period_search\Intrinsics.cl" />
+    <None Include="..\period_search\Real.cl" />
+    <None Include="..\period_search\SoftFP64.cl" />
     <None Include="..\period_search\Makefile" />
     <None Include="..\period_search\Makefile_OpenCL_1.2" />
     <None Include="..\period_search\mrqcof.cl" />

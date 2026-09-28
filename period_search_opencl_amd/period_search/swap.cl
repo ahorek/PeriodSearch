@@ -1,6 +1,6 @@
-void SwapDouble(double a, double b) 
+void SwapDouble(real a, real b) 
 { 
-	double temp = a; 
+	real temp = a; 
 	a = b; 
 	b = temp; 
 }

@@ -100,6 +100,12 @@
     <None Include="period_search\Intrinsics.cl">
       <Filter>Source Files CL</Filter>
     </None>
+    <None Include="period_search\Real.cl">
+      <Filter>Source Files CL</Filter>
+    </None>
+    <None Include="period_search\SoftFP64.cl">
+      <Filter>Source Files CL</Filter>
+    </None>
     <None Include="period_search\mrqcof.cl">
       <Filter>Source Files CL</Filter>
     </None>

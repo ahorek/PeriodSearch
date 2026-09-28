@@ -2,8 +2,8 @@ __kernel void ClCalculatePrepare(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_result* CUDA_FR,
     __global int* CUDA_End,
-    double freq_start,
-    double freq_step,
+    real_arg freq_start,
+    real_arg freq_step,
     int n_max,
     int n_start)
 {
@@ -42,14 +42,14 @@ __kernel void ClCalculatePrepare(
     //printf("Idx: %d | isInvalid: %d\n", x, (*CUDA_LCC).isInvalid);
 
     //CUDA_mCC[x].freq = freq_start - (n - 1) * freq_step;
-    (*CUDA_LCC).freq = freq_start - (n - 1) * freq_step;
+    (*CUDA_LCC).freq = R_SUBM(R_ARG(freq_start), R_FROM_INT(n - 1), R_ARG(freq_step));
 
     ///* initial poles */
-    (*CUDA_LFR).per_best = 0.0;
-    (*CUDA_LFR).dark_best = 0.0;
-    (*CUDA_LFR).la_best = 0.0;
-    (*CUDA_LFR).be_best = 0.0;
-    (*CUDA_LFR).dev_best = 1e40;
+    (*CUDA_LFR).per_best = R_C(0.0);
+    (*CUDA_LFR).dark_best = R_C(0.0);
+    (*CUDA_LFR).la_best = R_C(0.0);
+    (*CUDA_LFR).be_best = R_C(0.0);
+    (*CUDA_LFR).dev_best = R_1E40;
 
     //printf("n: %4d, CUDA_CC[%3d].freq: %10.7f, CUDA_FR[%3d].la_best: %10.7f, isInvalid: %4d \n", n, x, (*CUDA_LCC).freq, x, (*CUDA_LFR).la_best, (*CUDA_LCC).isInvalid);
 
@@ -61,7 +61,7 @@ __kernel void ClCalculatePreparePole(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     __global struct freq_result* CUDA_FR,
-    __global double* CUDA_cg_first,
+    __global real* CUDA_cg_first,
     __global int* CUDA_End,
     __global struct freq_context* CUDA_CC2)
 {
@@ -122,7 +122,7 @@ __kernel void ClCalculatePreparePole(
     if (threadIdx.x != 0)
         return;
 
-    double period = ddiv(1.0, (*CUDA_LCC).freq);
+    real period = R_DIV(R_C(1.0), (*CUDA_LCC).freq);
 
     /* which of the initial poles this group runs (see ClCalculatePrepare) */
     const int m = blockIdx.x % N_POLES + 1;
@@ -137,16 +137,16 @@ __kernel void ClCalculatePreparePole(
     //printf("cg[%d]: %.7f | cg[%d]: %.7f\n", (*CUDA_CC).Ncoef + 1, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1], (*CUDA_CC).Ncoef + 2, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2]);
 
     /* The formulas use beta measured from the pole */
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1] = 90.0 - (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1];
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1] = R_SUB(R_C(90.0), (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1]);
     //printf("90 - cg[%d]: %.7f\n", (*CUDA_CC).Ncoef + 1, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1]);
 
     /* conversion of lambda, beta to radians */
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1] = DEG2RAD * (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1];
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2] = DEG2RAD * (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2];
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1] = R_MUL(R_DEG2RAD, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1]);
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2] = R_MUL(R_DEG2RAD, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2]);
     //printf("cg[%d]: %.7f | cg[%d]: %.7f\n", (*CUDA_CC).Ncoef + 1, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1], (*CUDA_CC).Ncoef + 2, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2]);
 
     /* Use omega instead of period */
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3] = ddiv(24.0 * 2.0 * PI, period);
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3] = R_DIV(R_48PI, period);
 
     //if (threadIdx.x == 0)
     //{
@@ -154,14 +154,14 @@ __kernel void ClCalculatePreparePole(
     //}
 
     /* Lommel-Seeliger part */
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 2] = 1;
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 2] = R_C(1.0);
     //if (blockIdx.x == 0)
     //{
     //	printf("cg[%3d]: %10.7f\n", (*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 2, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 2]);
     //}
 
     /* Use logarithmic formulation for Lambert to keep it positive */
-    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 1] = log((*CUDA_CC).cl);
+    (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 1] = R_LOG((*CUDA_CC).cl);
     //(*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3 + (*CUDA_CC).Nphpar + 1] = (*CUDA_CC).logCl;   //log((*CUDA_CC).cl);
 
 
@@ -174,12 +174,12 @@ __kernel void ClCalculatePreparePole(
     /* Levenberg-Marquardt loop */
     // moved to global iter_max,iter_min,iter_dif_max
     //
-    (*CUDA_LCC).rchisq = -1;
-    (*CUDA_LCC).Alamda = -1;
+    (*CUDA_LCC).rchisq = R_C(-1.0);
+    (*CUDA_LCC).Alamda = R_C(-1.0);
     (*CUDA_LCC).Niter = 0;
-    (*CUDA_LCC).iter_diff = 1e40;
-    (*CUDA_LCC).dev_old = 1e30;
-    (*CUDA_LCC).dev_new = 0;
+    (*CUDA_LCC).iter_diff = R_1E40;
+    (*CUDA_LCC).dev_old = R_1E30;
+    (*CUDA_LCC).dev_new = R_C(0.0);
     //	(*CUDA_LCC).Lastcall=0; always ==0
     (*CUDA_LFR).isReported = 0;
 }
@@ -190,8 +190,8 @@ __kernel void ClCalculateIter1Begin(
     __global int* CUDA_End,
     int CUDA_n_iter_min,
     int CUDA_n_iter_max,
-    double CUDA_iter_diff_max,
-    double CUDA_Alamda_start,
+    real_arg CUDA_iter_diff_max,
+    real_arg CUDA_Alamda_start,
     int n_contexts)
 {
     int x = get_global_id(0);
@@ -210,17 +210,17 @@ __kernel void ClCalculateIter1Begin(
     }
 
     //                                   ?    < 50                                 ?       > 0                                   ?      < 0
-    (*CUDA_LCC).isNiter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && ((*CUDA_LCC).iter_diff > CUDA_iter_diff_max)) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
+    (*CUDA_LCC).isNiter = (((*CUDA_LCC).Niter < CUDA_n_iter_max) && R_GT((*CUDA_LCC).iter_diff, R_ARG(CUDA_iter_diff_max))) || ((*CUDA_LCC).Niter < CUDA_n_iter_min);
     (*CUDA_FR).isNiter = (*CUDA_LCC).isNiter;
 
     //printf("[%d] isNiter: %d, Alamda: %10.7f\n", blockIdx.x, (*CUDA_LCC).isNiter, (*CUDA_LCC).Alamda);
 
     if ((*CUDA_LCC).isNiter)
     {
-        if ((*CUDA_LCC).Alamda < 0)
+        if (R_LT((*CUDA_LCC).Alamda, R_C(0.0)))
         {
             (*CUDA_LCC).isAlamda = 1;
-            (*CUDA_LCC).Alamda = CUDA_Alamda_start; /* initial alambda */
+            (*CUDA_LCC).Alamda = R_ARG(CUDA_Alamda_start); /* initial alambda */
         }
         else
         {
@@ -250,10 +250,10 @@ __kernel void ClCalculateIter1Begin(
 __kernel void ClCalculateIter1Mrqcof1Start(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global double* scratch)
+    __global real* scratch)
     //__global int* CUDA_End)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -284,9 +284,9 @@ __kernel void ClCalculateIter1Mrqcof1Matrix(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int lpoints,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx;
     blockIdx.x = get_group_id(0);
@@ -324,10 +324,10 @@ __kernel void ClCalculateIter1MrqcofCurve1(
     __global struct freq_context* CUDA_CC,
     const int inrel,
     const int lpoints,
-    __global double* scratch,
+    __global real* scratch,
     const int trial)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -342,7 +342,7 @@ __kernel void ClCalculateIter1MrqcofCurve1(
     if (!trial && !(*CUDA_LCC).isAlamda) return;
 
     __local int num;  // __shared__
-    __local double tmave[BLOCK_DIM];
+    __local real tmave[BLOCK_DIM];
 
     if (threadIdx.x == 0)
     {
@@ -357,9 +357,9 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
     __global struct freq_context* CUDA_CC,
     const int inrel,
     const int lpoints,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -375,7 +375,7 @@ __kernel void ClCalculateIter1Mrqcof1Curve1Last(
 
     if (!(*CUDA_LCC).isAlamda) return;
 
-    __local double res[BLOCK_DIM];
+    __local real res[BLOCK_DIM];
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("Mrqcof1Curve1Last\n");
@@ -399,10 +399,10 @@ __kernel void ClCalculateIter1MrqcofCurve2(
     __global struct freq_context* CUDA_CC,
     const int inrel,
     const int lpoints,
-    __global double* scratch,
+    __global real* scratch,
     const int trial)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -417,8 +417,8 @@ __kernel void ClCalculateIter1MrqcofCurve2(
     if (!trial && !(*CUDA_LCC).isAlamda) return;
 
     /* OpenCL requires __local declarations at kernel scope */
-    __local double dydaT[CURVE2_K][DYT_STRIDE];
-    __local double tileS[5 * CURVE2_K];   /* s2w, dws, dy, coef, coef1 */
+    __local real dydaT[CURVE2_K][DYT_STRIDE];
+    __local real tileS[5 * CURVE2_K];   /* s2w, dws, dy, coef, coef1 */
 
     mrqcof_curve2(CUDA_LCC, CUDA_CC,
         scr + (trial ? (*CUDA_CC).offCovar : (*CUDA_CC).offAlpha),
@@ -429,9 +429,9 @@ __kernel void ClCalculateIter1MrqcofCurve2(
 __kernel void ClCalculateIter1Mrqcof1End(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -450,7 +450,7 @@ __kernel void ClCalculateIter1Mrqcof1End(
     //	printf("Mrqcof1End\n");
 
 
-    double ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
+    real ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
     if (threadIdx.x == 0)
         (*CUDA_LCC).Ochisq = ochisq;
 
@@ -469,10 +469,10 @@ __kernel void ClCalculateIter1Mrqmin1End(
     __global struct freq_context* CUDA_CC,
     /* runtime-sized by the host to Mfit1*Mfit1 doubles (~24 KB for real
        workunits) so the kernel also fits GCN's 32 KB local-memory limit */
-    __local double* covL,
-    __global double* scratch)
+    __local real* covL,
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -504,12 +504,12 @@ __kernel void ClCalculateIter1Mrqmin1End(
     /* OpenCL requires __local declarations at kernel scope; the solver runs
        entirely in local memory (see gauss_errc.cl). covL comes in as a
        runtime-sized kernel argument. */
-    __local double daL[DYT_STRIDE];
+    __local real daL[DYT_STRIDE];
     __local int ipivL[DYT_STRIDE];
-    __local double shBig[BLOCK_DIM];
+    __local real shBig[BLOCK_DIM];
     __local int shIrow[BLOCK_DIM];
     __local int shIcol[BLOCK_DIM];
-    __local double pivBC[1];
+    __local real pivBC[1];
     __local int icolBC[1];
 
     mrqmin_1_end(CUDA_LCC, CUDA_CC, covL, daL, ipivL, shBig, shIrow, shIcol, pivBC, icolBC, scr + (*CUDA_CC).offAlpha);
@@ -522,9 +522,9 @@ __kernel void ClCalculateIter1Mrqmin1End(
 __kernel void ClCalculateIter1Mrqcof2Start(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -552,9 +552,9 @@ __kernel void ClCalculateIter1Mrqcof2Matrix(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
     const int lpoints,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -587,9 +587,9 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
     __global struct freq_context* CUDA_CC,
     const int inrel,
     const int lpoints,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -603,7 +603,7 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    __local double res[BLOCK_DIM];
+    __local real res[BLOCK_DIM];
 
     //mrqcof_curve1_last(CUDA_LCC, CUDA_CC, dytemp, (*CUDA_LCC).cg, (*CUDA_LCC).alpha, (*CUDA_LCC).beta, res, inrel, lpoints);
     mrqcof_curve1_last(CUDA_LCC, CUDA_CC, (*CUDA_LCC).atry, scr + (*CUDA_CC).offCovar, (*CUDA_LCC).da, res, inrel, lpoints, scr);
@@ -612,9 +612,9 @@ __kernel void ClCalculateIter1Mrqcof2Curve1Last(
 __kernel void ClCalculateIter1Mrqcof2End(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -627,7 +627,7 @@ __kernel void ClCalculateIter1Mrqcof2End(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    double chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
+    real chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
     if (threadIdx.x == 0)
         (*CUDA_LCC).Chisq = chisq;
 
@@ -638,9 +638,9 @@ __kernel void ClCalculateIter1Mrqcof2End(
 __kernel void ClCalculateIter1Mrqmin2End(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global double* scratch)
+    __global real* scratch)
 {
-    __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
+    __global real* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
     blockIdx.x = get_group_id(0);
@@ -693,7 +693,7 @@ __kernel void ClCalculateIter2(
            write Ochisq inside this branch while other wavefronts could still
            be evaluating the condition, which made the branch - and the
            barriers in it - divergent */
-        const int improved = (*CUDA_LCC).Niter == 1 || (*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq;
+        const int improved = (*CUDA_LCC).Niter == 1 || R_LT((*CUDA_LCC).Chisq, (*CUDA_LCC).Ochisq);
         if (improved)
         {
             int brtmph = (*CUDA_CC).Numfac / BLOCK_DIM;
@@ -714,13 +714,13 @@ __kernel void ClCalculateIter2(
 
                 for (i = 1; i <= 3; i++)
                 {
-                    (*CUDA_LCC).chck[i] = 0;
+                    (*CUDA_LCC).chck[i] = R_C(0.0);
 
 
                     for (j = 1; j <= (*CUDA_CC).Numfac; j++)
                     {
-                        double qq;
-                        qq = (*CUDA_LCC).chck[i] + (*CUDA_LCC).Area[j] * (*CUDA_CC).Nor[j][i - 1];
+                        real qq;
+                        qq = R_ADDM((*CUDA_LCC).chck[i], (*CUDA_LCC).Area[j], (*CUDA_CC).Nor[j][i - 1]);
 
                         //if (blockIdx.x == 0)
                         //	printf("[%d] [%d][%3d] qq: %10.7f, chck[%d]: %10.7f, Area[%3d]: %10.7f, Nor[%3d][%d]: %10.7f\n",
@@ -735,7 +735,7 @@ __kernel void ClCalculateIter2(
 
                 //printf("[%d] chck[1]: %10.7f, chck[2]: %10.7f, chck[3]: %10.7f\n", blockIdx.x, (*CUDA_LCC).chck[1], (*CUDA_LCC).chck[2], (*CUDA_LCC).chck[3]);
 
-                (*CUDA_LCC).rchisq = (*CUDA_LCC).Chisq - (pow((*CUDA_LCC).chck[1], 2.0) + pow((*CUDA_LCC).chck[2], 2.0) + pow((*CUDA_LCC).chck[3], 2.0)) * pow((*CUDA_CC).conw_r, 2.0);
+                (*CUDA_LCC).rchisq = R_SUBM((*CUDA_LCC).Chisq, R_ADD(R_ADD(R_POW2((*CUDA_LCC).chck[1]), R_POW2((*CUDA_LCC).chck[2])), R_POW2((*CUDA_LCC).chck[3])), R_POW2((*CUDA_CC).conw_r));
                 //(*CUDA_LCC).rchisq = (*CUDA_LCC).Chisq - ((*CUDA_LCC).chck[1] * (*CUDA_LCC).chck[1] + (*CUDA_LCC).chck[2] * (*CUDA_LCC).chck[2] + (*CUDA_LCC).chck[3] * (*CUDA_LCC).chck[3]) * ((*CUDA_CC).conw_r * (*CUDA_CC).conw_r);
             }
         }
@@ -746,7 +746,7 @@ __kernel void ClCalculateIter2(
             //if (blockIdx.x == 0)
             //	printf("ndata - 3: %3d\n", (*CUDA_CC).ndata - 3);
 
-            (*CUDA_LCC).dev_new = sqrt(ddiv((*CUDA_LCC).rchisq, (double)((*CUDA_CC).ndata - 3)));
+            (*CUDA_LCC).dev_new = R_SQRT(R_DIV((*CUDA_LCC).rchisq, R_FROM_INT((*CUDA_CC).ndata - 3)));
 
             //if (blockIdx.x == 233)
             //{
@@ -756,9 +756,9 @@ __kernel void ClCalculateIter2(
             //}
 
             // NOTE: only if this step is better than the previous, 1e-10 is for numeric errors
-            if ((*CUDA_LCC).dev_old - (*CUDA_LCC).dev_new > 1e-10)
+            if (R_GT(R_SUB((*CUDA_LCC).dev_old, (*CUDA_LCC).dev_new), R_1E_10))
             {
-                (*CUDA_LCC).iter_diff = (*CUDA_LCC).dev_old - (*CUDA_LCC).dev_new;
+                (*CUDA_LCC).iter_diff = R_SUB((*CUDA_LCC).dev_old, (*CUDA_LCC).dev_new);
                 (*CUDA_LCC).dev_old = (*CUDA_LCC).dev_new;
             }
             //		(*CUDA_LFR).Niter=(*CUDA_LCC).Niter;
@@ -783,10 +783,10 @@ __kernel void ClCalculateFinishPole(
 
     if ((*CUDA_LCC).isInvalid) return;
 
-    double totarea = 0;
+    real totarea = R_C(0.0);
     for (i = 1; i <= (*CUDA_CC).Numfac; i++)
     {
-        totarea = totarea + (*CUDA_LCC).Area[i];
+        totarea = R_ADD(totarea, (*CUDA_LCC).Area[i]);
     }
 
     //if(blockIdx.x == 2)
@@ -796,35 +796,35 @@ __kernel void ClCalculateFinishPole(
     //	printf("rchisq: %10.7f, Chisq: %10.7f \n", (*CUDA_LCC).rchisq, (*CUDA_LCC).Chisq);
 
     //const double sum = pow((*CUDA_LCC).chck[1], 2.0) + pow((*CUDA_LCC).chck[2], 2.0) + pow((*CUDA_LCC).chck[3], 2.0);
-    const double sum = ((*CUDA_LCC).chck[1] * (*CUDA_LCC).chck[1]) + ((*CUDA_LCC).chck[2] * (*CUDA_LCC).chck[2]) + ((*CUDA_LCC).chck[3] * (*CUDA_LCC).chck[3]);
+    const real sum = R_ADDM(R_MADD((*CUDA_LCC).chck[1], (*CUDA_LCC).chck[1], R_MUL((*CUDA_LCC).chck[2], (*CUDA_LCC).chck[2])), (*CUDA_LCC).chck[3], (*CUDA_LCC).chck[3]);
     //printf("[FinishPole] [%d] sum: %10.7f\n", blockIdx.x, sum);
 
-    const double dark = sqrt(sum);
+    const real dark = R_SQRT(sum);
 
     //if (blockIdx.x == 232 || blockIdx.x == 233)
     //	printf("[%d] sum: %12.8f, dark: %12.8f, totarea: %12.8f, dark_best: %12.8f\n", blockIdx.x, sum, dark, totarea, dark / totarea * 100);
 
     /* period solution */
-    const double period = ddiv(2 * PI, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3]);
+    const real period = R_DIV(R_2PI, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 3]);
 
     /* pole solution */
-    const double la_tmp = RAD2DEG * (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2];
+    const real la_tmp = R_MUL(R_RAD2DEG, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 2]);
 
     //if (la_tmp < 0.0)
     //	printf("[CalculateFinishPole] la_best: %4.0f\n", la_tmp);
 
-    const double be_tmp = 90 - RAD2DEG * (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1];
+    const real be_tmp = R_SUBM(R_C(90.0), R_RAD2DEG, (*CUDA_LCC).cg[(*CUDA_CC).Ncoef + 1]);
 
     //if (blockIdx.x == 2)
         //printf("[%d] dev_new: %10.7f, dev_best: %10.7f\n", blockIdx.x, (*CUDA_LCC).dev_new, (*CUDA_LFR).dev_best);
 
-    if ((*CUDA_LCC).dev_new < (*CUDA_LFR).dev_best)
+    if (R_LT((*CUDA_LCC).dev_new, (*CUDA_LFR).dev_best))
     {
         (*CUDA_LFR).dev_best = (*CUDA_LCC).dev_new;
         (*CUDA_LFR).dev_best_x2 = (*CUDA_LCC).rchisq;
         (*CUDA_LFR).per_best = period;
-        (*CUDA_LFR).dark_best = ddiv(dark, totarea) * 100;
-        (*CUDA_LFR).la_best = la_tmp < 0 ? la_tmp + 360.0 : la_tmp;
+        (*CUDA_LFR).dark_best = R_MUL(R_DIV(dark, totarea), R_C(100.0));
+        (*CUDA_LFR).la_best = R_LT(la_tmp, R_C(0.0)) ? R_ADD(la_tmp, R_C(360.0)) : la_tmp;
         (*CUDA_LFR).be_best = be_tmp;
 
         //printf("[%d] dev_best: %12.8f\n", blockIdx.x, (*CUDA_LFR).dev_best);
@@ -837,9 +837,9 @@ __kernel void ClCalculateFinishPole(
         //}
     }
 
-    if (isnan((*CUDA_LFR).dark_best) == 1)
+    if (R_ISNAN((*CUDA_LFR).dark_best) == 1)
     {
-        (*CUDA_LFR).dark_best = 1.0;
+        (*CUDA_LFR).dark_best = R_C(1.0);
     }
 
     //if (blockIdx.x == 2)

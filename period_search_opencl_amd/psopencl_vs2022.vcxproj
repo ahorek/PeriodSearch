@@ -405,6 +405,12 @@
     <None Include="period_search\Intrinsics.cl">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="period_search\Real.cl">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="period_search\SoftFP64.cl">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="period_search\Makefile" />
     <None Include="period_search\mrqcof.cl">
       <DeploymentContent>true</DeploymentContent>
