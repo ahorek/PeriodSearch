@@ -289,17 +289,11 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
                 if (strcmp(profile, "FULL_PROFILE") != 0) continue;
 
                 err_num = clGetPlatformInfo(plt, CL_PLATFORM_NAME, sizeof(name), name, NULL);
-                err_num = clGetPlatformInfo(plt, CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
 
                 if (strcmp(name, "Clover") == 0) continue;
-                if (strcmp(vendor, "Advanced Micro Devices, Inc.") == 0) {
-                    platform = plt;
-                    break;
-                }
-                if (strcmp(name, "rusticl") == 0) {
-                    platform = plt;
-                    break;
-                }
+
+                platform = plt;
+                break;
             }
 
             if (!platform) {
