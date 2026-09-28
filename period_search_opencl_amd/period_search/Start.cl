@@ -1,18 +1,3 @@
-kernel void ClCheckEnd(
-    __global int* CUDA_End,
-    int theEnd)
-{
-    int3 blockIdx;
-    blockIdx.x = get_group_id(0);
-
-    if (blockIdx.x == 0)
-        *CUDA_End = theEnd;
-
-    //if (blockIdx.x == 0)
-        //printf("CheckEnd CUDA_End: %2d\n", *CUDA_End);
-
-}
-
 __kernel void ClCalculatePrepare(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_result* CUDA_FR,
