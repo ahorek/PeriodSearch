@@ -3019,9 +3019,6 @@ int gauss_errc(
 
 	for (i = 1; i <= n; i++)
 	{
-		/* -1, not 0: work-items without a candidate row must never win the
-		   reduction below, otherwise an all-zero (singular) remainder selects
-		   icol = 0 and pivots on the never-staged covL[0] */
 		big = R_C(-1.0);
 		irow = 0;
 		licol = 0;
@@ -3092,9 +3089,6 @@ int gauss_errc(
 
 			if (R_EQ(covL[covarIdx], R_C(0.0)))
 			{
-				/* singular pivot: take no step (atry = cg), matching the CPU
-				   mrqmin, which returns before evaluating a trial point; the
-				   whole group then bails with error 2 after the barrier */
 				for (int l2 = 1; l2 <= (*CUDA_CC).ma; l2++)
 				{
 					(*CUDA_LCC).atry[l2] = (*CUDA_LCC).cg[l2];
@@ -3113,7 +3107,6 @@ int gauss_errc(
 
 		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
-		/* uniform exit: every work-item sees the flag after the barrier */
 		if (icolBC[0] < 0)
 		{
 			return(2);
