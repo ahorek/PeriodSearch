@@ -9,7 +9,7 @@
      R_EXP -> exp, ...), so the compiler sees exactly the code it always
      compiled.
 
-   -D PS_FP32 (set by the host when the device has no FP64 support):
+   -D PS_SWFP64 (set by the host when the device has no FP64 support):
      real holds the IEEE double's bit pattern and every macro calls the
      software binary64 implementation in SoftFP64.cl: correctly rounded
      add/sub/mul/fma/div/sqrt and bit-exact ports of the AMD device-library
@@ -25,7 +25,7 @@
    one fma - a single rounding. Those spots are written with the explicit
    R_MADD/R_ADDM/R_MSUB/R_SUBM/R_ADDTOM/R_SUBFROMM forms: in the FP64 build
    they are the same expressions (so the compiler fuses them as before),
-   in the PS_FP32 build they are software fma calls. Keep them in sync
+   in the PS_SWFP64 build they are software fma calls. Keep them in sync
    when editing: an R_ADD with an R_MUL operand would be fused by the FP64
    compiler but rounded twice by the emulation.
 
@@ -37,7 +37,7 @@
        R_DEG2RAD, ...);
      - double kernel arguments are real_arg, read with R_ARG(). */
 
-#ifndef PS_FP32
+#ifndef PS_SWFP64
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
@@ -92,7 +92,7 @@ typedef double real_arg;
 #define R_1E30              1e30
 #define R_1E40              1e40
 
-#else /* PS_FP32 */
+#else /* PS_SWFP64 */
 
 typedef struct { ulong u; } real;
 typedef ulong real_arg;
@@ -117,6 +117,9 @@ real sf_sincos_r(real x, real* c)
 #define R_C_(x)             sf_r(sf_from_f32(x##f))
 #define R_C(x)              R_C_(x)
 #define R_FROM_INT(i)       sf_r(sf_from_i32(i))
+/* truncating, 0 for NaN/Inf/out of float range: only for the approximate
+   visibility pre-scan in bright() */
+#define R_TO_F32(x)         sf_to_f32_approx((x).u)
 
 #define R_ADD(a, b)         sf_r(sf_add((a).u, (b).u))
 #define R_SUB(a, b)         sf_r(sf_sub((a).u, (b).u))
@@ -162,4 +165,4 @@ real sf_sincos_r(real x, real* c)
 #define R_1E30              sf_r(0x46293E5939A08CEAUL)
 #define R_1E40              sf_r(0x483D6329F1C35CA5UL)
 
-#endif /* PS_FP32 */
+#endif /* PS_SWFP64 */

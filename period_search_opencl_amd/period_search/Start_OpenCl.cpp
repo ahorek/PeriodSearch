@@ -95,18 +95,14 @@ cl_kernel kernelCalculateIter1Mrqcof1Matrix;
    covar/da) */
 static const cl_int curvePassCurrent = 0, curvePassTrial = 1;
 
-/* FP32 mode: the device has no FP64 support (or --fp32 was given).
-   The kernels are then built with -D PS_FP32 and compute every double in
-   software (Real.cl, SoftFP64.cl) with results identical to the FP64
-   build. The values are still IEEE doubles in the same buffers, so the host
-   side is unchanged apart from the build options. */
-static bool gFp32 = false;
-static bool gForceFp32 = false;
+/* Emulated mode: the device has no FP64 support. */
+static bool gSwFp64 = false;
+static bool gForceSwFp64 = false;
 
-/* --fp32: use the FP32 variant even on an FP64 device (testing) */
-void ClForceFp32(bool force)
+/* --softwarefp64: use the software FP64 variant */
+void ClForceSoftwareFp64(bool force)
 {
-    gForceFp32 = force;
+    gForceSwFp64 = force;
 }
 cl_kernel kernelCalculateIter1Mrqcof1Curve1;
 cl_kernel kernelCalculateIter1Mrqcof1Curve2;
@@ -461,10 +457,10 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     bool isFp64 = string(deviceExtensions).find("cl_khr_fp64") != std::string::npos
         || string(deviceExtensions).find("cl_amd_fp64") != std::string::npos;
 
-    gFp32 = !isFp64 || gForceFp32;
-    if (gFp32)
+    gSwFp64 = !isFp64 || gForceSwFp64;
+    if (gSwFp64)
     {
-        cerr << (isFp64 ? "FP32 override" : "Double precision floating point not supported by the device")
+        cerr << (isFp64 ? "FP64 override" : "Double precision floating point not supported by the device")
              << ": using software FP64 emulation" << endl;
     }
 
@@ -496,8 +492,8 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
     (*Fa).Phi_0 = Phi_0;
 
     string kernelSourceFile = "kernelSource.cl";
-    /* separate caches: the FP32 build is a different program */
-    const char* kernelFileName = gFp32 ? "kernels_fp32.bin" : "kernels.bin";
+    /* separate caches: the software FP64 build is a different program */
+    const char* kernelFileName = gSwFp64 ? "kernels_swfp64.bin" : "kernels.bin";
 #if defined (_DEBUG)
 #if !defined _WIN32
     // Load CL file, build CL program object, create CL kernel object
@@ -605,10 +601,10 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
 
 
         char options[64];
-        if (gFp32)
+        if (gSwFp64)
         {
             /* no FP64 at all: software doubles (the division probe needs FP64) */
-            snprintf(options, sizeof(options), "-w -D PS_FP32");
+            snprintf(options, sizeof(options), "-w -D PS_SWFP64");
         }
         else
         {

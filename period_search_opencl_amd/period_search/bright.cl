@@ -308,8 +308,8 @@ void bright(
 	tmp4 = R_C(0.0);
 	tmp5 = R_C(0.0);
 
-#ifdef PS_FP32
-	/* FP32 build: the software-FP64 visibility test costs ~6 emulated
+#ifdef PS_SWFP64
+	/* Software FP64 build: the software-FP64 visibility test costs ~6 emulated
 	   operations per facet, so a float pre-scan first drops the facets it
 	   can prove hidden or unlit: lmu < -margin or lmu0 < -margin, margin =
 	   1e-5 of the sum of the term magnitudes plus an absolute 1e-30, far
@@ -372,11 +372,11 @@ void bright(
 		j = i;
 		lmu = R_ADDM(R_MADD(e_1, (*CUDA_CC).Nor[i][0], R_MUL(e_2, (*CUDA_CC).Nor[i][1])), e_3, (*CUDA_CC).Nor[i][2]);
 		lmu0 = R_ADDM(R_MADD(e0_1, (*CUDA_CC).Nor[i][0], R_MUL(e0_2, (*CUDA_CC).Nor[i][1])), e0_3, (*CUDA_CC).Nor[i][2]);
-#ifdef PS_FP32
+#ifdef PS_SWFP64
 		if (R_GT(lmu, R_TINY) && R_GT(lmu0, R_TINY))
 #endif
 		{
-#ifdef PS_FP32
+#ifdef PS_SWFP64
 			incl[incl_count] = i;
 #endif
 			dnom = R_ADD(lmu, lmu0);
@@ -408,7 +408,7 @@ void bright(
 
 			R_ADDTOM(tmp4, R_MUL(lmu, lmu0), ar);
 			R_ADDTOM(tmp5, ar, R_DIV(R_MUL(lmu, lmu0), R_ADD(lmu, lmu0)));
-#ifdef PS_FP32
+#ifdef PS_SWFP64
 			incl_count++;
 #endif
 		}

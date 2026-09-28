@@ -1,19 +1,14 @@
 /* SoftFP64.cl - IEEE-754 binary64 arithmetic in software, for devices
-   without cl_khr_fp64 (the PS_FP32 build, see Real.cl).
+   without cl_khr_fp64 (see Real.cl).
 
    A value is the double's own 64-bit pattern in a ulong; every operation
    is computed with integer arithmetic and rounded to nearest-even exactly
    as the hardware does, with full subnormal support: add, sub, mul, fma,
    div and sqrt are correctly rounded. On top of them sit ports of the AMD
    device-library (ocml) routines the kernels call - exp, log, acos,
-   sincos, fmod - reproduced operation by operation from the library, so
-   the PS_FP32 build returns bit-for-bit what the FP64 build computes on
-   AMD hardware.
+   sincos, fmod - reproduced operation by operation from the library */
 
-   The file is also compiled as C++ by the host-side test harness
-   (SF_HOST), hence the few portability macros. */
-
-#ifdef PS_FP32
+#ifdef PS_SWFP64
 
 #ifdef SF_HOST
 #define SF_CONST static const
@@ -1379,4 +1374,4 @@ ulong sf_ocml_fmod(ulong x, ulong y)
 #undef S_
 #undef N_
 
-#endif /* PS_FP32 */
+#endif /* PS_SWFP64 */
