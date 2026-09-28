@@ -51,8 +51,6 @@ int mrqmin_1_end(
 	}
 	// >>> Iter1Mrqmin1EndPre1 END
 
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-
 	// The damped matrix is staged straight from alpha into local memory by
 	// gauss_errc; covar is not touched at all (it is rezeroed by
 	// ClCalculateIter1Mrqcof2Start before mrqcof2 accumulates into it).
@@ -78,8 +76,6 @@ int mrqmin_1_end(
 				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
 			}
 	}
-
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 	// <<< Iter1Mrqmin1EndPost END
 
 	return err_code;

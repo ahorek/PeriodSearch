@@ -50,7 +50,6 @@ double conv(
 		tmp = res[0] + res[1];
 	}
 	//parallel reduction end
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 	for (j = tmpl; j <= tmph; j++)
 	{
@@ -74,7 +73,8 @@ double conv(
 		//    printf("[mrqcof_curve1_last -> conv] [%d][%3d] jp - 1: %3d, j[%3d] dyda[%3d]: %10.7f\n",
 		//        blockIdx.x, threadIdx.x, nc, j, j, (*CUDA_LCC).dyda[j]);
 	}
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
+	/* each work-item reads back only its own dyda[tmpl..tmph]; the caller's
+	   per-point barrier keeps res[] from being reused too early */
 
 	return (tmp);
 }

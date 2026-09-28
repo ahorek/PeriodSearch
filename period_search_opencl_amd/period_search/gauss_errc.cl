@@ -71,7 +71,9 @@ int gauss_errc(
 		for (j = 1; j <= n; j++) ipivL[j] = 0;
 	}
 
-	barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
+	/* global fence: also orders mrqmin_1_end's atry = cg copy before the
+	   singular-pivot path below rewrites atry from thread 0 */
+	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 	for (i = 1; i <= n; i++)
 	{
@@ -97,7 +99,6 @@ int gauss_errc(
 					}
 					else if (ipivL[k] > 1)
 					{
-						barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 						return(1);
 					}
 				}
@@ -195,8 +196,8 @@ int gauss_errc(
 				daL[ll] -= daL[icolBC[0]] * dum;
 			}
 		}
-
-		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
+		/* no barrier here: the next pivot search only reads the work-item's own
+		   rows, and the barrier after the sh* writes orders everything else */
 	}
 
 	/* only the step vector leaves the solver (the column unscramble of the

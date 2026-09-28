@@ -93,9 +93,11 @@ void mrqcof_curve2(
 				//		threadIdx.x, coef1, l, (*CUDA_LCC).dave[l], ixx, dytempG[ixx]);
 			}
 		}
-	}
 
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
+		/* the tiles below stage rows renormalized by other work-items, and every
+		   work-item must have read np1 before thread 0 advances it */
+		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); 	//__syncthreads();
+	}
 
 	if (threadIdx.x == 0)
 	{
@@ -297,7 +299,8 @@ void mrqcof_curve2(
 		}
 
 		/* everyone must finish reading dydaT before the next tile overwrites it */
-		barrier(CLK_LOCAL_MEM_FENCE);
+		if (jp0 + CURVE2_K <= lpoints)
+			barrier(CLK_LOCAL_MEM_FENCE);
 	} /* jp0 */
 
 	lnp2 += lpoints;

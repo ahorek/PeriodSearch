@@ -89,8 +89,6 @@ void mrqcof_start(
 		beta[j] = 0;
 	}
 
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads(); //pro jistotu
-
 	//int q = (*CUDA_CC).Ncoef0 + 2;
 	//if (blockIdx.x == 0)
 	//	printf("[neo] [%d][%3d] cg[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, q, (*CUDA_LCC).cg[q]);
@@ -149,10 +147,11 @@ void mrqcof_curve1(
 		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
 	}
 
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
-
 	if (Inrel == 1)
 	{
+		/* the sums below read other work-items' dytemp/ytemp rows */
+		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
+
 		int tmph, tmpl;
 		tmph = (*CUDA_CC).ma / BLOCK_DIM;
 		if ((*CUDA_CC).ma % BLOCK_DIM) tmph++;
@@ -261,8 +260,6 @@ void mrqcof_curve1_last(
 	brtmph = brtmpl + brtmph;
 	if (brtmph > (*CUDA_CC).Numfac) brtmph = (*CUDA_CC).Numfac;
 	brtmpl++;
-
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 	//if (threadIdx.x == 0)
 	//	printf("conv>>> [%d] \n", blockIdx.x);
 
@@ -287,7 +284,9 @@ void mrqcof_curve1_last(
 				(*CUDA_LCC).dave[l] = (*CUDA_LCC).dave[l] + (*CUDA_LCC).dyda[l];
 		}
 		/* save lightcurves */
-		barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
+		/* thread 0 must read res[0..1] before the next conv() overwrites it */
+		if (jp < Lpoints)
+			barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
 		/*         if ((*CUDA_LCC).Lastcall == 1) always ==0
 					 (*CUDA_LCC).Yout[np] = ymod;*/

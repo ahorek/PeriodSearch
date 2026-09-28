@@ -229,8 +229,6 @@ void matrix_neo(
 		deG[(jp) * 16 + (3) * 4 + (3)] = 0;
 		de0G[(jp) * 16 + (3) * 4 + (3)] = 0;
 	}
-
-	barrier(CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE);  //__syncthreads();
 }
 
 void bright(
