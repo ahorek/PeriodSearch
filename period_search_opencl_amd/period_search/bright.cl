@@ -308,42 +308,26 @@ void bright(
 	tmp4 = 0;
 	tmp5 = 0;
 
-	/* Pass 1 lists the visible facets (cheap), pass 2 runs the expensive body
-	   over that list only. In a single divergent loop the whole wave executed
-	   the body for every facet any of its lanes could see, i.e. for nearly
-	   all Numfac facets, while each lane needs it only for its ~1/3 visible
-	   ones. Same facets, same ascending order and the same expressions (lmu,
-	   lmu0 are recomputed identically in pass 2), so the results are
-	   bit-identical. */
-	for (i = 1; i <= (*CUDA_CC).Numfac; i++)
+	j = 1;
+	for (i = 1; i <= (*CUDA_CC).Numfac; i++, j++)
 	{
 		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
 		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
 
 		if ((lmu > TINY) && (lmu0 > TINY))
 		{
-			incl[incl_count] = i;
-			incl_count++;
-		}
-	}
-
-	for (j = 0; j < incl_count; j++)
-	{
-		i = incl[j];
-		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
-		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
-
-		{
 			dnom = lmu + lmu0;
 			s = lmu * lmu0 * (cl + ddiv(cls, dnom));
-			ar = (*CUDA_LCC).Area[i];
+			ar = (*CUDA_LCC).Area[j];
 			br += ar * s;
 
+			incl[incl_count] = i;
 			/* Darea[i] * s * Dg[i][k] == Darea[i] * s * g * Dsph[i][k]
 			   == (Area[i] * s) * Dsph[i][k]: fold g into the weight and
 			   gather from the one read-only, facet-major Dsph shared by
 			   all work-groups instead of the per-context Dg matrix */
-			dbr[j] = ar * s;
+			dbr[incl_count] = ar * s;
+			incl_count++;
 
 			double lmu0_dnom = ddiv(lmu0, dnom);
 			dsmu = cls * (lmu0_dnom * lmu0_dnom) + cl * lmu0;
