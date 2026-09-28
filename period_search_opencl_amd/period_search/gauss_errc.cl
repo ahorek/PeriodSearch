@@ -145,6 +145,9 @@ int gauss_errc(
 
 			if (R_EQ(covL[covarIdx], R_C(0.0)))
 			{
+				/* singular pivot: take no step (atry = cg), matching the CPU
+				   mrqmin, which returns before evaluating a trial point; the
+				   whole group then bails with error 2 after the barrier */
 				for (int l2 = 1; l2 <= (*CUDA_CC).ma; l2++)
 				{
 					(*CUDA_LCC).atry[l2] = (*CUDA_LCC).cg[l2];
@@ -163,6 +166,7 @@ int gauss_errc(
 
 		barrier(CLK_LOCAL_MEM_FENCE); //__syncthreads();
 
+		/* uniform exit: every work-item sees the flag after the barrier */
 		if (icolBC[0] < 0)
 		{
 			return(2);

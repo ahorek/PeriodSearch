@@ -55,7 +55,10 @@ __global__ void CudaCalculatePreparePole(void)
 	if ((*CUDA_LCC).isInvalid)
 	{
 		if (threadIdx.x == 0)
+		{
+			atomicAdd(&CUDA_End, 1);
 			(*CUDA_LFR).isReported = 0; //signal not to read result
+		}
 
 		return;
 	}

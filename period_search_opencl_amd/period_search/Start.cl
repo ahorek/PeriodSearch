@@ -88,11 +88,18 @@ __kernel void ClCalculatePreparePole(
     //printf("[%d] PreparePole t: %d, CUDA_End: %d\n", x, t, *CUDA_End);
 
 
-    /* invalid contexts (n > n_max) are not counted here: the host knows how
-       many there are and starts CUDA_End at that count; isReported is already
-       0 for every context (host initialises CUDA_FR before each batch) */
+    /* invalid contexts (n > n_max) never iterate: count them as finished
+       (once per group - the kernel runs BLOCK_DIM work-items per group);
+       isReported is already 0 for every context (host initialises CUDA_FR
+       before each batch) */
     if ((*CUDA_LCC).isInvalid)
+    {
+        if (threadIdx.x == 0) {
+            atomic_inc(CUDA_End);
+            (*CUDA_FR).isReported = 0; //signal not to read result
         return;
+        }
+    }
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
     //	printf("[Device] PreparePole > ma: %d\n", (*CUDA_CC).ma);

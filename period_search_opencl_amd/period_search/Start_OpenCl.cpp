@@ -1446,24 +1446,19 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
         /* all N_POLES pole trials of this batch run concurrently as separate
            work-groups */
         {
-            /* contexts with n > n_max are invalid (see ClCalculatePrepare) and never
-               iterate: start the End counter at their number instead of counting
-               them with an atomic in ClCalculatePreparePole */
-            cl_int nFreqs = (cl_int)(CUDA_grid_dim_precalc / N_POLES);
-            cl_int nValid = max_test_periods - n + 1;
-            if (nValid < 0) nValid = 0;
-            if (nValid > nFreqs) nValid = nFreqs;
-            cl_int endStart = (nFreqs - nValid) * N_POLES;
+            /* zero the End counter; invalid contexts (n > n_max) are counted by
+               ClCalculatePreparePole. Non-blocking: endStart lives until the
+               blocking End read below */
+            cl_int endStart = 0;
             theEnd = 0;
-            /* non-blocking: endStart lives until the End reads below have been waited on */
             err = clEnqueueWriteBuffer(queue, CUDA_End, CL_FALSE, 0, sizeof(endStart), &endStart, 0, NULL, NULL);
-            cl_int endRead[2] = { 0, 0 };
-            cl_event endEvent[2] = { NULL, NULL };
-            int endSlot = 0;
             err = EnqueueNDRangeKernel(queue, kernelCalculatePreparePole, 1, NULL, &totalWorkItems, &local, 0, NULL, NULL);
             if (getError(err)) return err;
             //clFinish(queue);
 
+            /* the debug readback of CUDA_CC2 (Brightness) and CUDA_MCC2 (cg vs
+               cg_first) was removed: its error counters were never used, and it
+               cost two blocking full-buffer reads per batch */
             clFlush(queue);
 #ifdef _DEBUG
             // printf(".");
@@ -1569,33 +1564,10 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
                 if (getError(err)) return err;
                 //clFinish(queue); // ***
 
-                /* pipelined End check: read this iteration's counter without blocking
-                   and act on the previous iteration's value, so the next iteration is
-                   already queued while the host waits. The one extra iteration this
-                   runs at the end is a no-op (every context has isNiter == 0, so all
-                   kernels return early and Iter1Begin does not count anything again) */
-                err = clEnqueueReadBuffer(queue, CUDA_End, CL_FALSE, 0, sizeof(cl_int), &endRead[endSlot], 0, NULL, &endEvent[endSlot]);
+                err = clEnqueueReadBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);
                 if (getError(err)) return err;
-                clFlush(queue);
-                endSlot ^= 1;
-                if (endEvent[endSlot])
-                {
-                    clWaitForEvents(1, &endEvent[endSlot]);
-                    clReleaseEvent(endEvent[endSlot]);
-                    endEvent[endSlot] = NULL;
-                    theEnd = endRead[endSlot] == CUDA_grid_dim_precalc;
-                }
-            }
 
-            /* wait for the outstanding End read before endRead / endStart go out of scope */
-            for (int e = 0; e < 2; e++)
-            {
-                if (endEvent[e])
-                {
-                    clWaitForEvents(1, &endEvent[e]);
-                    clReleaseEvent(endEvent[e]);
-                    endEvent[e] = NULL;
-                }
+                theEnd = theEnd == CUDA_grid_dim_precalc;
             }
 
             err = EnqueueNDRangeKernel(queue, kernelCalculateFinishPole, 1, NULL, &CUDA_grid_dim_precalc, &sLocal, 0, NULL, NULL);
@@ -2150,20 +2122,12 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
             fprintf(stderr, "%02d:%02d:%02d | Fraction done: %.4f%%\n", now->tm_hour, now->tm_min, now->tm_sec, fraction2);
 #endif
 
-            /* contexts with n > n_max are invalid (see ClCalculatePrepare) and never
-               iterate: start the End counter at their number instead of counting
-               them with an atomic in ClCalculatePreparePole */
-            cl_int nFreqs = (cl_int)(CUDA_grid_dim / N_POLES);
-            cl_int nValid = n_max - n + 1;
-            if (nValid < 0) nValid = 0;
-            if (nValid > nFreqs) nValid = nFreqs;
-            cl_int endStart = (nFreqs - nValid) * N_POLES;
+            /* zero the End counter; invalid contexts (n > n_max) are counted by
+               ClCalculatePreparePole. Non-blocking: endStart lives until the
+               blocking End read below */
+            cl_int endStart = 0;
             theEnd = 0;
-            /* non-blocking: endStart lives until the End reads below have been waited on */
             err = clEnqueueWriteBuffer(queue, CUDA_End, CL_FALSE, 0, sizeof(endStart), &endStart, 0, NULL, NULL);
-            cl_int endRead[2] = { 0, 0 };
-            cl_event endEvent[2] = { NULL, NULL };
-            int endSlot = 0;
             err = EnqueueNDRangeKernel(queue, kernelCalculatePreparePole, 1, NULL, &totalWorkItems, &local, 0, NULL, NULL);
             if (getError(err)) return err;
             //clFinish(queue);
@@ -2272,34 +2236,11 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
                 if (getError(err)) return err;
                 //clFinish(queue); // ***
 
-                /* pipelined End check: read this iteration's counter without blocking
-                   and act on the previous iteration's value, so the next iteration is
-                   already queued while the host waits. The one extra iteration this
-                   runs at the end is a no-op (every context has isNiter == 0, so all
-                   kernels return early and Iter1Begin does not count anything again) */
-                err = clEnqueueReadBuffer(queue, CUDA_End, CL_FALSE, 0, sizeof(cl_int), &endRead[endSlot], 0, NULL, &endEvent[endSlot]);
+                err = clEnqueueReadBuffer(queue, CUDA_End, CL_BLOCKING, 0, sizeof(theEnd), &theEnd, 0, NULL, NULL);
                 if (getError(err)) return err;
-                clFlush(queue);
-                endSlot ^= 1;
-                if (endEvent[endSlot])
-                {
-                    clWaitForEvents(1, &endEvent[endSlot]);
-                    clReleaseEvent(endEvent[endSlot]);
-                    endEvent[endSlot] = NULL;
-                    boinc_fraction_done(oldFractionDone + mid * ((double)endRead[endSlot] / CUDA_grid_dim));
-                    theEnd = endRead[endSlot] == CUDA_grid_dim;
-                }
-            }
 
-            /* wait for the outstanding End read before endRead / endStart go out of scope */
-            for (int e = 0; e < 2; e++)
-            {
-                if (endEvent[e])
-                {
-                    clWaitForEvents(1, &endEvent[e]);
-                    clReleaseEvent(endEvent[e]);
-                    endEvent[e] = NULL;
-                }
+                boinc_fraction_done(oldFractionDone + mid * ((double)theEnd / CUDA_grid_dim));
+                theEnd = theEnd == CUDA_grid_dim;
             }
 
             printf("."); fflush(stdout);
