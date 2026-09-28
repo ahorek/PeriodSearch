@@ -97,8 +97,8 @@ __kernel void ClCalculatePreparePole(
         if (threadIdx.x == 0) {
             atomic_inc(CUDA_End);
             (*CUDA_FR).isReported = 0; //signal not to read result
-        return;
         }
+        return;
     }
 
     //if (blockIdx.x == 0 && threadIdx.x == 0)
