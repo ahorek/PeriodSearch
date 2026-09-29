@@ -4,7 +4,7 @@
 
 
 extern cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId, int clCustomPlatformId, int clCustomDeviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double cl, cl_double Alambda_start, cl_double Alambda_incr,
-	cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata);
+	cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata, cl_int numfac);
 
 extern cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, cl_double stop_condition, cl_int n_iter_min, cl_double* conw_r,
 	cl_int ndata, cl_int* ia, cl_int* ia_par, cl_int* new_conw, cl_double* cg_first, cl_double* sig, cl_int Numfac, cl_double* brightness, cl_double lcoef, int n_coef);

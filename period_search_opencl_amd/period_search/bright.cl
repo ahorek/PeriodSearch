@@ -298,8 +298,11 @@ void bright(
 	/*Integrated brightness (phase coeff. used later) */
 	double lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
 	double br, ar, tmp1, tmp2, tmp3, tmp4, tmp5;
-	short int incl[MAX_N_FAC];
-	double dbr[MAX_N_FAC];
+	/* visible-facet list of this point, [point][k], read back by the
+	   g-coefficient sweep in mrqcof_curve1 (all work-items of the group) */
+	const int numfac = (*CUDA_CC).Numfac;
+	__global double* dbr = scr + (*CUDA_CC).offVisW + jp * numfac;
+	__global int* incl = (__global int*)(scr + (*CUDA_CC).offVisI) + jp * numfac;
 
 	br = 0;
 	tmp1 = 0;
@@ -375,54 +378,9 @@ void bright(
 	/* Scaled brightness */
 	ytempG[jp] = br * Scale;
 
-	ncoef0 -= 3;
-	int iStart;
-	int d, d1, dr;
-
-	iStart = Inrel + 1;
-	d = (jp - 1) * DYT_STRIDE + iStart;
-
-	d1 = d + 1;
-	dr = 2;
-
-	/* Derivatives of brightness w.r.t. g-coeffs */
-	if (incl_count)
-	{
-		for (i = iStart; i <= ncoef0; i += 2, d += dr, d1 += dr)
-		{
-			double tmp = 0, tmp1 = 0;
-			double l_dbr = dbr[0];
-			int l_incl = incl[0];
-			tmp = l_dbr * (*CUDA_CC).Dsph[l_incl][i];
-			int is_next_coef_valid = (i + 1) <= ncoef0;
-			if (is_next_coef_valid)
-			{
-				tmp1 = l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
-			}
-
-			for (j = 1; j < incl_count; j++)
-			{
-				double l_dbr = dbr[j];
-				int l_incl = incl[j];
-				tmp += l_dbr * (*CUDA_CC).Dsph[l_incl][i];
-				if (is_next_coef_valid)
-				{
-					tmp1 += l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
-				}
-			}
-
-			dytempG[d] = Scale * tmp;
-			if (is_next_coef_valid)
-			{
-				dytempG[d1] = Scale * tmp1;
-			}
-		}
-	}
-	else
-	{
-		for (i = 1; i <= ncoef0; i++, d++)
-			dytempG[d] = 0;
-	}
+	/* the derivatives w.r.t. the g-coeffs are computed for all points of the
+	   curve at once in mrqcof_curve1 from the visible-facet list above */
+	((__global int*)(scr + (*CUDA_CC).offVisN))[jp] = incl_count;
 
 	//return(0);
 }

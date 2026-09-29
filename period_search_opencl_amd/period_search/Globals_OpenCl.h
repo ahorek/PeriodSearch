@@ -138,6 +138,9 @@ struct alignas(8) freq_context
 	cl_int offE03;
 	cl_int offDe;
 	cl_int offDe0;
+	cl_int offVisW;
+	cl_int offVisI;
+	cl_int offVisN;
 };
 
 //extern __declspec(align(4)) freq_context* CUDA_CC2;

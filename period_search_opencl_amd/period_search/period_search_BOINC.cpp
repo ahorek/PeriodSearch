@@ -647,7 +647,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	retval = ClPrepare(clBoincPlatformId, clBoincDeviceId, clCustomPlatformId, clCustomDeviceId, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata);
+	retval = ClPrepare(clBoincPlatformId, clBoincDeviceId, clCustomPlatformId, clCustomDeviceId, betaPole, lambdaPole, par, cl, a_lamda_start, a_lamda_incr, ee, ee0, tim, phi_0, checkpointExists, ndata, 8 * nrows * nrows);
 	if (retval)
 	{
 		fflush(stderr);

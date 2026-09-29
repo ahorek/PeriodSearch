@@ -126,6 +126,9 @@ struct freq_context
 	int offE03;
 	int offDe;
 	int offDe0;
+	int offVisW;
+	int offVisI;
+	int offVisN;
 };
 
 //struct freq_result

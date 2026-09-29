@@ -147,6 +147,58 @@ void mrqcof_curve1(
 		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
 	}
 
+	/* the sweep below reads other work-items' visible-facet lists */
+	barrier(CLK_GLOBAL_MEM_FENCE);
+
+	/* Derivatives of brightness w.r.t. g-coeffs, for all points at once.
+	   bright() used to do them itself, one point per work-item: with a
+	   point-per-work-item split most work-items sat idle (Lpoints is a few
+	   hundred at most, 2 per work-item leave half of them unused) and every
+	   work-item gathered Dsph rows of its own facets. Here the (point,
+	   coefficient) pairs are dealt to all work-items: neighbouring work-items
+	   share the point, so its list is read as a broadcast and the Dsph row
+	   reads are contiguous. Each pair runs exactly the loop bright() ran
+	   (first term, then ascending k), so the results are bit-identical. */
+	{
+		__global double* visW = scr + (*CUDA_CC).offVisW;
+		__global int* visI = (__global int*)(scr + (*CUDA_CC).offVisI);
+		__global int* visN = (__global int*)(scr + (*CUDA_CC).offVisN);
+		__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+		const int numfac = (*CUDA_CC).Numfac;
+		const int ng = (*CUDA_CC).Ncoef0 - 3;	/* last g-coefficient */
+		const int iStart = Inrel + 1;
+		/* ng columns per point: iStart..ng are the derivatives; a point with
+		   no visible facet zero-fills iStart..iStart+ng-1 as bright() did
+		   (for Inrel == 1 that includes column ng + 1) */
+		const int total = Lpoints * ng;
+
+		for (int e = threadIdx.x; e < total; e += BLOCK_DIM)
+		{
+			int p = e / ng;
+			int i = iStart + (e - p * ng);
+			int jpp = p + 1;
+			int cnt = visN[jpp];
+			int d = (jpp - 1) * DYT_STRIDE + i;
+
+			if (cnt)
+			{
+				if (i <= ng)
+				{
+					__global double* w = visW + jpp * numfac;
+					__global int* f = visI + jpp * numfac;
+					double tmp = w[0] * (*CUDA_CC).Dsph[f[0]][i];
+					for (int k2 = 1; k2 < cnt; k2++)
+						tmp += w[k2] * (*CUDA_CC).Dsph[f[k2]][i];
+					dytempG[d] = jp_ScaleG[jpp] * tmp;
+				}
+			}
+			else
+			{
+				dytempG[d] = 0;
+			}
+		}
+	}
+
 	if (Inrel == 1)
 	{
 		/* the sums below read other work-items' dytemp/ytemp rows */
