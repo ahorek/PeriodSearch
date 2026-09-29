@@ -161,6 +161,9 @@ struct freq_context
 	int offE03;
 	int offDe;
 	int offDe0;
+	int offVisW;
+	int offVisI;
+	int offVisN;
 };
 
 //struct freq_result
@@ -1032,8 +1035,11 @@ void bright(
 	/*Integrated brightness (phase coeff. used later) */
 	double lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
 	double br, ar, tmp1, tmp2, tmp3, tmp4, tmp5;
-	short int incl[MAX_N_FAC];
-	double dbr[MAX_N_FAC];
+	/* visible-facet list of this point, [point][k], read back by the
+	   g-coefficient sweep in mrqcof_curve1 (all work-items of the group) */
+	const int numfac = (*CUDA_CC).Numfac;
+	__global double* dbr = scr + (*CUDA_CC).offVisW + jp * numfac;
+	__global int* incl = (__global int*)(scr + (*CUDA_CC).offVisI) + jp * numfac;
 
 	br = 0;
 	tmp1 = 0;
@@ -1109,54 +1115,9 @@ void bright(
 	/* Scaled brightness */
 	ytempG[jp] = br * Scale;
 
-	ncoef0 -= 3;
-	int iStart;
-	int d, d1, dr;
-
-	iStart = Inrel + 1;
-	d = (jp - 1) * DYT_STRIDE + iStart;
-
-	d1 = d + 1;
-	dr = 2;
-
-	/* Derivatives of brightness w.r.t. g-coeffs */
-	if (incl_count)
-	{
-		for (i = iStart; i <= ncoef0; i += 2, d += dr, d1 += dr)
-		{
-			double tmp = 0, tmp1 = 0;
-			double l_dbr = dbr[0];
-			int l_incl = incl[0];
-			tmp = l_dbr * (*CUDA_CC).Dsph[l_incl][i];
-			int is_next_coef_valid = (i + 1) <= ncoef0;
-			if (is_next_coef_valid)
-			{
-				tmp1 = l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
-			}
-
-			for (j = 1; j < incl_count; j++)
-			{
-				double l_dbr = dbr[j];
-				int l_incl = incl[j];
-				tmp += l_dbr * (*CUDA_CC).Dsph[l_incl][i];
-				if (is_next_coef_valid)
-				{
-					tmp1 += l_dbr * (*CUDA_CC).Dsph[l_incl][i + 1];
-				}
-			}
-
-			dytempG[d] = Scale * tmp;
-			if (is_next_coef_valid)
-			{
-				dytempG[d1] = Scale * tmp1;
-			}
-		}
-	}
-	else
-	{
-		for (i = 1; i <= ncoef0; i++, d++)
-			dytempG[d] = 0;
-	}
+	/* the derivatives w.r.t. the g-coeffs are computed for all points of the
+	   curve at once in mrqcof_curve1 from the visible-facet list above */
+	((__global int*)(scr + (*CUDA_CC).offVisN))[jp] = incl_count;
 
 	//return(0);
 }
@@ -1399,10 +1360,68 @@ void mrqcof_curve1(
 	if (brtmph > Lpoints) brtmph = Lpoints;
 	brtmpl++;
 
-	for (jp = brtmpl; jp <= brtmph; jp++)
+	/* points are dealt out round-robin (jp = t+1, t+1+BLOCK_DIM, ...) rather than
+	   in contiguous blocks of ceil(Lpoints/BLOCK_DIM): every point is
+	   independent, and this packs the last partial round into as few
+	   wavefronts as possible (156 points: 5 wave32 rounds instead of 6). The
+	   ytemp partial sums below keep the contiguous blocks, so ave is summed
+	   in the same order as before. */
+	for (jp = threadIdx.x + 1; jp <= Lpoints; jp += BLOCK_DIM)
 	{
 			/*  ---  BRIGHT  ---  */
 		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
+	}
+
+	/* the sweep below reads other work-items' visible-facet lists */
+	barrier(CLK_GLOBAL_MEM_FENCE);
+
+	/* Derivatives of brightness w.r.t. g-coeffs, for all points at once.
+	   bright() used to do them itself, one point per work-item: with a
+	   point-per-work-item split most work-items sat idle (Lpoints is a few
+	   hundred at most, 2 per work-item leave half of them unused) and every
+	   work-item gathered Dsph rows of its own facets. Here the (point,
+	   coefficient) pairs are dealt to all work-items: neighbouring work-items
+	   share the point, so its list is read as a broadcast and the Dsph row
+	   reads are contiguous. Each pair runs exactly the loop bright() ran
+	   (first term, then ascending k), so the results are bit-identical. */
+	{
+		__global double* visW = scr + (*CUDA_CC).offVisW;
+		__global int* visI = (__global int*)(scr + (*CUDA_CC).offVisI);
+		__global int* visN = (__global int*)(scr + (*CUDA_CC).offVisN);
+		__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
+		const int numfac = (*CUDA_CC).Numfac;
+		const int ng = (*CUDA_CC).Ncoef0 - 3;	/* last g-coefficient */
+		const int iStart = Inrel + 1;
+		/* ng columns per point: iStart..ng are the derivatives; a point with
+		   no visible facet zero-fills iStart..iStart+ng-1 as bright() did
+		   (for Inrel == 1 that includes column ng + 1) */
+		const int total = Lpoints * ng;
+
+		for (int e = threadIdx.x; e < total; e += BLOCK_DIM)
+		{
+			int p = e / ng;
+			int i = iStart + (e - p * ng);
+			int jpp = p + 1;
+			int cnt = visN[jpp];
+			int d = (jpp - 1) * DYT_STRIDE + i;
+
+			if (cnt)
+			{
+				if (i <= ng)
+				{
+					__global double* w = visW + jpp * numfac;
+					__global int* f = visI + jpp * numfac;
+					double tmp = w[0] * (*CUDA_CC).Dsph[f[0]][i];
+					for (int k2 = 1; k2 < cnt; k2++)
+						tmp += w[k2] * (*CUDA_CC).Dsph[f[k2]][i];
+					dytempG[d] = jp_ScaleG[jpp] * tmp;
+				}
+			}
+			else
+			{
+				dytempG[d] = 0;
+			}
+		}
 	}
 
 	if (Inrel == 1)
@@ -1550,19 +1569,23 @@ double mrqcof_end(
 	__global struct freq_context* CUDA_CC,
 	__global double* alpha)
 {
-	int j, k;
-	int3 threadIdx, blockIdx;
-	threadIdx.x = get_local_id(0);
-	blockIdx.x = get_group_id(0);
+	/* mirror the lower triangle into the upper one: alpha[k][j] = alpha[j][k]
+	   for k < j. The work-items of the context split the (j, k) pairs; reads
+	   (row > col) and writes (row < col) never overlap, so no ordering is
+	   needed and every entry gets exactly the value it got before. */
+	const int mfit = (*CUDA_CC).Mfit;
+	const int mfit1 = (*CUDA_CC).Mfit1;
+	const int total = mfit * (mfit - 1) / 2;
 
-	for (int j = 2; j <= (*CUDA_CC).Mfit; j++)
+	/* pair e -> row j = 2.., column k = 1..j-1 (row-major lower triangle) */
+	int j = 2, k = get_local_id(0) + 1;
+	while (k > j - 1) { k -= j - 1; j++; }
+	for (int e = get_local_id(0); e < total; e += BLOCK_DIM)
 	{
-		for (k = 1; k <= j - 1; k++)
-		{
-			alpha[k * (*CUDA_CC).Mfit1 + j] = alpha[j * (*CUDA_CC).Mfit1 + k];
-			//if (blockIdx.x ==0 && threadIdx.x == 0)
-			//	printf("[mrqcof_end] [%d][%3d] alpha[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, k * (*CUDA_CC).Mfit1 + j, alpha[k * (*CUDA_CC).Mfit1 + j]);
-		}
+		alpha[k * mfit1 + j] = alpha[j * mfit1 + k];
+
+		k += BLOCK_DIM;
+		while (k > j - 1) { k -= j - 1; j++; }
 	}
 
 	return (*CUDA_LCC).trial_chisq;
@@ -1871,38 +1894,34 @@ void mrqmin_2_end(
 	__global double* alphaG = scr + (*CUDA_CC).offAlpha;
 	__global double* covarG = scr + (*CUDA_CC).offCovar;
 
-	int j, k, l;
-	int3 blockIdx, threadIdx;
-	blockIdx.x = get_group_id(0);
-	threadIdx.x = get_local_id(0);
+	const int lid = get_local_id(0);
+	const int mfit = (*CUDA_CC).Mfit;
+	const int mfit1 = (*CUDA_CC).Mfit1;
 
+	/* The work-items of the context split the copies; the scalar updates are
+	   done by work-item 0 only. Its Chisq = Ochisq in the else branch cannot
+	   send a late reader down the other branch (Chisq < Ochisq stays false). */
 	if ((*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
 	{
-		(*CUDA_LCC).Alamda = ddiv((*CUDA_LCC).Alamda, (*CUDA_CC).Alamda_incr);
-		for (j = 1; j <= (*CUDA_CC).Mfit; j++)
+		if (lid == 0)
+			(*CUDA_LCC).Alamda = ddiv((*CUDA_LCC).Alamda, (*CUDA_CC).Alamda_incr);
+
+		for (int e = lid; e < mfit * mfit; e += BLOCK_DIM)
 		{
-			for (k = 1; k <= (*CUDA_CC).Mfit; k++)
-			{
-				alphaG[j * (*CUDA_CC).Mfit1 + k] = covarG[j * (*CUDA_CC).Mfit1 + k];
-
-				//if (blockIdx.x == 0)
-				//	printf("alpha[%3d]: %10.7f\n", alphaG[j * (*CUDA_CC).Mfit1 + k]);
-			}
-
+			int j = e / mfit + 1;
+			int k = e - (j - 1) * mfit + 1;
+			alphaG[j * mfit1 + k] = covarG[j * mfit1 + k];
+		}
+		for (int j = lid + 1; j <= mfit; j += BLOCK_DIM)
 			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
-		}
-		for (l = 1; l <= (*CUDA_CC).ma; l++)
-		{
+		for (int l = lid + 1; l <= (*CUDA_CC).ma; l += BLOCK_DIM)
 			(*CUDA_LCC).cg[l] = (*CUDA_LCC).atry[l];
-		}
 	}
-	else
+	else if (lid == 0)
 	{
 		(*CUDA_LCC).Alamda = (*CUDA_CC).Alamda_incr * (*CUDA_LCC).Alamda;
 		(*CUDA_LCC).Chisq = (*CUDA_LCC).Ochisq;
 	}
-
-
 }
 __kernel void ClCalculatePrepare(
     __global struct mfreq_context* CUDA_mCC,
@@ -1911,10 +1930,14 @@ __kernel void ClCalculatePrepare(
     double freq_start,
     double freq_step,
     int n_max,
-    int n_start)
+    int n_start,
+    const int nContexts)
 {
     int3 blockIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     int x = blockIdx.x;
 
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
@@ -1969,10 +1992,13 @@ __kernel void ClCalculatePreparePole(
     __global struct freq_result* CUDA_FR,
     __global double* CUDA_cg_first,
     __global int* CUDA_End,
-    __global struct freq_context* CUDA_CC2)
+    const int nContexts)
 {
     int3 blockIdx, threadIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     threadIdx.x = get_local_id(0);
     int x = blockIdx.x;
 
@@ -2084,15 +2110,6 @@ __kernel void ClCalculatePreparePole(
     //	(*CUDA_LCC).Lastcall=0; always ==0
     (*CUDA_LFR).isReported = 0;
 
-    if (blockIdx.x == 0)
-    {
-        for (int i = 0; i < MAX_N_OBS + 1; i++)
-        {
-            //printf("[%d] %g", blockIdx.x, (*CUDA_CC).Brightness[i]);
-            (*CUDA_CC2).Brightness[i] = (*CUDA_CC).Brightness[i];
-        }
-    }
-
 }
 
 __kernel void ClCalculateIter1Begin(
@@ -2102,10 +2119,14 @@ __kernel void ClCalculateIter1Begin(
     int CUDA_n_iter_min,
     int CUDA_n_iter_max,
     double CUDA_iter_diff_max,
-    double CUDA_Alamda_start)
+    double CUDA_Alamda_start,
+    const int nContexts)
 {
     int3 blockIdx, threadIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     threadIdx.x = get_local_id(0);
     int x = blockIdx.x;
 
@@ -2352,6 +2373,7 @@ __kernel void ClCalculateIter1Mrqcof1End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -2371,7 +2393,9 @@ __kernel void ClCalculateIter1Mrqcof1End(
     //	printf("Mrqcof1End\n");
 
 
-    (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
+    double ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Ochisq = ochisq;
 
 
     ////if (threadIdx.x == 0)
@@ -2601,6 +2625,7 @@ __kernel void ClCalculateIter1Mrqcof2End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -2614,7 +2639,9 @@ __kernel void ClCalculateIter1Mrqcof2End(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    (*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
+    double chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Chisq = chisq;
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Chisq: %10.7f\n", threadIdx.x, (*CUDA_LCC).Chisq);
@@ -2625,6 +2652,7 @@ __kernel void ClCalculateIter1Mrqmin2End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -2644,7 +2672,8 @@ __kernel void ClCalculateIter1Mrqmin2End(
     //mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
     mrqmin_2_end(CUDA_LCC, CUDA_CC, scr);
 
-    (*CUDA_LCC).Niter++;
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Niter++;
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Niter: %d\n", threadIdx.x, (*CUDA_LCC).Niter);
@@ -2749,11 +2778,15 @@ __kernel void ClCalculateIter2(
 __kernel void ClCalculateFinishPole(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global struct freq_result* CUDA_FR)
+    __global struct freq_result* CUDA_FR,
+    const int nContexts)
 {
     int i;
     int3 blockIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
 
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     //const auto CUDA_LFR = &CUDA_FR[blockIdx.x];

@@ -5,10 +5,14 @@ __kernel void ClCalculatePrepare(
     double freq_start,
     double freq_step,
     int n_max,
-    int n_start)
+    int n_start,
+    const int nContexts)
 {
     int3 blockIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     int x = blockIdx.x;
 
     __global struct mfreq_context* CUDA_LCC = &CUDA_mCC[blockIdx.x];
@@ -63,10 +67,13 @@ __kernel void ClCalculatePreparePole(
     __global struct freq_result* CUDA_FR,
     __global double* CUDA_cg_first,
     __global int* CUDA_End,
-    __global struct freq_context* CUDA_CC2)
+    const int nContexts)
 {
     int3 blockIdx, threadIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     threadIdx.x = get_local_id(0);
     int x = blockIdx.x;
 
@@ -178,15 +185,6 @@ __kernel void ClCalculatePreparePole(
     //	(*CUDA_LCC).Lastcall=0; always ==0
     (*CUDA_LFR).isReported = 0;
 
-    if (blockIdx.x == 0)
-    {
-        for (int i = 0; i < MAX_N_OBS + 1; i++)
-        {
-            //printf("[%d] %g", blockIdx.x, (*CUDA_CC).Brightness[i]);
-            (*CUDA_CC2).Brightness[i] = (*CUDA_CC).Brightness[i];
-        }
-    }
-
 }
 
 __kernel void ClCalculateIter1Begin(
@@ -196,10 +194,14 @@ __kernel void ClCalculateIter1Begin(
     int CUDA_n_iter_min,
     int CUDA_n_iter_max,
     double CUDA_iter_diff_max,
-    double CUDA_Alamda_start)
+    double CUDA_Alamda_start,
+    const int nContexts)
 {
     int3 blockIdx, threadIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
     threadIdx.x = get_local_id(0);
     int x = blockIdx.x;
 
@@ -446,6 +448,7 @@ __kernel void ClCalculateIter1Mrqcof1End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -465,7 +468,9 @@ __kernel void ClCalculateIter1Mrqcof1End(
     //	printf("Mrqcof1End\n");
 
 
-    (*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
+    double ochisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offAlpha);
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Ochisq = ochisq;
 
 
     ////if (threadIdx.x == 0)
@@ -695,6 +700,7 @@ __kernel void ClCalculateIter1Mrqcof2End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -708,7 +714,9 @@ __kernel void ClCalculateIter1Mrqcof2End(
 
     if (!(*CUDA_LCC).isNiter) return;
 
-    (*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
+    double chisq = mrqcof_end(CUDA_LCC, CUDA_CC, scr + (*CUDA_CC).offCovar);
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Chisq = chisq;
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Chisq: %10.7f\n", threadIdx.x, (*CUDA_LCC).Chisq);
@@ -719,6 +727,7 @@ __kernel void ClCalculateIter1Mrqmin2End(
     __global struct freq_context* CUDA_CC,
     __global double* scratch)
 {
+    /* one work-group of BLOCK_DIM work-items per context */
     __global double* scr = scratch + get_group_id(0) * (ulong)(*CUDA_CC).scrStride;
 
     int3 blockIdx, threadIdx;
@@ -738,7 +747,8 @@ __kernel void ClCalculateIter1Mrqmin2End(
     //mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
     mrqmin_2_end(CUDA_LCC, CUDA_CC, scr);
 
-    (*CUDA_LCC).Niter++;
+    if (threadIdx.x == 0)
+        (*CUDA_LCC).Niter++;
 
     //if (blockIdx.x == 0)
     //	printf("[%3d] Niter: %d\n", threadIdx.x, (*CUDA_LCC).Niter);
@@ -843,11 +853,15 @@ __kernel void ClCalculateIter2(
 __kernel void ClCalculateFinishPole(
     __global struct mfreq_context* CUDA_mCC,
     __global struct freq_context* CUDA_CC,
-    __global struct freq_result* CUDA_FR)
+    __global struct freq_result* CUDA_FR,
+    const int nContexts)
 {
     int i;
     int3 blockIdx;
-    blockIdx.x = get_group_id(0);
+    blockIdx.x = get_global_id(0);
+    /* one work-item per context (was one work-group of a single work-item);
+       the global size is rounded up to the work-group size */
+    if (blockIdx.x >= nContexts) return;
 
     //const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
     //const auto CUDA_LFR = &CUDA_FR[blockIdx.x];

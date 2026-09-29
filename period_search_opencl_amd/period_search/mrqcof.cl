@@ -141,7 +141,13 @@ void mrqcof_curve1(
 	if (brtmph > Lpoints) brtmph = Lpoints;
 	brtmpl++;
 
-	for (jp = brtmpl; jp <= brtmph; jp++)
+	/* points are dealt out round-robin (jp = t+1, t+1+BLOCK_DIM, ...) rather than
+	   in contiguous blocks of ceil(Lpoints/BLOCK_DIM): every point is
+	   independent, and this packs the last partial round into as few
+	   wavefronts as possible (156 points: 5 wave32 rounds instead of 6). The
+	   ytemp partial sums below keep the contiguous blocks, so ave is summed
+	   in the same order as before. */
+	for (jp = threadIdx.x + 1; jp <= Lpoints; jp += BLOCK_DIM)
 	{
 			/*  ---  BRIGHT  ---  */
 		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
@@ -344,19 +350,23 @@ double mrqcof_end(
 	__global struct freq_context* CUDA_CC,
 	__global double* alpha)
 {
-	int j, k;
-	int3 threadIdx, blockIdx;
-	threadIdx.x = get_local_id(0);
-	blockIdx.x = get_group_id(0);
+	/* mirror the lower triangle into the upper one: alpha[k][j] = alpha[j][k]
+	   for k < j. The work-items of the context split the (j, k) pairs; reads
+	   (row > col) and writes (row < col) never overlap, so no ordering is
+	   needed and every entry gets exactly the value it got before. */
+	const int mfit = (*CUDA_CC).Mfit;
+	const int mfit1 = (*CUDA_CC).Mfit1;
+	const int total = mfit * (mfit - 1) / 2;
 
-	for (int j = 2; j <= (*CUDA_CC).Mfit; j++)
+	/* pair e -> row j = 2.., column k = 1..j-1 (row-major lower triangle) */
+	int j = 2, k = get_local_id(0) + 1;
+	while (k > j - 1) { k -= j - 1; j++; }
+	for (int e = get_local_id(0); e < total; e += BLOCK_DIM)
 	{
-		for (k = 1; k <= j - 1; k++)
-		{
-			alpha[k * (*CUDA_CC).Mfit1 + j] = alpha[j * (*CUDA_CC).Mfit1 + k];
-			//if (blockIdx.x ==0 && threadIdx.x == 0)
-			//	printf("[mrqcof_end] [%d][%3d] alpha[%3d]: %10.7f\n", blockIdx.x, threadIdx.x, k * (*CUDA_CC).Mfit1 + j, alpha[k * (*CUDA_CC).Mfit1 + j]);
-		}
+		alpha[k * mfit1 + j] = alpha[j * mfit1 + k];
+
+		k += BLOCK_DIM;
+		while (k > j - 1) { k -= j - 1; j++; }
 	}
 
 	return (*CUDA_LCC).trial_chisq;
