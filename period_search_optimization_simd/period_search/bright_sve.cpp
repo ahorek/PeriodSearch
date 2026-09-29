@@ -62,9 +62,10 @@
 // end of inner_calc
 
 // 1/dnom is forced to 1 wherever the facet is rejected, so a zero dnom can never turn into
-// an inf that a later multiplication by zero would make a NaN.
+// an inf that a later multiplication by zero would make a NaN. The area of a rejected facet is
+// zero, so all its (finite) contributions vanish without masking every term separately.
 #define INNER_CALC_DSMU \
-    avx_Area = svld1_f64(pg, &gl.Area[i]); \
+    avx_Area = svsel_f64(cmp, svld1_f64(pg, &gl.Area[i]), avx_zero); \
     avx_dnom = svadd_f64_x(pt, avx_lmu, avx_lmu0); \
     avx_inv = svsel_f64(cmp, svdiv_f64_x(pt, avx_11, avx_dnom), avx_11); \
     avx_s = svmul_f64_x(pt, svmul_f64_x(pt, avx_lmu, avx_lmu0), svmla_f64_x(pt, avx_cl, avx_cls, avx_inv)); \
@@ -77,6 +78,94 @@
     avx_powdnom = svmul_f64_x(pt, avx_powdnom, avx_powdnom); \
     avx_dsmu0 = svmla_f64_x(pt, svmul_f64_x(pt, avx_cls, avx_powdnom), avx_cl, avx_lmu);
 // end of inner_calc_dsmu
+
+#if defined(_MSC_VER) && !defined(__clang__)
+  #include <intrin.h>
+  #if defined(_M_ARM64)
+    #define DG_PREFETCH(p) __prefetch(p)
+  #else
+    #define DG_PREFETCH(p) _mm_prefetch(p, _MM_HINT_T0)
+  #endif
+#else
+  #define DG_PREFETCH(p) __builtin_prefetch(p, 0, 3)
+#endif
+
+#if defined(__GNUC__) && !(defined __x86_64__ || defined(__i386__) || defined(_WIN32))
+  #define SVE_TARGET __attribute__((__target__("+sve")))
+  #define SVE_TARGET_INLINE __attribute__((__target__("+sve"), always_inline))
+#elif defined(__GNUC__)
+  #define SVE_TARGET
+  #define SVE_TARGET_INLINE __attribute__((always_inline))
+#else
+  #define SVE_TARGET
+  #define SVE_TARGET_INLINE
+#endif
+
+/**
+ * @brief dyda[cnt * v .. cnt * (v + W)) = Scale * sum_j dbr[j] * Dg_row[j][cnt * v .. cnt * (v + W))
+ *
+ * W accumulators stay in registers, so each visible Dg row is streamed only once per chunk. Facets are summed
+ * sequentially (including the zero-weight pair padding), i.e. in the same order as the original pairwise loop.
+ * Only the last vector of the chunk can be partial, it is governed by pl (all-true when the chunk ends inside the row).
+ * Relies on the padding entry at dbr[incl_count] and on valid row pointers up to Dg_row[incl_count + DG_PREFETCH_ROWS].
+ */
+template <int W>
+SVE_TARGET_INLINE
+static inline void dg_accumulate(double* const* Dg_row, const double* dbr, const int incl_count, const int v, double* dyda,
+								 const svbool_t pt, const svbool_t pl, const svfloat64_t avx_Scale)
+{
+	const int cnt = static_cast<int>(svcntd());
+	const int off = cnt * v;
+
+	// Named accumulators (not an array) so that the compiler keeps all of them in registers; unused ones are optimized away.
+	svfloat64_t a0 = svdup_n_f64(0.0), a1 = a0, a2 = a0, a3 = a0, a4 = a0, a5 = a0, a6 = a0;
+	svfloat64_t a7 = a0, a8 = a0, a9 = a0, a10 = a0, a11 = a0, a12 = a0, a13 = a0;
+
+#define DG_MLA(k) if (W > k) a##k = svmla_n_f64_x(pt, a##k, svld1_f64(k == W - 1 ? pl : pt, p + cnt * k), pdbr)
+	const int n = (incl_count + 1) & ~1;
+	for (int j = 0; j < n; j++)
+	{
+		// Dg rows exceed L1 in total and are visited in a data dependent order, so fetch a few rows ahead
+		const char* pf = reinterpret_cast<const char*>(Dg_row[j + DG_PREFETCH_ROWS] + off);
+		for (int b = 0; b < W * cnt * 8; b += 64)
+			DG_PREFETCH(pf + b);
+
+		const double* p = Dg_row[j] + off;
+		const double pdbr = dbr[j];
+		DG_MLA(0); DG_MLA(1); DG_MLA(2); DG_MLA(3); DG_MLA(4); DG_MLA(5); DG_MLA(6);
+		DG_MLA(7); DG_MLA(8); DG_MLA(9); DG_MLA(10); DG_MLA(11); DG_MLA(12); DG_MLA(13);
+	}
+#undef DG_MLA
+
+#define DG_STORE(k) if (W > k) svst1_f64(k == W - 1 ? pl : pt, &dyda[off + cnt * k], svmul_f64_x(pt, a##k, avx_Scale))
+	DG_STORE(0); DG_STORE(1); DG_STORE(2); DG_STORE(3); DG_STORE(4); DG_STORE(5); DG_STORE(6);
+	DG_STORE(7); DG_STORE(8); DG_STORE(9); DG_STORE(10); DG_STORE(11); DG_STORE(12); DG_STORE(13);
+#undef DG_STORE
+}
+
+SVE_TARGET
+static void dg_chunk(const int w, double* const* Dg_row, const double* dbr, const int incl_count, const int v, double* dyda,
+					 const svbool_t pt, const svbool_t pl, const svfloat64_t avx_Scale)
+{
+	switch (w)
+	{
+		case 14: dg_accumulate<14>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 13: dg_accumulate<13>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 12: dg_accumulate<12>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 11: dg_accumulate<11>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 10: dg_accumulate<10>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 9: dg_accumulate<9>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 8: dg_accumulate<8>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 7: dg_accumulate<7>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 6: dg_accumulate<6>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 5: dg_accumulate<5>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 4: dg_accumulate<4>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 3: dg_accumulate<3>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 2: dg_accumulate<2>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		case 1: dg_accumulate<1>(Dg_row, dbr, incl_count, v, dyda, pt, pl, avx_Scale); break;
+		default: break;
+	}
+}
 
 /**
  * @brief Computes integrated brightness of all visible and illuminated areas and its derivatives.
@@ -95,9 +184,7 @@
  * @date 8.11.2006
  * @author Josef Durec
  */
-#if defined(__GNUC__) && !(defined __x86_64__ || defined(__i386__) || defined(_WIN32))
-__attribute__((__target__("+sve")))
-#endif
+SVE_TARGET
 void CalcStrategySve::bright(const double t, std::vector<double>& cg, const int ncoef, globals &gl)
 {
 	int i, j, k;
@@ -178,8 +265,7 @@ void CalcStrategySve::bright(const double t, std::vector<double>& cg, const int 
 	svfloat64_t avx_d = svdup_n_f64(0.0);
 	svfloat64_t avx_d1 = svdup_n_f64(0.0);
 
-	double s_lmu[SVE_MAX_LANES];
-	double s_lmu0[SVE_MAX_LANES];
+	double s_vis[SVE_MAX_LANES];
 	double s_pdbr[SVE_MAX_LANES];
 
 	for (i = 0; i < Numfac; i += cnt)
@@ -211,49 +297,38 @@ void CalcStrategySve::bright(const double t, std::vector<double>& cg, const int 
 
 			/* The per-facet bookkeeping stays scalar: the vector length is not a compile
 			   time constant, so the predicate cannot be folded into a lane bitmask. */
-			svst1_f64(pg, s_lmu, avx_lmu);
-			svst1_f64(pg, s_lmu0, avx_lmu0);
+			svst1_f64(pg, s_vis, svsel_f64(cmp, avx_11, avx_zero));
 			svst1_f64(pg, s_pdbr, avx_pdbr);
 
-			avx_pbr = svsel_f64(cmp, avx_pbr, avx_zero);
-			avx_dsmu = svsel_f64(cmp, avx_dsmu, avx_zero);
-			avx_dsmu0 = svsel_f64(cmp, avx_dsmu0, avx_zero);
-			avx_lmu = svsel_f64(cmp, avx_lmu, avx_zero);
-			avx_lmu0 = svsel_f64(cmp, avx_lmu0, avx_zero);
-
+			// Branchless compaction of the visible facets: always write the slot, advance only when the lane is visible.
 			for (j = 0; j < active; j++)
 			{
-				if (s_lmu[j] > TINY && s_lmu0[j] > TINY)
-				{
-					Dg_row[incl_count] = gl.Dg[i + j];
-					dbr[incl_count++] = s_pdbr[j];
-				}
+				Dg_row[incl_count] = gl.Dg[i + j];
+				dbr[incl_count] = s_pdbr[j];
+				incl_count += s_vis[j] != 0.0;
 			}
 
 			INNER_CALC
 		}
 	}
 
-	/* one padding entry so the loop below may always read a pair */
+	// zero-weight padding entry for the pairwise order, valid (unused) rows for the prefetch look-ahead
 	dbr[incl_count] = 0.0;
-	Dg_row[incl_count] = Dg_row[0];
+	for (j = 0; j <= DG_PREFETCH_ROWS; j++)
+		Dg_row[incl_count + j] = gl.Dg[0];
 
 	gl.ymod = svaddv_f64(pt, res_br);
 
-	/* Derivatives of brightness w.r.t. g-coefficients */
+	/* Derivatives of brightness w.r.t. g-coefficients, in balanced chunks of at most 14 vectors (accumulators in registers) */
 	const int ncoef03 = ncoef0 - 3;
-	for (i = 0; i < ncoef03; i += cnt)
+	const int nvec = (ncoef03 + cnt - 1) / cnt;
+	const int nchunks = (nvec + 13) / 14;
+	const int wchunk = nchunks > 0 ? (nvec + nchunks - 1) / nchunks : 1;
+	for (int v = 0; v < nvec; v += wchunk)
 	{
-		const svbool_t pg = svwhilelt_b64(static_cast<int64_t>(i), static_cast<int64_t>(ncoef03));
-		svfloat64_t tmp1 = svdup_n_f64(0.0);
-
-		for (j = 0; j < incl_count; j += 2)
-		{
-			tmp1 = svmla_n_f64_x(pg, tmp1, svld1_f64(pg, Dg_row[j] + i), dbr[j]);
-			tmp1 = svmla_n_f64_x(pg, tmp1, svld1_f64(pg, Dg_row[j + 1] + i), dbr[j + 1]);
-		}
-
-		svst1_f64(pg, &gl.dyda[i], svmul_f64_x(pg, tmp1, avx_Scale));
+		const int w = nvec - v < wchunk ? nvec - v : wchunk;
+		const svbool_t pl = svwhilelt_b64(static_cast<int64_t>(cnt) * (v + w - 1), static_cast<int64_t>(ncoef03));
+		dg_chunk(w, Dg_row, dbr, incl_count, v, gl.dyda, pt, pl, avx_Scale);
 	}
 
 	/* Derivatives of brightness w.r.t. rotation parameters */
