@@ -242,7 +242,7 @@ static int DivProbe(cl_context context, cl_device_id device)
 }
 
 cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId, int clCustomPlatformId, int clCustomDeviceId, cl_double* beta_pole, cl_double* lambda_pole, cl_double* par, cl_double lcoef, cl_double a_lamda_start, cl_double a_lamda_incr,
-    cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata, cl_int numfac)
+    cl_double ee[][3], cl_double ee0[][3], cl_double* tim, cl_double Phi_0, cl_int checkex, cl_int ndata)
 {
     cl_int err_num;
     cl_platform_id platform = nullptr;
@@ -856,8 +856,6 @@ cl_int ClPrepare(cl_platform_id clBoincPlatformId, cl_device_id clBoincDeviceId,
             if (l_points[icc] > maxLcPtsCap) maxLcPtsCap = l_points[icc];
         /* upper bound of the per-context scratch (mfit1 <= DYT_STRIDE by the ma guard) */
         size_t scrBound = (2 * (size_t)DYT_STRIDE * DYT_STRIDE + (size_t)(maxLcPtsCap + 1) * (DYT_STRIDE + 1 + 4 + 6 + 32) + 32) * sizeof(cl_double);
-        /* per-point visible-facet lists of bright(): weights, facet indices, counts */
-        scrBound += (size_t)(maxLcPtsCap + 1) * ((size_t)numfac * (sizeof(cl_double) + sizeof(cl_int)) + sizeof(cl_int)) + 2 * sizeof(cl_double);
         size_t memCap = (size_t)(memBudget / (sizeof(mfreq_context) + scrBound));
         if (CUDA_grid_dim > memCap) {
             CUDA_grid_dim = memCap;
@@ -1018,11 +1016,6 @@ cl_int ClPrecalc(cl_double freq_start, cl_double freq_end, cl_double freq_step, 
         (*Fa).offE03 = off;     off += lcP1;
         (*Fa).offDe = off;      off += lcP1 * 16;
         (*Fa).offDe0 = off;     off += lcP1 * 16;
-        /* bright()'s visible-facet lists, [point][k]; the int arrays are packed
-           two per double */
-        (*Fa).offVisW = off;    off += lcP1 * Numfac;
-        (*Fa).offVisI = off;    off += (lcP1 * Numfac + 1) / 2;
-        (*Fa).offVisN = off;    off += (lcP1 + 1) / 2;
         (*Fa).scrStride = ((off + 31) / 32) * 32;
     }
 
@@ -1748,11 +1741,6 @@ int ClStart(int n_start_from, double freq_start, double freq_end, double freq_st
         (*Fa).offE03 = off;     off += lcP1;
         (*Fa).offDe = off;      off += lcP1 * 16;
         (*Fa).offDe0 = off;     off += lcP1 * 16;
-        /* bright()'s visible-facet lists, [point][k]; the int arrays are packed
-           two per double */
-        (*Fa).offVisW = off;    off += lcP1 * Numfac;
-        (*Fa).offVisI = off;    off += (lcP1 * Numfac + 1) / 2;
-        (*Fa).offVisN = off;    off += (lcP1 + 1) / 2;
         (*Fa).scrStride = ((off + 31) / 32) * 32;
     }
 

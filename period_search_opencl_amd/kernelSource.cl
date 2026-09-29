@@ -161,9 +161,6 @@ struct freq_context
 	int offE03;
 	int offDe;
 	int offDe0;
-	int offVisW;
-	int offVisI;
-	int offVisN;
 };
 
 //struct freq_result
@@ -1035,11 +1032,8 @@ void bright(
 	/*Integrated brightness (phase coeff. used later) */
 	double lmu, lmu0, dsmu, dsmu0, sum1, sum10, sum2, sum20, sum3, sum30;
 	double br, ar, tmp1, tmp2, tmp3, tmp4, tmp5;
-	/* visible-facet list of this point, [point][k], read back by the
-	   g-coefficient sweep in mrqcof_curve1 (all work-items of the group) */
-	const int numfac = (*CUDA_CC).Numfac;
-	__global double* dbr = scr + (*CUDA_CC).offVisW + jp * numfac;
-	__global int* incl = (__global int*)(scr + (*CUDA_CC).offVisI) + jp * numfac;
+	short int incl[MAX_N_FAC];
+	double dbr[MAX_N_FAC];
 
 	br = 0;
 	tmp1 = 0;
@@ -1048,26 +1042,41 @@ void bright(
 	tmp4 = 0;
 	tmp5 = 0;
 
-	j = 1;
-	for (i = 1; i <= (*CUDA_CC).Numfac; i++, j++)
+	/* Two passes: the cheap visibility test first builds this work-item's
+	   list of visible facets, then the division-heavy terms run over that
+	   list. In a single pass a wavefront executed the heavy block for every
+	   facet that ANY of its lanes could see, i.e. for nearly all facets;
+	   now it runs max(incl_count) times per wavefront. lmu/lmu0 are
+	   recomputed with the same expressions and the sums still run over the
+	   visible facets in ascending order. */
+	for (i = 1; i <= (*CUDA_CC).Numfac; i++)
 	{
 		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
 		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
-
 		if ((lmu > TINY) && (lmu0 > TINY))
+		{
+			incl[incl_count] = i;
+			incl_count++;
+		}
+	}
+
+	for (int c = 0; c < incl_count; c++)
+	{
+		i = incl[c];
+		j = i;
+		lmu = e_1 * (*CUDA_CC).Nor[i][0] + e_2 * (*CUDA_CC).Nor[i][1] + e_3 * (*CUDA_CC).Nor[i][2];
+		lmu0 = e0_1 * (*CUDA_CC).Nor[i][0] + e0_2 * (*CUDA_CC).Nor[i][1] + e0_3 * (*CUDA_CC).Nor[i][2];
 		{
 			dnom = lmu + lmu0;
 			s = lmu * lmu0 * (cl + ddiv(cls, dnom));
 			ar = (*CUDA_LCC).Area[j];
 			br += ar * s;
 
-			incl[incl_count] = i;
 			/* Darea[i] * s * Dg[i][k] == Darea[i] * s * g * Dsph[i][k]
 			   == (Area[i] * s) * Dsph[i][k]: fold g into the weight and
 			   gather from the one read-only, facet-major Dsph shared by
 			   all work-groups instead of the per-context Dg matrix */
-			dbr[incl_count] = ar * s;
-			incl_count++;
+			dbr[c] = ar * s;
 
 			double lmu0_dnom = ddiv(lmu0, dnom);
 			dsmu = cls * (lmu0_dnom * lmu0_dnom) + cl * lmu0;
@@ -1115,9 +1124,52 @@ void bright(
 	/* Scaled brightness */
 	ytempG[jp] = br * Scale;
 
-	/* the derivatives w.r.t. the g-coeffs are computed for all points of the
-	   curve at once in mrqcof_curve1 from the visible-facet list above */
-	((__global int*)(scr + (*CUDA_CC).offVisN))[jp] = incl_count;
+	ncoef0 -= 3;
+	int iStart;
+	int d;
+
+	iStart = Inrel + 1;
+	d = (jp - 1) * DYT_STRIDE + iStart;
+
+
+	/* Derivatives of brightness w.r.t. g-coeffs: BRIGHT_GB columns per pass
+	   over the visible-facet list (was 2); each column is still
+	   dbr[0] * Dsph[..] followed by the fma chain over the visible facets
+	   in ascending order. Up to BRIGHT_GB - 1 columns past ncoef0 are read
+	   (inside the Dsph row) but not stored. */
+#define BRIGHT_GB 16
+	if (incl_count)
+	{
+		for (i = iStart; i <= ncoef0; i += BRIGHT_GB)
+		{
+			double t[BRIGHT_GB];
+			{
+				double l_dbr = dbr[0];
+				__global double* row = (*CUDA_CC).Dsph[incl[0]] + i;
+				for (int b = 0; b < BRIGHT_GB; b++)
+					t[b] = l_dbr * row[b];
+			}
+
+			for (j = 1; j < incl_count; j++)
+			{
+				double l_dbr = dbr[j];
+				__global double* row = (*CUDA_CC).Dsph[incl[j]] + i;
+				for (int b = 0; b < BRIGHT_GB; b++)
+					t[b] += l_dbr * row[b];
+			}
+
+			for (int b = 0; b < BRIGHT_GB; b++)
+			{
+				if (i + b <= ncoef0)
+					dytempG[(jp - 1) * DYT_STRIDE + i + b] = Scale * t[b];
+			}
+		}
+	}
+	else
+	{
+		for (i = 1; i <= ncoef0; i++, d++)
+			dytempG[d] = 0;
+	}
 
 	//return(0);
 }
@@ -1370,58 +1422,6 @@ void mrqcof_curve1(
 	{
 			/*  ---  BRIGHT  ---  */
 		bright(CUDA_LCC, CUDA_CC, cg, jp, Lpoints1, Inrel, scr);
-	}
-
-	/* the sweep below reads other work-items' visible-facet lists */
-	barrier(CLK_GLOBAL_MEM_FENCE);
-
-	/* Derivatives of brightness w.r.t. g-coeffs, for all points at once.
-	   bright() used to do them itself, one point per work-item: with a
-	   point-per-work-item split most work-items sat idle (Lpoints is a few
-	   hundred at most, 2 per work-item leave half of them unused) and every
-	   work-item gathered Dsph rows of its own facets. Here the (point,
-	   coefficient) pairs are dealt to all work-items: neighbouring work-items
-	   share the point, so its list is read as a broadcast and the Dsph row
-	   reads are contiguous. Each pair runs exactly the loop bright() ran
-	   (first term, then ascending k), so the results are bit-identical. */
-	{
-		__global double* visW = scr + (*CUDA_CC).offVisW;
-		__global int* visI = (__global int*)(scr + (*CUDA_CC).offVisI);
-		__global int* visN = (__global int*)(scr + (*CUDA_CC).offVisN);
-		__global double* jp_ScaleG = scr + (*CUDA_CC).offJpScale;
-		const int numfac = (*CUDA_CC).Numfac;
-		const int ng = (*CUDA_CC).Ncoef0 - 3;	/* last g-coefficient */
-		const int iStart = Inrel + 1;
-		/* ng columns per point: iStart..ng are the derivatives; a point with
-		   no visible facet zero-fills iStart..iStart+ng-1 as bright() did
-		   (for Inrel == 1 that includes column ng + 1) */
-		const int total = Lpoints * ng;
-
-		for (int e = threadIdx.x; e < total; e += BLOCK_DIM)
-		{
-			int p = e / ng;
-			int i = iStart + (e - p * ng);
-			int jpp = p + 1;
-			int cnt = visN[jpp];
-			int d = (jpp - 1) * DYT_STRIDE + i;
-
-			if (cnt)
-			{
-				if (i <= ng)
-				{
-					__global double* w = visW + jpp * numfac;
-					__global int* f = visI + jpp * numfac;
-					double tmp = w[0] * (*CUDA_CC).Dsph[f[0]][i];
-					for (int k2 = 1; k2 < cnt; k2++)
-						tmp += w[k2] * (*CUDA_CC).Dsph[f[k2]][i];
-					dytempG[d] = jp_ScaleG[jpp] * tmp;
-				}
-			}
-			else
-			{
-				dytempG[d] = 0;
-			}
-		}
 	}
 
 	if (Inrel == 1)
