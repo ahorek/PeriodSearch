@@ -73,25 +73,31 @@ __device__ int mrqmin_1_end(freq_context* CUDA_LCC, const int ma, const int mfit
 
 __device__ void mrqmin_2_end(freq_context* CUDA_LCC, int ia[], int ma)
 {
-	int j, k, l;
+	/* the threads of the block (any block size) split the copies; the scalar
+	   updates are done by thread 0 only. Its Chisq = Ochisq in the else branch
+	   cannot send a late reader down the other branch (Chisq < Ochisq stays
+	   false), and every copied value is the same as in the serial loop. */
+	const int tid = threadIdx.x;
+	const int mfit = CUDA_mfit, mfit1 = CUDA_mfit1;
 
 	if ((*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
 	{
-		(*CUDA_LCC).Alamda = (*CUDA_LCC).Alamda / CUDA_Alamda_incr;
-		for (j = 1; j <= CUDA_mfit; j++)
+		if (tid == 0)
+			(*CUDA_LCC).Alamda = (*CUDA_LCC).Alamda / CUDA_Alamda_incr;
+		for (int e = tid; e < mfit * mfit; e += blockDim.x)
 		{
-			for (k = 1; k <= CUDA_mfit; k++)
-				(*CUDA_LCC).alpha[j * CUDA_mfit1 + k] = (*CUDA_LCC).covar[j * CUDA_mfit1 + k];
-			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
+			const int j = e / mfit + 1;
+			const int k = e - (j - 1) * mfit + 1;
+			(*CUDA_LCC).alpha[j * mfit1 + k] = (*CUDA_LCC).covar[j * mfit1 + k];
 		}
-		for (l = 1; l <= ma; l++)
+		for (int j = tid + 1; j <= mfit; j += blockDim.x)
+			(*CUDA_LCC).beta[j] = (*CUDA_LCC).da[j];
+		for (int l = tid + 1; l <= ma; l += blockDim.x)
 			(*CUDA_LCC).cg[l] = (*CUDA_LCC).atry[l];
 	}
-	else
+	else if (tid == 0)
 	{
 		(*CUDA_LCC).Alamda = CUDA_Alamda_incr * (*CUDA_LCC).Alamda;
 		(*CUDA_LCC).Chisq = (*CUDA_LCC).Ochisq;
 	}
-
-	return;
 }

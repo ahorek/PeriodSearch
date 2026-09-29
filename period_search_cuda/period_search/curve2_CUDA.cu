@@ -119,36 +119,61 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 	}
       __syncwarp();
 
-      /* ---- rank-K triangular update, both original variants ---- */
-      if (CUDA_ia[1]) /* absolute: rows l = 1..lastone, alpha[l*mfit1 + m], m = 1..l */
-	{
-#pragma unroll 1
-	  for (int l = 1; l <= lastone; l++)
-	    {
-	      double w[CURVE2_K];
-#pragma unroll
-	      for (int p = 0; p < CURVE2_K; p++)
-		w[p] = T[p][l] * s2w[p];
+      /* ---- rank-K triangular update, both original variants ----
+	 Main triangle, both index variants at once: row L = l - o, column
+	 M = m - o, 1 <= M <= L <= n, with o = 1 for relative curves (ia[1]==0:
+	 the frozen first parameter is skipped and everything shifts by one) and
+	 o = 0 otherwise; alpha[L*mfit1 + M] and beta[L] are exactly the entries
+	 the old row loops updated.
+	 Rows are processed in pairs (L, n+1-L): a pair has n+1 <= DYT_STRIDE
+	 entries, so every lane has one or two of them, where the old one-row-at-
+	 a-time loop left lanes m > l idle on the short rows. Each entry still
+	 computes w[p] = T[p][L+o] * s2w[p] for its row and acc = sum_p w[p] *
+	 T[p][M+o] in the same order, and the beta rows (done by lane 0 alone
+	 before) are spread over the lanes - bit-identical, and no more FP64
+	 multiplies than before (the old loop recomputed w in every lane). */
+      {
+	const int o = CUDA_ia[1] ? 0 : 1;
+	const int n = lastone - o;
 
-	      double* __restrict__ alphrow = alpha + l * mfit1;
 #pragma unroll 1
-	      for (int m = 1 + tid; m <= l; m += 32)
-		{
-		  double acc = 0.0;
+	for (int Lb = tid + 1; Lb <= n; Lb += 32)
+	  {
+	    double b = 0.0;
 #pragma unroll
-		  for (int p = 0; p < CURVE2_K; p++)
-		    acc += w[p] * T[p][m];
-		  alphrow[m] = alphrow[m] + acc;
-		}
-	      if (tid == 0)
-		{
-		  double b = 0.0;
+	    for (int p = 0; p < CURVE2_K; p++)
+	      b += dws[p] * T[p][Lb + o];
+	    beta[Lb] = beta[Lb] + b;
+	  }
+
+#pragma unroll 1
+	for (int L1 = 1, L2 = n; L1 <= L2; L1++, L2--)
+	  {
+	    const int cnt = (L1 == L2) ? L1 : L1 + L2;
+#pragma unroll 1
+	    for (int q = tid; q < cnt; q += 32)
+	      {
+		int Lr, M;
+		if (q < L1) { Lr = L1; M = q + 1; }
+		else        { Lr = L2; M = q - L1 + 1; }
+
+		double w[CURVE2_K];
 #pragma unroll
-		  for (int p = 0; p < CURVE2_K; p++)
-		    b += dws[p] * T[p][l];
-		  beta[l] = beta[l] + b;
-		}
-	    }
+		for (int p = 0; p < CURVE2_K; p++)
+		  w[p] = T[p][Lr + o] * s2w[p];
+
+		double acc = 0.0;
+#pragma unroll
+		for (int p = 0; p < CURVE2_K; p++)
+		  acc += w[p] * T[p][M + o];
+		double* __restrict__ alphrow = alpha + Lr * mfit1;
+		alphrow[M] = alphrow[M] + acc;
+	      }
+	  }
+      }
+
+      if (CUDA_ia[1]) /* absolute: gated tail rows unchanged */
+	{
 	  /* gated tail rows (lastone < l <= lastma), j counts gated rows */
 	  int j = lastone;
 #pragma unroll 1
@@ -194,35 +219,8 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 		}
 	    }
 	}
-      else /* relative (ia[1]==0): rows l = 2..lastone, j = l-1, cols m-1 for m = 2..l */
+      else /* relative (ia[1]==0): gated tail rows unchanged */
 	{
-#pragma unroll 1
-	  for (int l = 2; l <= lastone; l++)
-	    {
-	      double w[CURVE2_K];
-#pragma unroll
-	      for (int p = 0; p < CURVE2_K; p++)
-		w[p] = T[p][l] * s2w[p];
-
-	      double* __restrict__ alphrow = alpha + (l - 1) * mfit1;
-#pragma unroll 1
-	      for (int m = 2 + tid; m <= l; m += 32)
-		{
-		  double acc = 0.0;
-#pragma unroll
-		  for (int p = 0; p < CURVE2_K; p++)
-		    acc += w[p] * T[p][m];
-		  alphrow[m - 1] = alphrow[m - 1] + acc;
-		}
-	      if (tid == 0)
-		{
-		  double b = 0.0;
-#pragma unroll
-		  for (int p = 0; p < CURVE2_K; p++)
-		    b += dws[p] * T[p][l];
-		  beta[l - 1] = beta[l - 1] + b;
-		}
-	    }
 	  int j = lastone - 1;
 #pragma unroll 1
 	  for (int l = lastone + 1; l <= lastma; l++)
