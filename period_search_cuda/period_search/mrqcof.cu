@@ -109,7 +109,7 @@ __device__ void mrqcof_curve1_last(freq_context *CUDA_LCC, double a[],
 	   are zero, as in the old conv()). One warp per block; the Dg fold
 	   applies here too: Dg[i][l]*Darea[i]*Nor = Dsph[i][l]*(Area[i]*Nor). */
 	const int tid = threadIdx.x;
-	brightshare* __restrict__ shw = &mrq_share_block()->b;
+	brightshare* __restrict__ shw = bright_share_block();
 	double* __restrict__ ww = shw->wcA;
 
 	const int ma = CUDA_ma, nco = CUDA_Ncoef, nf = CUDA_Numfac;

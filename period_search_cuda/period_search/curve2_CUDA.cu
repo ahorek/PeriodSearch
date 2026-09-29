@@ -30,9 +30,9 @@
 __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[], int inrel, int lpoints)
 {
   const int tid = threadIdx.x;
-  curve2share* __restrict__ shw = &mrq_share_block()->c2;
+  curve2share* __restrict__ shw = curve2_share_block();
   double (* __restrict__ T)[DYT_STRIDE] = shw->T;
-  double* __restrict__ s2w = shw->s2w;
+  double (* __restrict__ W)[DYT_STRIDE] = shw->W;
   double* __restrict__ dws = shw->dws;
 
   const int ma = CUDA_ma;
@@ -55,15 +55,22 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
       int P = lpoints - jp0 + 1;
       if (P > CURVE2_K) P = CURVE2_K;
 
-      /* ---- stage the tile (lanes = parameters, coalesced reads) ---- */
+      /* ---- stage the tile (lanes = parameters, coalesced reads) and the
+	 per-point scalars, ascending jp to keep the chisq order ----
+	 Every lane computes every point's scalars anyway (lane 0 alone stores
+	 dws), so each lane also stores its own columns of the weighted tile
+	 W[p][l] = T[p][l] * s2w[p]: formed once per tile (as the OpenCL wpL)
+	 instead of once per triangle entry - same product, same rounding. */
 #pragma unroll 1
       for (int p = 0; p < CURVE2_K; p++)
 	{
-	  double r1 = 0.0, r2 = 0.0;
+	  double r1 = 0.0, r2 = 0.0, s2wv = 0.0, dyv = 0.0;
 	  if (p < P)
 	    {
 	      const int jp = jp0 + p;
+	      const int lnp2 = lnp2base + jp;
 	      double const* __restrict__ row = dytemp + (size_t)(jp - 1) * DYT_STRIDE;
+	      double ymod;
 	      if (inrel)
 		{
 		  /* renormalization for relative lightcurves, folded in;
@@ -76,46 +83,30 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 		  if (j2 <= ma)
 		    r2 = coef * (row[j2] - coef1 * (*CUDA_LCC).dave[j2]);
 		  /* j1 == 1: the size-scale derivative is explicitly zero */
+		  ymod = coef * yytmp;
 		}
 	      else
 		{
 		  if (j1 <= ma) r1 = row[j1];
 		  if (j2 <= ma) r2 = row[j2];
+		  ymod = ytemp[jp];
 		}
-	    }
-	  T[p][j1] = r1;
-	  T[p][j2] = r2;
-	}
-      __syncwarp();
-
-      /* ---- per-point scalars, ascending jp to keep the chisq order ---- */
-#pragma unroll 1
-      for (int p = 0; p < CURVE2_K; p++)
-	{
-	  double s2wv = 0.0, dyv = 0.0;
-	  if (p < P)
-	    {
-	      const int jp = jp0 + p;
-	      const int lnp2 = lnp2base + jp;
-	      double ymod;
-	      if (inrel)
-		{
-		  double coef = CUDA_sig[lnp1base + jp] * lpoints / ave;
-		  ymod = coef * ytemp[jp];
-		}
-	      else
-		ymod = ytemp[jp];
 	      double sig2i = 1 / (CUDA_sig[lnp2] * CUDA_sig[lnp2]);
 	      double wght = CUDA_Weight[lnp2];
 	      dyv = CUDA_brightness[lnp2] - ymod;
 	      s2wv = sig2i * wght;
 	      ltrial_chisq = ltrial_chisq + dyv * dyv * s2wv;
 	    }
-	  if (tid == 0)
+	  T[p][j1] = r1;
+	  W[p][j1] = r1 * s2wv;
+	  /* column 64 is past the row (ma <= DYT_STRIDE-1) and never read */
+	  if (j2 < DYT_STRIDE)
 	    {
-	      s2w[p] = s2wv;
-	      dws[p] = dyv * s2wv;
+	      T[p][j2] = r2;
+	      W[p][j2] = r2 * s2wv;
 	    }
+	  if (tid == 0)
+	    dws[p] = dyv * s2wv;
 	}
       __syncwarp();
 
@@ -127,11 +118,11 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 	 the old row loops updated.
 	 Rows are processed in pairs (L, n+1-L): a pair has n+1 <= DYT_STRIDE
 	 entries, so every lane has one or two of them, where the old one-row-at-
-	 a-time loop left lanes m > l idle on the short rows. Each entry still
-	 computes w[p] = T[p][L+o] * s2w[p] for its row and acc = sum_p w[p] *
-	 T[p][M+o] in the same order, and the beta rows (done by lane 0 alone
-	 before) are spread over the lanes - bit-identical, and no more FP64
-	 multiplies than before (the old loop recomputed w in every lane). */
+	 a-time loop left lanes m > l idle on the short rows. Each entry
+	 computes acc = sum_p W[p][L+o] * T[p][M+o] in the same order, and the
+	 beta rows (done by lane 0 alone before) are spread over the lanes -
+	 bit-identical, with CURVE2_K fewer FP64 multiplies per entry now that
+	 the weighted row comes precomputed from W. */
       {
 	const int o = CUDA_ia[1] ? 0 : 1;
 	const int n = lastone - o;
@@ -157,15 +148,10 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 		if (q < L1) { Lr = L1; M = q + 1; }
 		else        { Lr = L2; M = q - L1 + 1; }
 
-		double w[CURVE2_K];
-#pragma unroll
-		for (int p = 0; p < CURVE2_K; p++)
-		  w[p] = T[p][Lr + o] * s2w[p];
-
 		double acc = 0.0;
 #pragma unroll
 		for (int p = 0; p < CURVE2_K; p++)
-		  acc += w[p] * T[p][M + o];
+		  acc += W[p][Lr + o] * T[p][M + o];
 		double* __restrict__ alphrow = alpha + Lr * mfit1;
 		alphrow[M] = alphrow[M] + acc;
 	      }
@@ -181,11 +167,6 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 	    {
 	      if (!CUDA_ia[l]) continue;
 	      j++;
-	      double w[CURVE2_K];
-#pragma unroll
-	      for (int p = 0; p < CURVE2_K; p++)
-		w[p] = T[p][l] * s2w[p];
-
 	      double* __restrict__ alphrow = alpha + j * mfit1;
 #pragma unroll 1
 	      for (int m = 1 + tid; m <= lastone; m += 32)
@@ -193,7 +174,7 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 		  double acc = 0.0;
 #pragma unroll
 		  for (int p = 0; p < CURVE2_K; p++)
-		    acc += w[p] * T[p][m];
+		    acc += W[p][l] * T[p][m];
 		  alphrow[m] = alphrow[m] + acc;
 		}
 	      if (tid == 0)
@@ -207,7 +188,7 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 			  double acc = 0.0;
 #pragma unroll
 			  for (int p = 0; p < CURVE2_K; p++)
-			    acc += w[p] * T[p][m];
+			    acc += W[p][l] * T[p][m];
 			  alphrow[k] = alphrow[k] + acc;
 			}
 		    }
@@ -227,11 +208,6 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 	    {
 	      if (!CUDA_ia[l]) continue;
 	      j++;
-	      double w[CURVE2_K];
-#pragma unroll
-	      for (int p = 0; p < CURVE2_K; p++)
-		w[p] = T[p][l] * s2w[p];
-
 	      double* __restrict__ alphrow = alpha + j * mfit1;
 #pragma unroll 1
 	      for (int m = 2 + tid; m <= lastone; m += 32)
@@ -239,7 +215,7 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 		  double acc = 0.0;
 #pragma unroll
 		  for (int p = 0; p < CURVE2_K; p++)
-		    acc += w[p] * T[p][m];
+		    acc += W[p][l] * T[p][m];
 		  alphrow[m - 1] = alphrow[m - 1] + acc;
 		}
 	      if (tid == 0)
@@ -253,7 +229,7 @@ __device__ void MrqcofCurve2(freq_context* CUDA_LCC, double* alpha, double beta[
 			  double acc = 0.0;
 #pragma unroll
 			  for (int p = 0; p < CURVE2_K; p++)
-			    acc += w[p] * T[p][m];
+			    acc += W[p][l] * T[p][m];
 			  alphrow[k] = alphrow[k] + acc;
 			}
 		    }
