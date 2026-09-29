@@ -3,6 +3,7 @@
 #include "CalcStrategy.hpp"
 #include "constants.h"
 #include "arrayHelpers.hpp"
+#include <cstdint>
 
 #if defined(__aarch64__)
   #include <arm_sve.h>
@@ -38,7 +39,7 @@ public:
 	void gauss_errc(struct globals& gl, const int n, std::vector<double>& b, int &error) override;
 
 private:
-	double* Dg_row[MAX_N_FAC + 4 + DG_PREFETCH_ROWS]{};	// row of Dg belonging to the i-th included facet
+	int64_t Dg_idx[MAX_N_FAC + 4 + DG_PREFETCH_ROWS]{};	// facet (Dg row) index of the i-th included facet
 	double dbr[MAX_N_FAC + 4]{};		// its brightness derivative, broadcast on use
 
 	double php[N_PHOT_PAR + 1]{};
