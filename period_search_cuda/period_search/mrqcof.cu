@@ -58,8 +58,6 @@ __device__ void mrqcof_start(freq_context *CUDA_LCC, double a[],
          alpha[j*(CUDA_mfit1)+k]=0;
       beta[j]=0;
    }
-
-   __syncthreads(); //pro jistotu
 }
 
 __device__ double mrqcof_end(freq_context *CUDA_LCC,double *alpha)
@@ -174,5 +172,4 @@ __device__ void mrqcof_curve1_last(freq_context *CUDA_LCC, double a[],
 		(*CUDA_LCC).np = lnp;
 		(*CUDA_LCC).ave = lave;
 	}
-	__syncwarp();
 }

@@ -38,7 +38,9 @@ __device__ int mrqmin_1_end(freq_context* CUDA_LCC, const int ma, const int mfit
 		}
 
 	}
-	__syncthreads();
+	/* no barrier needed: the solver does not touch atry, and its first
+	   (unconditional) barrier orders this copy before thread 0's atry
+	   update below */
 
 	/* the damped matrix is staged straight from alpha into shared memory by
 	   the solver; covar is not touched (it is rezeroed by mrqcof_start before
@@ -66,7 +68,6 @@ __device__ int mrqmin_1_end(freq_context* CUDA_LCC, const int ma, const int mfit
 				(*CUDA_LCC).atry[l] = (*CUDA_LCC).cg[l] + (*CUDA_LCC).da[j];
 			}
 	}
-	__syncthreads();
 
 	return err_code;
 }

@@ -999,10 +999,10 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 				for (iC = 1; iC < gl.Lcurves; iC++)
 				{
 					CudaCalculateIter1Mrqcof1Curve1<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
-					CudaCalculateIter1Mrqcof1Curve2<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[iC], gl.Lpoints[iC]);
+					CudaCalculateIter1Mrqcof1Curve2<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
 				}
 				CudaCalculateIter1Mrqcof1Curve1Last<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
-				CudaCalculateIter1Mrqcof1Curve2<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
+				CudaCalculateIter1Mrqcof1Curve2<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
 				CudaCalculateIter1Mrqcof1End<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>();
 				//mrqcof
 				CudaCalculateIter1Mrqmin1End<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM, gaussShBytes>>>();
@@ -1011,10 +1011,10 @@ int CUDAPrecalc(int cudadev, double freq_start, double freq_end, double freq_ste
 				for (iC = 1; iC < gl.Lcurves; iC++)
 				{
 					CudaCalculateIter1Mrqcof2Curve1<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
-					CudaCalculateIter1Mrqcof2Curve2<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[iC], gl.Lpoints[iC]);
+					CudaCalculateIter1Mrqcof2Curve2<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
 				}
 				CudaCalculateIter1Mrqcof2Curve1Last<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
-				CudaCalculateIter1Mrqcof2Curve2<<<CUDA_Grid_dim_precalc, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
+				CudaCalculateIter1Mrqcof2Curve2<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
 				CudaCalculateIter1Mrqcof2End<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>();
 				//mrqcof
 				CudaCalculateIter1Mrqmin2End<<<CUDA_Grid_dim_precalc, CUDA_BLOCK_DIM>>>();
@@ -1370,10 +1370,10 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 				for (iC = 1; iC < gl.Lcurves; iC++)
 				{
 					CudaCalculateIter1Mrqcof1Curve1<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
-					CudaCalculateIter1Mrqcof1Curve2<<<CUDA_grid_dim, 32>>>(gl.Inrel[iC], gl.Lpoints[iC]);
+					CudaCalculateIter1Mrqcof1Curve2<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
 				}
 				CudaCalculateIter1Mrqcof1Curve1Last<<<CUDA_grid_dim, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
-				CudaCalculateIter1Mrqcof1Curve2<<<CUDA_grid_dim, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
+				CudaCalculateIter1Mrqcof1Curve2<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
 				CudaCalculateIter1Mrqcof1End<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>();
 				//mrqcof
 				CudaCalculateIter1Mrqmin1End<<<CUDA_grid_dim, CUDA_BLOCK_DIM, gaussShBytes>>>();
@@ -1388,10 +1388,10 @@ int CUDAStart(int cudadev, int n_start_from, double freq_start, double freq_end,
 				for (iC = 1; iC < gl.Lcurves; iC++)
 				{
 					CudaCalculateIter1Mrqcof2Curve1<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
-					CudaCalculateIter1Mrqcof2Curve2<<<CUDA_grid_dim, 32>>>(gl.Inrel[iC], gl.Lpoints[iC]);
+					CudaCalculateIter1Mrqcof2Curve2<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[iC], gl.Lpoints[iC]);
 				}
 				CudaCalculateIter1Mrqcof2Curve1Last<<<CUDA_grid_dim, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
-				CudaCalculateIter1Mrqcof2Curve2<<<CUDA_grid_dim, 32>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
+				CudaCalculateIter1Mrqcof2Curve2<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>(gl.Inrel[gl.Lcurves], gl.Lpoints[gl.Lcurves]);
 				CudaCalculateIter1Mrqcof2End<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>();
 				//mrqcof
 				CudaCalculateIter1Mrqmin2End<<<CUDA_grid_dim, CUDA_BLOCK_DIM>>>();

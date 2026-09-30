@@ -330,10 +330,12 @@ __global__ void CudaCalculateIter2(void)
 			if (brtmph > CUDA_Numfac) brtmph = CUDA_Numfac;
 			brtmpl++;
 
-			/* curv ends with __syncthreads: thread 0 sums Area over all facets
-			   below, and every thread has evaluated the Chisq < Ochisq condition
-			   above before thread 0 updates Ochisq */
 			curv(CUDA_LCC, (*CUDA_LCC).cg, brtmpl, brtmph);
+
+			/* thread 0 sums Area over all facets below, and every thread
+			   must have evaluated the Chisq < Ochisq condition above before
+			   thread 0 updates Ochisq */
+			__syncthreads();
 
 			if (threadIdx.x == 0)
 			{

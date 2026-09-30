@@ -168,21 +168,29 @@ struct brightshare
 struct curve2share
 {
 	double T[CURVE2_K][DYT_STRIDE];     /* staged dyda tile, rows 1..ma */
+	double W[CURVE2_K][DYT_STRIDE];     /* T[p][l] * s2w[p] */
 	double s2w[CURVE2_K];
 	double dws[CURVE2_K];
+	double dy[CURVE2_K];
 };
 
-/* bright and curve2 never use their staging at the same time, so they share
-   one per-block union: the shared footprint is max(...), not the sum */
-union mrqshare
+/* bright and curve2 run in separate kernels, so each gets its own static
+   shared block: a kernel only reserves the staging it actually uses (a union
+   would make the small Curve1/Curve1Last blocks reserve Curve2's tiles) */
+struct mrqshare
 {
 	brightshare b;
-	curve2share c2;
 };
 
 __device__ __forceinline__ mrqshare* mrq_share_block()
 {
 	__shared__ mrqshare s;
+	return &s;
+}
+
+__device__ __forceinline__ curve2share* curve2_share_block()
+{
+	__shared__ curve2share s;
 	return &s;
 }
 #endif
