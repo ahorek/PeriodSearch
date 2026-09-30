@@ -161,8 +161,10 @@ __global__ void CudaCalculateIter1Mrqmin2End(void)
 
 	if (!(*CUDA_LCC).isNiter) return;
 
+	/* one block of CUDA_BLOCK_DIM threads per context */
 	mrqmin_2_end(CUDA_LCC, CUDA_ia, CUDA_ma);
-	(*CUDA_LCC).Niter++;
+	if (threadIdx.x == 0)
+		(*CUDA_LCC).Niter++;
 }
 
 __global__ void CudaCalculateIter1Mrqcof1Start(void)
@@ -227,7 +229,10 @@ __global__ void CudaCalculateIter1Mrqcof1End(void)
 
 	if (!(*CUDA_LCC).isAlamda) return;
 
-	(*CUDA_LCC).Ochisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).alpha);
+	/* one block of CUDA_BLOCK_DIM threads per context */
+	const double ochisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).alpha);
+	if (threadIdx.x == 0)
+		(*CUDA_LCC).Ochisq = ochisq;
 
 }
 
@@ -283,7 +288,10 @@ __global__ void CudaCalculateIter1Mrqcof2End(void)
 
 	if (!(*CUDA_LCC).isNiter) return;
 
-	(*CUDA_LCC).Chisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).covar);
+	/* one block of CUDA_BLOCK_DIM threads per context */
+	const double chisq = mrqcof_end(CUDA_LCC, (*CUDA_LCC).covar);
+	if (threadIdx.x == 0)
+		(*CUDA_LCC).Chisq = chisq;
 }
 
 __global__ void CudaCalculateIter2(void)
@@ -299,12 +307,6 @@ __global__ void CudaCalculateIter2(void)
 	{
 		if ((*CUDA_LCC).Niter == 1 || (*CUDA_LCC).Chisq < (*CUDA_LCC).Ochisq)
 		{
-			if (threadIdx.x == 0)
-			{
-				(*CUDA_LCC).Ochisq = (*CUDA_LCC).Chisq;
-			}
-			__syncthreads();
-
 			auto brtmph = CUDA_Numfac / CUDA_BLOCK_DIM;
 			if (CUDA_Numfac % CUDA_BLOCK_DIM) brtmph++;
 			int brtmpl = threadIdx.x * brtmph;
@@ -312,10 +314,15 @@ __global__ void CudaCalculateIter2(void)
 			if (brtmph > CUDA_Numfac) brtmph = CUDA_Numfac;
 			brtmpl++;
 
+			/* curv ends with __syncthreads: thread 0 sums Area over all facets
+			   below, and every thread has evaluated the Chisq < Ochisq condition
+			   above before thread 0 updates Ochisq */
 			curv(CUDA_LCC, (*CUDA_LCC).cg, brtmpl, brtmph);
 
 			if (threadIdx.x == 0)
 			{
+				(*CUDA_LCC).Ochisq = (*CUDA_LCC).Chisq;
+
 				for (auto i = 1; i <= 3; i++)
 				{
 					(*CUDA_LCC).chck[i] = 0;

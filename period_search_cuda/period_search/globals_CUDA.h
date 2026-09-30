@@ -61,6 +61,7 @@ __device__ extern double CUDA_cl, CUDA_Alamda_start, CUDA_Alamda_incr;
 __device__ extern int CUDA_n_iter_max, CUDA_n_iter_min, CUDA_ndata;
 __device__ extern double CUDA_iter_diff_max;
 __constant__ extern double CUDA_Nor[MAX_N_FAC + 1][3];
+__device__ extern double CUDA_NorG[MAX_N_FAC + 1][3]; /* global copy of CUDA_Nor for divergent (per-thread facet) reads */
 __constant__ extern double CUDA_conw_r;
 __constant__ extern int CUDA_Lmax, CUDA_Mmax;
 __device__ extern double CUDA_Fc[MAX_N_FAC + 1][MAX_LM + 1];
@@ -154,16 +155,12 @@ __device__ extern freq_result *CUDA_FR;
 #define DYT_STRIDE 64
 #define CURVE2_K 8
 #define GEOM_PT_SIZE 26
-#define GEO_BATCH 16
 
 #ifdef __CUDACC__
 struct brightshare
 {
-	double wcA[32];                     /* compacted facet weights, point A */
-	double wcB[32];                     /* compacted facet weights, point B */
-	int    fc[32];                      /* compacted facet indices */
-	double geo[GEO_BATCH][GEOM_PT_SIZE];/* per-point geometry */
-	double inv[11];                     /* per-curve invariants */
+	double wcA[32];                     /* facet weights (mrqcof_curve1_last) */
+	double inv[11];                     /* per-curve invariants (bright_curve1) */
 };
 
 struct curve2share
