@@ -46,6 +46,8 @@ __device__ __device_builtin__ double __hiloint2double(int hi, int lo);
 
 //NOTE: MUST BE 128 or 64
 #define CUDA_BLOCK_DIM 128
+/* block size of the per-context kernels (one thread per context) */
+#define CTX_LOCAL 64
 
 //NOTE: https://devtalk.nvidia.com/default/topic/517801/-34-texture-is-not-a-template-34-error-mvs-2010/
 

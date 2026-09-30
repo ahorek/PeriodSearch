@@ -9,14 +9,20 @@
 //#include "../../../../../../../Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt/math.h"
 #include <cstdio>
 
-__global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, double freq_step)
+__global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, double freq_step, const int nContexts)
 {
-	/* one block per (frequency, pole) pair: N_POLES consecutive blocks share
-	   the same trial frequency and each of them will run one of the initial
-	   poles, all concurrently (the poles used to be a serial host-side loop) */
-	const auto n = n_start + blockIdx.x / N_POLES;
-	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	/* one thread per context, CTX_LOCAL contexts per block (was one block
+	   of a single thread per context: a warp with one active lane) */
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	if (x >= nContexts) return;
+
+	/* one context per (frequency, pole) pair: N_POLES consecutive contexts
+	   share the same trial frequency and each of them will run one of the
+	   initial poles, all concurrently (the poles used to be a serial
+	   host-side loop) */
+	const auto n = n_start + x / N_POLES;
+	const auto CUDA_LCC = &CUDA_CC[x];
+	const auto CUDA_LFR = &CUDA_FR[x];
 
 	//zero context
 	//	CUDA_CC is zeroed itself as global memory but need to reset between freq TODO
@@ -40,13 +46,18 @@ __global__ void CudaCalculatePrepare(int n_start, int n_max, double freq_start, 
 	(*CUDA_LFR).dev_best = 1e40;
 }
 
-__global__ void CudaCalculatePreparePole(void)
+__global__ void CudaCalculatePreparePole(const int nContexts)
 {
-	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	/* one thread per context, CTX_LOCAL contexts per block (was one block
+	   of a single thread per context: a warp with one active lane) */
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	if (x >= nContexts) return;
 
-	/* which of the initial poles this block runs (see CudaCalculatePrepare) */
-	const auto m = static_cast<int>(blockIdx.x) % N_POLES + 1;
+	const auto CUDA_LCC = &CUDA_CC[x];
+	const auto CUDA_LFR = &CUDA_FR[x];
+
+	/* which of the initial poles this context runs (see CudaCalculatePrepare) */
+	const auto m = x % N_POLES + 1;
 
 	if ((*CUDA_LCC).isInvalid)
 	{
@@ -101,10 +112,15 @@ __global__ void CudaCalculatePreparePole(void)
 	(*CUDA_LFR).isReported = 0;
 }
 
-__global__ void CudaCalculateIter1Begin(void)
+__global__ void CudaCalculateIter1Begin(const int nContexts)
 {
-	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	/* one thread per context, CTX_LOCAL contexts per block (was one block
+	   of a single thread per context: a warp with one active lane) */
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	if (x >= nContexts) return;
+
+	const auto CUDA_LCC = &CUDA_CC[x];
+	const auto CUDA_LFR = &CUDA_FR[x];
 
 	if ((*CUDA_LCC).isInvalid)
 	{
@@ -351,10 +367,15 @@ __global__ void CudaCalculateIter2(void)
 	}
 }
 
-__global__ void CudaCalculateFinishPole(void)
+__global__ void CudaCalculateFinishPole(const int nContexts)
 {
-	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	/* one thread per context, CTX_LOCAL contexts per block (was one block
+	   of a single thread per context: a warp with one active lane) */
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	if (x >= nContexts) return;
+
+	const auto CUDA_LCC = &CUDA_CC[x];
+	const auto CUDA_LFR = &CUDA_FR[x];
 
 	if ((*CUDA_LCC).isInvalid) return;
 
@@ -391,10 +412,15 @@ __global__ void CudaCalculateFinishPole(void)
 	(*CUDA_LFR).chck[3]=(*CUDA_LCC).chck[3];*/
 }
 
-__global__ void CudaCalculateFinish(void)
+__global__ void CudaCalculateFinish(const int nContexts)
 {
-	const auto CUDA_LCC = &CUDA_CC[blockIdx.x];
-	const auto CUDA_LFR = &CUDA_FR[blockIdx.x];
+	/* one thread per context, CTX_LOCAL contexts per block (was one block
+	   of a single thread per context: a warp with one active lane) */
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	if (x >= nContexts) return;
+
+	const auto CUDA_LCC = &CUDA_CC[x];
+	const auto CUDA_LFR = &CUDA_FR[x];
 
 	if ((*CUDA_LCC).isInvalid) return;
 
