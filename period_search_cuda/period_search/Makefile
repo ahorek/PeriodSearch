@@ -44,7 +44,7 @@ CXXFLAGS = -O3 -s \
 # different translation units, and plain -rdc=true compiles every cross-file
 # call as a real ABI call (stack frame, spills, no inlining). The objects carry
 # LTO IR (code=lto_XX); the device link inlines and generates the SASS (sm_XX).
-NVCC_ARCHS = 75 80 86 87 89 90
+NVCC_ARCHS = 75
 NVCC_COMMON = -O3 --extra-device-vectorization --maxrregcount=255 -Wno-deprecated-gpu-targets
 NVCCFLAGS = $(NVCC_COMMON) -rdc=true $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=lto_$(a))
 NVCCLINKFLAGS = $(NVCC_COMMON) --ptxas-options=-v -dlto $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=sm_$(a))
