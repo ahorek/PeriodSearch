@@ -16,7 +16,7 @@ BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
 PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
-CUDA_PATH = ../../../cuda-10.2
+CUDA_PATH = ../../../cuda-12.9
 BUILD_DIR = ./build
 # END DO-NOT-CHANGE
 
@@ -39,21 +39,21 @@ CXXFLAGS = -O3 -s \
 # CUDA 11.1 - CC: NVCCFLAGS = compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;compute_80,sm_80;compute_86,sm_86
 # CUDA 11.8 - CC: NVCCFLAGS = --ptxas-options=-v --generate-code arch=compute_52,code=sm_52 --generate-code arch=compute_60,code=sm_60 --generate-code arch=compute_61,code=sm_61 --generate-code arch=compute_70,code=sm_70 --generate-code arch=compute_75,code=sm_75 --generate-code arch=compute_80,code=sm_80 --generate-code arch=compute_86,code=sm_86 --maxrregcount=80 -rdc=tru
 # CUDA 12.9 - CC:
-NVCC_ARCHS = 30 35 37 50 52 60 61 70 75
+NVCC_ARCHS = 50 52 53 60 61 62 70 72 75 80 86 87 89 90 100 120
 NVCC_COMMON = -O3 --extra-device-vectorization --maxrregcount=255 -Wno-deprecated-gpu-targets
-NVCCFLAGS = $(NVCC_COMMON) -rdc=true $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=sm_$(a))
-NVCCLINKFLAGS = $(NVCC_COMMON) --ptxas-options=-v $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=sm_$(a))
+NVCCFLAGS = $(NVCC_COMMON) -rdc=true $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=lto_$(a))
+NVCCLINKFLAGS = $(NVCC_COMMON) --ptxas-options=-v -dlto $(foreach a,$(NVCC_ARCHS),--generate-code arch=compute_$(a),code=sm_$(a))
 
 CC=g++
 CXX=g++
 OPTFLAGS=-O3 -s
 CFLAGS=$(OPTFLAGS) -Wall
-LDFLAGS=-static-libgcc -static-libstdc++ -lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
+LDFLAGS=-lm -lrt -ldl -Xlinker -rpath . -L$(PS_COMMON_LIB_DIR) -lps_common
 
 MY_LIBS=$(addprefix $(BUILD_DIR)/, trifac.o areanorm.o sphfunc.o ellfit.o ludcmp.o lubksb.o mrqmin.o mrqcof.o curv.o blmatrix.o conv.o matrix.o \
 	bright.o gauss_errc.o pscuda.device-link.o start_CUDA.o curve2_CUDA.o Start.o ComputeCapability.o)
 
-PROGS = $(BUILD_DIR)/period_search_BOINC_cuda10200_v10222_Release
+PROGS = $(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release
 
 all: $(BUILD_DIR) $(PROGS)
 
@@ -79,7 +79,7 @@ clean:
 distclean:
 	/bin/rm -f $(BUILD_DIR)/* libstdc++.a libcuda.so
 
-install: $(BUILD_DIR)/period_search_BOINC_cuda10200_v10222_Release
+install: $(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release
 
 # specify library paths explicitly (rather than -l)
 # because otherwise you might get a version in /usr/lib etc.
@@ -88,7 +88,7 @@ install: $(BUILD_DIR)/period_search_BOINC_cuda10200_v10222_Release
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/period_search_BOINC_cuda10200_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
+$(BUILD_DIR)/period_search_BOINC_cuda12900_v10222_Release: $(BUILD_DIR)/period_search_BOINC.o $(MY_LIBS) libstdc++.a $(BOINC_API_DIR)/libboinc_api.a $(BOINC_LIB_DIR)/libboinc.a \
 	libcuda.so libnvidia-ml.so $(PS_COMMON_LIB_DIR)/libps_common.a $(CUDA_PATH)/lib64/libcudart_static.a
 	$(CXX) $(CXXFLAGS) -o $@ $(MY_LIBS) $< libstdc++.a -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
