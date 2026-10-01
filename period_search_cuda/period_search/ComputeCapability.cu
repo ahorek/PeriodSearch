@@ -65,6 +65,9 @@ int Cc::GetSmxBlockCuda12() const
 	case 8:
 		smxBlock = GetSmxBlockCc8(); // Ampere micro architecture CC 8.0, 8.6; Ada Lovelace - CC 8.9
 		break;
+	case 7:
+		smxBlock = GetSmxBlockCc7(); // 7.0, 7.2: Volta; 7.5: Turing 
+		break;
 	case 6:
 		smxBlock = GetSmxBlockCc6(); // Pascal
 		break;
@@ -92,6 +95,9 @@ int Cc::GetSmxBlockCuda11() const
 		break;
 	case 8:
 		smxBlock = GetSmxBlockCc8(); // Ampere micro architecture CC 8.0, 8.6; Ada Lovelace - CC 8.9
+		break;
+	case 7:
+		smxBlock = GetSmxBlockCc7(); // 7.0, 7.2: Volta; 7.5: Turing 
 		break;
 	case 6:
 		smxBlock = GetSmxBlockCc6(); // Pascal
