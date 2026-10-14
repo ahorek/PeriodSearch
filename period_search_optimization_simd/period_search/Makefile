@@ -13,7 +13,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 # Define compiler and flags
 CXX = g++
-CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -s \
+CXXFLAGS = -O3 -std=c++2a -w -s \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
@@ -23,7 +23,7 @@ CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -s \
 	-L.
 
 # Define the target executable
-TARGET = $(BUILD_DIR)/period_search_BOINC_linux_10222_x64_universal_Release
+TARGET = $(BUILD_DIR)/period_search_BOINC_linux_10222_x32_universal_Release
 
 # Define the source files
 SRC = areanorm.cpp blmatrix.cpp bright.cpp bright_avx.cpp bright_avx512.cpp bright_fma.cpp \
