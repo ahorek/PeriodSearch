@@ -1,0 +1,86 @@
+
+name: x32 Linux
+
+on: [push, pull_request]
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    name: >-
+      ${{ matrix.variant }} (${{ matrix.arch }}) / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'cpu', arch: 'x86', os: 'ubuntu-22.04', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install 32-bit toolchain
+        if: success() && matrix.arch == 'x86'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install gcc-multilib g++-multilib
+
+      - name: Print gcc version
+        run: |
+          gcc -v
+
+      - name: Prepare boinc libraries
+        run: |
+          git clone --depth 1 https://github.com/BOINC/boinc.git
+          cd ./boinc
+          sh ./_autosetup
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            sh ./configure --disable-server --disable-client --disable-manager \
+              --build=x86_64-pc-linux-gnu --host=i686-pc-linux-gnu \
+              CC="gcc -m32" CXX="g++ -m32" CXXFLAGS="-O3 " LDFLAGS="-m32"
+          else
+            sh ./configure --disable-server --disable-client --disable-manager CXXFLAGS="-O3 "
+          fi
+          make -j
+
+      - name: Build ps_common library
+        run: |
+          ARCH_FLAGS=()
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            ARCH_FLAGS=(CC="gcc -m32" CXX="g++ -m32")
+          fi
+          cd ./period_search_common
+          make -f Makefile -j "${ARCH_FLAGS[@]}"
+
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          ARCH_FLAGS=()
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            ARCH_FLAGS=(CC="gcc -m32" CXX="g++ -m32")
+          fi
+          sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j "${ARCH_FLAGS[@]}"
+
+      - name: Verify binary architecture
+        if: success() && matrix.arch == 'x86'
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          find . -type f -name 'period_search_BOINC*' ! -name '*.cpp' ! -name '*.o' -exec file {} \;
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.variant }}${{ matrix.arch == 'x86' && '_x86' || '' }}_${{ matrix.os }}
+          retention-days: 1
+          path: |
+            ${{ matrix.working-directory }}/**/period_search_BOINC*
+            !${{ matrix.working-directory }}/**/period_search_BOINC.cpp
+            !${{ matrix.working-directory }}/**/period_search_BOINC.o
