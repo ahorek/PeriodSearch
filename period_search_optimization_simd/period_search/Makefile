@@ -47,8 +47,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Rule to build the static library
-$(TARGET): $(OBJ) $(BUILD_DIR)/libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(BUILD_DIR)/libstdc++.a -pthread \
+$(TARGET): $(OBJ) $(BOINC_LIB_DIR)/libboinc.a $(BOINC_API_DIR)/libboinc_api.a $(PS_COMMON_LIB_DIR)/libps_common.a
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) -pthread \
 	$(PS_COMMON_LIB_DIR)/libps_common.a \
 	$(BOINC_API_DIR)/libboinc_api.a \
 	$(BOINC_LIB_DIR)/libboinc.a \
@@ -58,11 +58,6 @@ $(TARGET): $(OBJ) $(BUILD_DIR)/libstdc++.a $(BOINC_LIB_DIR)/libboinc.a $(BOINC_A
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Rule to create symbolic link for libstdc++.a
-$(BUILD_DIR)/libstdc++.a:
-	@mkdir -p $(BUILD_DIR)
-	ln -s `g++ -print-file-name=libstdc++.a` $(BUILD_DIR)/libstdc++.a
 
 # Clean rule to remove compiled files
 clean:
