@@ -1,0 +1,93 @@
+
+name: ASan Linux
+
+on: [push, pull_request, workflow_dispatch]
+
+env:
+  BOINC_DIR: ./boinc
+
+jobs:
+  asan:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    name: >-
+      ${{ matrix.variant }} (${{ matrix.arch }}, asan) / ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { variant: 'cpu', arch: 'x64', os: 'ubuntu-22.04', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+          - { variant: 'cpu', arch: 'x86', os: 'ubuntu-22.04', working-directory: './period_search_optimization_simd/period_search', makefile: 'Makefile' }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set compiler flags
+        run: |
+          SAN="-fsanitize=address -fno-omit-frame-pointer -g"
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            M="-m32"
+            # LeakSanitizer is not supported on 32-bit x86
+            echo "ASAN_OPTIONS=detect_leaks=0:detect_stack_use_after_return=1:strict_init_order=1:check_initialization_order=1:halt_on_error=1" >> "$GITHUB_ENV"
+          else
+            M=""
+            echo "ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:strict_init_order=1:check_initialization_order=1:halt_on_error=1" >> "$GITHUB_ENV"
+          fi
+          echo "PLAIN_CC=gcc $M" >> "$GITHUB_ENV"
+          echo "PLAIN_CXX=g++ $M" >> "$GITHUB_ENV"
+          echo "SAN_CC=gcc $M $SAN" >> "$GITHUB_ENV"
+          echo "SAN_CXX=g++ $M $SAN" >> "$GITHUB_ENV"
+
+      - name: Install 32-bit toolchain
+        if: success() && matrix.arch == 'x86'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install gcc-multilib g++-multilib
+
+      - name: Print gcc version
+        run: |
+          gcc -v
+
+      - name: Prepare boinc libraries
+        run: |
+          git clone --depth 1 https://github.com/BOINC/boinc.git
+          cd ./boinc
+          sh ./_autosetup
+          if [ "${{ matrix.arch }}" = "x86" ]; then
+            sh ./configure --disable-server --disable-client --disable-manager \
+              --build=x86_64-pc-linux-gnu --host=i686-pc-linux-gnu \
+              CC="$PLAIN_CC" CXX="$PLAIN_CXX" CXXFLAGS="-O3 " LDFLAGS="-m32"
+          else
+            sh ./configure --disable-server --disable-client --disable-manager CXXFLAGS="-O3 "
+          fi
+          make -j
+
+      - name: Keep debug symbols
+        run: |
+          # The Makefiles strip binaries (-s); ASan needs symbols for readable stack traces
+          sed -i 's/ -w -s/ -w/' ./period_search_common/Makefile
+          sed -i 's/ -w -s/ -w/' ${{ matrix.working-directory }}/${{ matrix.makefile }}
+
+      - name: Build ps_common library
+        run: |
+          cd ./period_search_common
+          make -f Makefile -j CC="$SAN_CC" CXX="$SAN_CXX"
+
+      - name: Run make
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          sed -i 's/BOINC_DIR\s*=.*$/BOINC_DIR = ..\/..\/boinc/' ${{ matrix.makefile }}
+          make -f ${{ matrix.makefile }} -j CC="$SAN_CC" CXX="$SAN_CXX"
+
+      - name: Run benchmark under ASan
+        working-directory: ${{ matrix.working-directory }}
+        run: |
+          BIN=$(find ./build -maxdepth 1 -type f -name 'period_search_BOINC*' ! -name '*.o' | head -n1)
+          file "$BIN"
+          "$BIN" --benchmark
