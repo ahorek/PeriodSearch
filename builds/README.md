@@ -1,2 +1,1 @@
-use https://github.com/ahorek/asteroids\\\_prerelease/releases instead
-
+Use [https://github.com/ahorek/asteroids_prerelease/releases](https://github.com/ahorek/asteroids_prerelease/releases) instead
