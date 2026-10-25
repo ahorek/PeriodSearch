@@ -20,7 +20,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 CXX = g++
 # Use `readelf -p .GCC.command.line period_search_rpi_armv7_arm32` to see all used compiler commands
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -frecord-gcc-switches \
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -fopenmp -frecord-gcc-switches \
     -DARM64 \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \

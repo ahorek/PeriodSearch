@@ -43,7 +43,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 STAGING_DIR = ../../../openwrt/staging_dir/toolchain-aarch64_cortex-a53_gcc-13.3.0_musl
 CXX = $(STAGING_DIR)/bin/aarch64-openwrt-linux-musl-g++
 
-CXXFLAGS = -march=armv8-a -O3 -std=c++2a -frecord-gcc-switches \
+CXXFLAGS = -march=armv8-a -O3 -std=c++2a -fopenmp -frecord-gcc-switches \
     -DARM64 \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \

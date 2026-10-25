@@ -34,7 +34,7 @@ int mrqmin(std::vector<std::vector<double>>& x1, std::vector<std::vector<double>
 		std::vector<double>& sig, std::vector<double>& a, std::vector<int>& ia, const int ma, globals& gl)
 {
 	int j, k, l, err_code;
-	static int mfit, lastone, lastma; /* it is set in the first call*/
+	static thread_local int mfit, lastone, lastma; /* it is set in the first call (per thread)*/
 	//static double* beta, * da, * atry; //beta, da are zero indexed
 
 	double trial_chisq;

@@ -17,7 +17,7 @@ MAKEFLAGS += -j8
 
 # CXXFLAGS = -march=x86-64 -std=c++17 -g -o -fsanitize=address\
 
-CXXFLAGS = -march=x86-64 -std=c++2a -g \
+CXXFLAGS = -march=x86-64 -std=c++2a -fopenmp -g \
 	-D_DEBUG \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \

@@ -91,6 +91,13 @@
 #include "SIMDHelpers.h"
 #include "benchmark.hpp"
 
+#include <algorithm>
+#include <memory>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #ifdef APP_GRAPHICS
 #include "graphics2.h"
 #include "uc2.h"
@@ -116,7 +123,7 @@ int fscanf_s(FILE* file, const char* format, ...) {
 }
 #endif
 
-CalcContext calcCtx(std::allocate_shared<CalcStrategyNone>(AlignedAllocator<CalcStrategyNone>(64)));
+thread_local CalcContext calcCtx(std::allocate_shared<CalcStrategyNone>(AlignedAllocator<CalcStrategyNone>(64)));
 SIMDSupport CPUopt;
 
 constexpr auto checkpoint_file = "period_search_state";
@@ -186,23 +193,207 @@ void update_shmem() {
 //#endif
 
 
-/* global parameters */
-int Lmax, Mmax, Niter, Lastcall,
-Ncoef, Numfac, Nphpar,
-Deallocate, n_iter;
+/* global parameters - shared, read-only while the poles are being fitted */
+int Lmax, Mmax, Ncoef, Numfac, Nphpar, n_iter;
 
-double Ochisq, Chisq, Alamda, Alamda_incr, Alamda_start, Phi_0, Scale,
+double Alamda_incr, Alamda_start, Phi_0,
 
 Fc[MAX_N_FAC + 1][MAX_LM + 1], Fs[MAX_N_FAC + 1][MAX_LM + 1],
 Tc[MAX_N_FAC + 1][MAX_LM + 1], Ts[MAX_N_FAC + 1][MAX_LM + 1],
 Dsph[MAX_N_FAC + 1][MAX_N_PAR + 1],
+Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1];
+
+/* per-thread state of one Levenberg-Marquardt fit (see globals.h) */
+thread_local int Niter, Lastcall, Deallocate;
+
+thread_local double Ochisq, Chisq, Alamda, Scale,
 Blmat[4][4],
-Pleg[MAX_N_FAC + 1][MAX_LM + 1][MAX_LM + 1],
 Dblm[3][4][4];
 
-std::vector<double> atry;
-std::vector<double> beta;
-std::vector<double> da;
+thread_local std::vector<double> atry;
+thread_local std::vector<double> beta;
+thread_local std::vector<double> da;
+
+/* Result of the fit started from one initial pole */
+struct PoleResult
+{
+    double dev = 1e40;  /* rms deviation */
+    double prd = 0;     /* period solution [days] */
+    double dark = 0;    /* dark facet area [% of total area] */
+    double la = 0;      /* lambda of the pole solution [deg] */
+    double be = 0;      /* beta of the pole solution [deg] */
+};
+
+/* Makes sure the calling thread has its own SIMD strategy object */
+static void EnsureThreadStrategy(const SIMDEnum simd)
+{
+    thread_local bool initialized = false;
+    thread_local SIMDEnum current = SIMDEnum::Undefined;
+
+    if (!initialized || current != simd)
+    {
+        SetOptimizationStrategy(simd);
+        current = simd;
+        initialized = true;
+    }
+}
+
+/* Levenberg-Marquardt fit starting from the initial pole 'm' at frequency 'freq'.
+   Only touches thread-private data (cg, ia, gl and the thread_local globals),
+   so different poles can be fitted concurrently. */
+static PoleResult FitPole(const int m, const double freq, const int ma, const int ndata, const double conw_r,
+    const double cl, const double stop_condition, int n_iter_min, const double par[], const int ia_par[],
+    const double lambda_pole[], const double beta_pole[], const std::vector<double>& cg_first,
+    std::vector<std::vector<double>>& ee, std::vector<std::vector<double>>& ee0, std::vector<double>& tim,
+    std::vector<double>& brightness, std::vector<double>& sig,
+    std::vector<double>& cg, std::vector<int>& ia, globals& gl)
+{
+    int i, j, n_iter_max;
+    double prd, dev_old, dev_new, iter_diff, iter_diff_max, rchisq, totarea, sum, dark;
+    double chck[4]{};
+
+    prd = 1 / freq;
+    /* starts from the initial ellipsoid */
+    for (i = 1; i <= Ncoef; i++)
+        cg[i] = cg_first[i];
+
+    cg[Ncoef + 1] = beta_pole[m];
+    cg[Ncoef + 2] = lambda_pole[m];
+
+    /* The formulas use beta measured from the pole */
+    cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
+    /* conversion of lambda, beta to radians */
+    cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
+    cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
+
+    /* Use omega instead of period */
+    cg[Ncoef + 3] = 24 * 2 * PI / prd;
+
+    for (i = 1; i <= Nphpar; i++)
+    {
+        cg[Ncoef + 3 + i] = par[i];
+        ia[Ncoef + 3 + i - 1] = ia_par[i];
+    }
+    /* Lommel-Seeliger part */
+    cg[Ncoef + 3 + Nphpar + 2] = 1;
+    /* Use logarithmic formulation for Lambert to keep it positive */
+    cg[Ncoef + 3 + Nphpar + 1] = log(cl);
+
+    /* Levenberg-Marquardt loop */
+    n_iter_max = 0;
+    iter_diff_max = -1;
+    rchisq = -1;
+    if (stop_condition > 1)
+    {
+        n_iter_max = static_cast<int>(stop_condition);
+        iter_diff_max = 0;
+        n_iter_min = 0; /* to not overwrite the n_iter_max value */
+    }
+    if (stop_condition < 1)
+    {
+        n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
+        iter_diff_max = stop_condition;
+    }
+    Alamda = -1;
+    Niter = 0;
+    iter_diff = 1e40;
+    dev_old = 1e30;
+    dev_new = 0;
+    Lastcall = 0;
+
+    while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
+    {
+        mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
+        Niter++;
+
+        if ((Niter == 1) || (Chisq < Ochisq))
+        {
+            Ochisq = Chisq;
+            calcCtx.CalculateCurv(cg, gl);
+
+            for (i = 1; i <= 3; i++)
+            {
+                chck[i] = 0;
+                for (j = 1; j <= Numfac; j++)
+                {
+                    chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
+                }
+            }
+            rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
+        }
+        dev_new = sqrt(rchisq / (ndata - 3));
+
+        /* only if this step is better than the previous,
+           1e-10 is for numeric errors */
+        if (dev_old - dev_new > 1e-10)
+        {
+            iter_diff = dev_old - dev_new;
+            dev_old = dev_new;
+        }
+    }
+
+    /* deallocates variables used in mrqmin */
+    Deallocate = 1;
+    mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
+    Deallocate = 0;
+
+    totarea = 0;
+    for (i = 1; i <= Numfac; i++)
+    {
+        totarea = totarea + gl.Area[i - 1];
+    }
+
+    sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
+    dark = sqrt(sum);
+
+    PoleResult result;
+    result.dev = dev_new;
+    /* period solution */
+    result.prd = 2 * PI / cg[Ncoef + 3];
+    result.dark = dark / totarea * 100;
+    /* pole solution */
+    result.la = RAD2DEG * cg[Ncoef + 2];
+    result.be = 90 - RAD2DEG * cg[Ncoef + 1];
+
+    return result;
+}
+
+/* Fits all N_POLES initial poles for one frequency, in parallel with OpenMP.
+   results[1..N_POLES] receive the individual results. */
+static void FitAllPoles(PoleResult results[], const SIMDEnum simd, const int n_threads, const globals& gl,
+    const double freq, const int ma, const int ndata, const double conw_r, const double cl,
+    const double stop_condition, const int n_iter_min, const double par[], const int ia_par[],
+    const double lambda_pole[], const double beta_pole[], const std::vector<double>& cg_first,
+    std::vector<std::vector<double>>& ee, std::vector<std::vector<double>>& ee0, std::vector<double>& tim,
+    std::vector<double>& brightness, std::vector<double>& sig, const std::vector<int>& ia)
+{
+#ifdef _OPENMP
+#pragma omp parallel num_threads(n_threads)
+#endif
+    {
+        /* Private per thread: SIMD strategy object, the thread_local globals,
+           a copy of 'gl' (Area, Dg, dyda, alpha, covar, ytemp, dytemp, ...), cg and ia.
+           Read-only and shared: ee, ee0, tim, brightness, sig, cg_first and the sph. harmonics tables. */
+        EnsureThreadStrategy(simd);
+        const auto gl_local = std::allocate_shared<globals>(AlignedAllocator<globals>(64), gl);
+        atry.assign(ma + 1, 0.0);
+        beta.assign(ma + 1, 0.0);
+        da.assign(ma + 1, 0.0);
+        Deallocate = 0;
+        Lastcall = 0;
+        std::vector<double> cg(MAX_N_PAR + 1, 0.0);
+        std::vector<int> ia_local(ia);
+
+#ifdef _OPENMP
+#pragma omp for schedule(dynamic, 1)
+#endif
+        for (int m = 1; m <= N_POLES; m++)
+        {
+            results[m] = FitPole(m, freq, ma, ndata, conw_r, cl, stop_condition, n_iter_min, par, ia_par,
+                lambda_pole, beta_pole, cg_first, ee, ee0, tim, brightness, sig, cg, ia_local, *gl_local);
+        }
+    }
+}
 
 // NOTE: RPi related:
 //void blinkLed(int count) {
@@ -259,7 +450,12 @@ int main(int argc, char** argv)
         }
     }
 
-    int retval = boinc_init();
+    BOINC_OPTIONS boinc_options;
+    boinc_options_defaults(boinc_options);
+#ifdef _OPENMP
+    boinc_options.multi_thread = true; /* worker threads are created by OpenMP */
+#endif
+    int retval = boinc_init_options(&boinc_options);
     if (retval)
     {
         fprintf(stderr, "%s boinc_init returned %d\n", boinc_msg_prefix(buf, sizeof(buf)), retval);
@@ -612,6 +808,20 @@ int main(int argc, char** argv)
     /* optimization of the convexity weight **************************************************************/
     APP_INIT_DATA aid;
     boinc_get_init_data(aid);
+
+    /* Number of OpenMP threads for the pole fits: BOINC's ncpus (mt plan class), overridden by --nthreads.
+       There are only N_POLES independent fits per frequency, so more threads would just idle. */
+    int n_threads = 1;
+#ifdef _OPENMP
+    n_threads = aid.ncpus > 0 ? static_cast<int>(aid.ncpus) : omp_get_max_threads();
+    for (i = 0; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
+            n_threads = atoi(argv[i + 1]);
+    }
+    n_threads = (std::max)(1, (std::min)(n_threads, N_POLES));
+#endif
+    PoleResult poles[N_POLES + 1];
     if (!checkpoint_exists)
     {
         conw_r = conw / escl / escl;
@@ -643,6 +853,10 @@ int main(int argc, char** argv)
 #else
     std::cerr << "CPU: " << GetCpuInfo() << std::endl;
     std::cerr << "RAM: " << round(getTotalSystemMemory() * 100.0) / 100.0 << " GB" << std::endl;
+#endif
+
+#ifdef _OPENMP
+    std::cerr << "OpenMP threads: " << n_threads << std::endl;
 #endif
 
     // --- Set desired CPU SIMD optimization ---
@@ -820,138 +1034,22 @@ int main(int argc, char** argv)
 
             freq = freq_start - (n - 1) * freq_step;
 
-            /* initial poles */
+            /* initial poles - every pole is an independent Levenberg-Marquardt fit, they run in parallel */
+            FitAllPoles(poles, useOptimization, n_threads, gl, freq, ma, ndata, conw_r, cl, stop_condition, n_iter_min,
+                par, ia_par, lambda_pole, beta_pole, cg_first, ee, ee0, tim, brightness, sig, ia);
+
+            /* pick the best pole in the same order as the serial loop did, so the output is unchanged */
             per_best = dark_best = la_best = be_best = 0;
             dev_best = 1e40;
             for (m = 1; m <= N_POLES; m++)
             {
-                prd = 1 / freq;
-#ifdef _DEBUG
-                printf(".");
-                fflush(stderr);
-#endif
-                /* starts from the initial ellipsoid */
-                for (i = 1; i <= Ncoef; i++)
-                    cg[i] = cg_first[i];
-
-                cg[Ncoef + 1] = beta_pole[m];
-                cg[Ncoef + 2] = lambda_pole[m];
-
-                /* The formulas use beta measured from the pole */
-                cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
-                /* conversion of lambda, beta to radians */
-                cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
-                cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
-
-                /* Use omega instead of period */
-                cg[Ncoef + 3] = 24 * 2 * PI / prd;
-
-                for (i = 1; i <= Nphpar; i++)
+                if (poles[m].dev < dev_best)
                 {
-                    cg[Ncoef + 3 + i] = par[i];
-                    ia[Ncoef + 3 + i - 1] = ia_par[i];
-                }
-                /* Lommel-Seeliger part */
-                cg[Ncoef + 3 + Nphpar + 2] = 1;
-                /* Use logarithmic formulation for Lambert to keep it positive */
-                cg[Ncoef + 3 + Nphpar + 1] = log(cl);
-
-                // For Unit tests reference only
-                //printArray(cg, 24, "cg");
-                //printArray(ia, 24, "ia");
-
-                /* Levenberg-Marquardt loop */
-                n_iter_max = 0;
-                iter_diff_max = -1;
-                rchisq = -1;
-                if (stop_condition > 1)
-                {
-                    n_iter_max = static_cast<int>(stop_condition);
-                    iter_diff_max = 0;
-                    n_iter_min = 0; /* to not overwrite the n_iter_max value */
-                }
-                if (stop_condition < 1)
-                {
-                    n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-                    iter_diff_max = stop_condition;
-                }
-                Alamda = -1;
-                Niter = 0;
-                iter_diff = 1e40;
-                dev_old = 1e30;
-                dev_new = 0;
-                Lastcall = 0;
-
-                // For Unit tests reference only
-                //printArray(brightness, ndata, "brightness[ndata] -> brightness");
-
-                while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
-                {
-                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
-                    //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
-                    mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
-
-                    // For Unite test reference only
-                    //printArray(aalpha, 25, 25, "aaplha");
-                    //printArray(covar, 25, 25, "covar");
-
-                    Niter++;
-
-                    if ((Niter == 1) || (Chisq < Ochisq))
-                    {
-                        Ochisq = Chisq;
-                        calcCtx.CalculateCurv(cg, gl);
-
-                        for (i = 1; i <= 3; i++)
-                        {
-                            chck[i] = 0;
-                            for (j = 1; j <= Numfac; j++)
-                                chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
-                        }
-                        rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
-                    }
-                    dev_new = sqrt(rchisq / (ndata - 3));
-                    //printf("% 0.6f\n", dev_new);
-
-                    /* only if this step is better than the previous,
-                       1e-10 is for numeric errors */
-                    if (dev_old - dev_new > 1e-10)
-                    {
-                        iter_diff = dev_old - dev_new;
-                        dev_old = dev_new;
-                    }
-                }
-
-                /* deallocates variables used in mrqmin */
-                Deallocate = 1;
-                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
-                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
-                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
-                Deallocate = 0;
-
-                totarea = 0;
-                for (i = 1; i <= Numfac; i++)
-                {
-                    totarea = totarea + gl.Area[i - 1];
-                }
-
-                sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-                dark = sqrt(sum);
-
-                /* period solution */
-                prd = 2 * PI / cg[Ncoef + 3];
-
-                /* pole solution */
-                la_tmp = RAD2DEG * cg[Ncoef + 2];
-                be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
-
-                if (dev_new < dev_best)
-                {
-                    dev_best = dev_new;
-                    per_best = prd;
-                    dark_best = dark / totarea * 100;
-                    la_best = la_tmp;
-                    be_best = be_tmp;
+                    dev_best = poles[m].dev;
+                    per_best = poles[m].prd;
+                    dark_best = poles[m].dark;
+                    la_best = poles[m].la;
+                    be_best = poles[m].be;
                 }
             } /* pole loop */
 
@@ -1125,122 +1223,22 @@ int main(int argc, char** argv)
 
         freq = freq_start - (n - 1) * freq_step;
 
-        /* initial poles */
+        /* initial poles - every pole is an independent Levenberg-Marquardt fit, they run in parallel */
+        FitAllPoles(poles, useOptimization, n_threads, gl, freq, ma, ndata, conw_r, cl, stop_condition, n_iter_min,
+            par, ia_par, lambda_pole, beta_pole, cg_first, ee, ee0, tim, brightness, sig, ia);
+
+        /* pick the best pole in the same order as the serial loop did, so the output is unchanged */
         per_best = dark_best = la_best = be_best = 0;
         dev_best = 1e40;
         for (m = 1; m <= N_POLES; m++)
         {
-            prd = 1 / freq;
-            /* starts from the initial ellipsoid */
-            for (i = 1; i <= Ncoef; i++)
-                cg[i] = cg_first[i];
-
-            cg[Ncoef + 1] = beta_pole[m];
-            cg[Ncoef + 2] = lambda_pole[m];
-
-            /* The formulas use beta measured from the pole */
-            cg[Ncoef + 1] = 90 - cg[Ncoef + 1];
-            /* conversion of lambda, beta to radians */
-            cg[Ncoef + 1] = DEG2RAD * cg[Ncoef + 1];
-            cg[Ncoef + 2] = DEG2RAD * cg[Ncoef + 2];
-
-            /* Use omega instead of period */
-            cg[Ncoef + 3] = 24 * 2 * PI / prd;
-
-            for (i = 1; i <= Nphpar; i++)
+            if (poles[m].dev < dev_best)
             {
-                cg[Ncoef + 3 + i] = par[i];
-                ia[Ncoef + 3 + i - 1] = ia_par[i];
-            }
-            /* Lommel-Seeliger part */
-            cg[Ncoef + 3 + Nphpar + 2] = 1;
-            /* Use logarithmic formulation for Lambert to keep it positive */
-            cg[Ncoef + 3 + Nphpar + 1] = log(cl);
-
-            /* Levenberg-Marquardt loop */
-            n_iter_max = 0;
-            iter_diff_max = -1;
-            rchisq = -1;
-            if (stop_condition > 1)
-            {
-                n_iter_max = static_cast<int>(stop_condition);
-                iter_diff_max = 0;
-                n_iter_min = 0; /* to not overwrite the n_iter_max value */
-            }
-            if (stop_condition < 1)
-            {
-                n_iter_max = MAX_N_ITER; /* to avoid neverending loop */
-                iter_diff_max = stop_condition;
-            }
-            Alamda = -1;
-            Niter = 0;
-            iter_diff = 1e40;
-            dev_old = 1e30;
-            dev_new = 0;
-            Lastcall = 0;
-
-            while (((Niter < n_iter_max) && (iter_diff > iter_diff_max)) || (Niter < n_iter_min))
-            {
-                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
-                //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
-                mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
-                Niter++;
-
-                if ((Niter == 1) || (Chisq < Ochisq))
-                {
-                    Ochisq = Chisq;
-                    calcCtx.CalculateCurv(cg, gl);
-
-                    for (i = 1; i <= 3; i++)
-                    {
-                        chck[i] = 0;
-                        for (j = 1; j <= Numfac; j++)
-                        {
-                            chck[i] = chck[i] + gl.Area[j - 1] * gl.Nor[i - 1][j - 1];
-                        }
-                    }
-                    rchisq = Chisq - (pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2)) * pow(conw_r, 2);
-                }
-                dev_new = sqrt(rchisq / (ndata - 3));
-                /* only if this step is better than the previous,
-                   1e-10 is for numeric errors */
-                if (dev_old - dev_new > 1e-10)
-                {
-                    iter_diff = dev_old - dev_new;
-                    dev_old = dev_new;
-                }
-            }
-
-            /* deallocates variables used in mrqmin */
-            Deallocate = 1;
-            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, Ncoef + 5 + Nphpar, covar, aalpha, gl);
-            //mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, covar, aalpha, gl);
-            mrqmin(ee, ee0, tim, brightness, sig, cg, ia, ma, gl);
-            Deallocate = 0;
-
-            totarea = 0;
-            for (i = 1; i <= Numfac; i++)
-            {
-                totarea = totarea + gl.Area[i - 1];
-            }
-
-            sum = pow(chck[1], 2) + pow(chck[2], 2) + pow(chck[3], 2);
-            dark = sqrt(sum);
-
-            /* period solution */
-            prd = 2 * PI / cg[Ncoef + 3];
-
-            /* pole solution */
-            la_tmp = RAD2DEG * cg[Ncoef + 2];
-            be_tmp = 90 - RAD2DEG * cg[Ncoef + 1];
-
-            if (dev_new < dev_best)
-            {
-                dev_best = dev_new;
-                per_best = prd;
-                dark_best = dark / totarea * 100;
-                la_best = la_tmp;
-                be_best = be_tmp;
+                dev_best = poles[m].dev;
+                per_best = poles[m].prd;
+                dark_best = poles[m].dark;
+                la_best = poles[m].la;
+                be_best = poles[m].be;
             }
         } /* pole loop */
 

@@ -2,7 +2,7 @@
 
 # Define directories
 BUILD_DIR = build
-BOINC_DIR = ../../../boinc_src
+BOINC_DIR = c:\moje\boinc\boinc
 BOINC_API_DIR = $(BOINC_DIR)/api
 BOINC_LIB_DIR = $(BOINC_DIR)/lib
 PS_COMMON_DIR = ../../period_search_common
@@ -13,7 +13,7 @@ PS_COMMON_LIB_DIR = $(PS_COMMON_DIR)/build
 
 # Define compiler and flags
 CXX = g++
-CXXFLAGS = -march=x86-64 -O3 -std=c++2a -w -s \
+CXXFLAGS = -march=x86-64 -O3 -std=c++2a -fopenmp -w -s -static \
 	-I$(BOINC_DIR) \
 	-I$(BOINC_LIB_DIR) \
 	-I$(BOINC_API_DIR) \
