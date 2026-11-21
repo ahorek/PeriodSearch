@@ -40,6 +40,8 @@ jobs:
 
       - name: Prepare boinc libraries
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libfmt-dev
           export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/bin:$PATH"
           export PATH="/home/runner/work/PeriodSearch/PeriodSearch/cross-pi-gcc-14.2.0-64/libexec/gcc/aarch64-linux-gnu/14.2.0:$PATH"
           export CC=aarch64-linux-gnu-gcc
