@@ -1,16 +1,7 @@
 
 name: x64 Linux
 
-on:
-  push:
-    branches:
-      - main
-      - dev
-
-  pull_request:
-    branches:
-      - main
-      - dev
+on: [push, pull_request]
 
 env:
   BOINC_DIR: ./boinc
@@ -36,6 +27,22 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install GCC 16.2
+        if: matrix.variant != 'cuda'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgmp-dev libmpfr-dev libmpc-dev
+          wget https://gcc.gnu.org/pub/gcc/releases/gcc-16.2.0/gcc-16.2.0.tar.xz
+          echo "c51c30ca7422d0cbecf504b2e0f33c3aca31e0f90a76b65217f465163fa6fa17b3f5de39e145c47e5bab90ac0ce7fff3b03c8d553ae36e01faaea5a50f8648d1 gcc-16.2.0.tar.xz" | sha512sum --check
+          tar -xf gcc-16.2.0.tar.xz
+          mkdir gcc-build
+          cd gcc-build
+          ../gcc-16.2.0/configure --prefix="$RUNNER_TEMP/gcc-16.2" --enable-languages=c,c++ --disable-multilib --disable-bootstrap
+          make -j2
+          make install
+          test "$("$RUNNER_TEMP/gcc-16.2/bin/gcc" -dumpfullversion)" = "16.2.0"
+          echo "$RUNNER_TEMP/gcc-16.2/bin" >> "$GITHUB_PATH"
 
       - name: Print gcc version
         run: |
